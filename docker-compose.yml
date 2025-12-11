@@ -1,0 +1,5 @@
+# File: docker-compose.yml
+# Mô tả: File cấu hình Docker Compose để chạy nhiều service
+# Chức năng: Định nghĩa service app (Spring Boot) và service mysql (database),
+#            cấu hình network, volume, environment variables cho các service,
+#            cho phép chạy toàn bộ ứng dụng bằng một lệnh docker-compose up
