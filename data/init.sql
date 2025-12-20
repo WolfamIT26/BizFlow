@@ -161,9 +161,12 @@ CREATE TABLE IF NOT EXISTS debts (
 -- Dữ liệu mẫu ban đầu
 -- ===================================================================
 
--- Thêm users mẫu (password đều là: 123456 - đã mã hóa BCrypt)
+-- Thêm users mẫu (password: admin123 và test123 - đã mã hóa BCrypt)
+-- BCrypt hash của "admin123": $2a$10$l8hbhCf8HKGWdmLGWJkHSO.lN9CJHcBxQGVp2gYmr48VhjSy6.46W
+-- BCrypt hash của "test123": $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 INSERT INTO users (username, password, email, full_name, phone_number, role, enabled) VALUES
-('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin@bizflow.com', 'Administrator', '0909111222', 'ADMIN', TRUE),
+('admin', '$2a$10$l8hbhCf8HKGWdmLGWJkHSO.lN9CJHcBxQGVp2gYmr48VhjSy6.46W', 'admin@bizflow.com', 'Administrator', '0909111222', 'ADMIN', TRUE),
+('owner', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'owner@bizflow.com', 'Store Owner', '0909222333', 'OWNER', TRUE),
 ('test', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'test@bizflow.com', 'Test User', '0909333444', 'EMPLOYEE', TRUE);
 
 -- Thêm khách hàng mẫu

@@ -1,14 +1,35 @@
-/*
- * File: LoginRequest.java
- * Mô tả: DTO (Data Transfer Object) cho request đăng nhập
- * Chức năng: Nhận dữ liệu từ client (username, password), truyền sang AuthService
- */
+package com.example.bizflow.dto;
 
-// TODO: Tạo class LoginRequest
-// - Fields:
-//   + @NotBlank(message = "Username không được để trống") String username
-//   + @NotBlank(message = "Password không được để trống") String password
-// - Constructors: No-arg, Full-arg
-// - Getters/Setters
-// - Có thể thêm @Data từ Lombok để tự động generate getters/setters/equals/hashCode
+import jakarta.validation.constraints.NotBlank;
 
+public class LoginRequest {
+    @NotBlank(message = "Username không được bỏ trống")
+    private String username;
+    
+    @NotBlank(message = "Password không được bỏ trống")
+    private String password;
+
+    public LoginRequest() {
+    }
+
+    public LoginRequest(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}

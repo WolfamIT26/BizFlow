@@ -4,15 +4,15 @@
 #            cài đặt dependencies, compile code, build JAR file,
 #            chạy ứng dụng Spring Boot trong container
 
-# Stage 1: Build the application using Maven and Java 17
-FROM maven:3.8-openjdk-17 AS build
+# Stage 1: Build the application using Maven and Java 21
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 RUN mvn clean install -DskipTests
 
 # Stage 2: Create the final, lightweight image with the application JAR
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
