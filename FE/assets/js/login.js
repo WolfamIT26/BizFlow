@@ -1,5 +1,5 @@
 // Login page JS (scoped)
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 const ALLOWED_ROLES = ['ADMIN','OWNER','EMPLOYEE', 'MANAGER'];
 
 function showLoginError(message){

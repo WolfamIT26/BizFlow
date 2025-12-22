@@ -1,20 +1,35 @@
 // Employee Dashboard - Sales JavaScript
-const API_BASE = 'http://localhost:8080/api';
+// Use relative path so it works behind Nginx proxy inside Docker
+const API_BASE = '/api';
 
 // Global state
 let products = [];
 let cart = [];
 let selectedCustomer = null;
-let currentPriceFilter = 1000000;
 let currentCategory = 'all';
+let currentSearch = '';
+let currentSort = 'name';
+let customersLoaded = false;
 
 // Initialize
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
-    loadProducts();
-    loadCustomers();
+    // default selected customer is walk-in
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    document.getElementById('selectedCustomer').textContent = 'Khách lẻ';
     setupEventListeners();
+    
+    // Show loading state
+    document.getElementById('productsGrid').innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">⏳ Đang tải...</div>';
+    
+    // Load data in parallel for faster load
+    await Promise.all([loadProducts()]);
+    
+    // Lazy load customers only when needed
+    document.getElementById('customerSearch')?.addEventListener('focus', () => {
+        if (!customersLoaded) loadCustomers();
+    }, { once: true });
 });
 
 function checkAuth() {
@@ -41,29 +56,44 @@ async function loadProducts() {
         });
         
         if (!response.ok) {
+            if (response.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
             throw new Error('Failed to load products');
         }
         
         products = await response.json();
-        renderProducts();
+        filterProducts();
     } catch (err) {
         console.error('Error loading products:', err);
         renderProducts([]); // Show empty state
     }
 }
 
+let customersLoaded = false;
+
 async function loadCustomers() {
+    if (customersLoaded) return; // Prevent duplicate load
+    
     try {
         const response = await fetch(`${API_BASE}/customers`, {
             headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken')}` }
         });
         
         if (!response.ok) {
+            if (response.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
             throw new Error('Failed to load customers');
         }
         
         const customers = await response.json();
         renderCustomers(customers);
+        customersLoaded = true;
     } catch (err) {
         console.error('Error loading customers:', err);
     }
@@ -98,7 +128,7 @@ function renderCustomers(customers) {
     }
     
     const customersHtml = customers.map(c => `
-        <div class="customer-item" data-customer-id="${c.id}" onclick="selectCustomer(${c.id}, '${c.name}', '${c.phone || '-'}')">
+        <div class="customer-item" data-customer-id="${c.id}" onclick="selectCustomer(event, ${c.id}, '${c.name}', '${c.phone || '-'}')">
             <div class="customer-info">
                 <p class="customer-name">${c.name || 'Khách hàng'}</p>
                 <p class="customer-phone">${c.phone || '-'}</p>
@@ -107,7 +137,7 @@ function renderCustomers(customers) {
     `).join('');
     
     list.innerHTML = `
-        <div class="customer-item active" data-customer-id="0" onclick="selectCustomer(0, 'Khách lẻ', '-')">
+        <div class="customer-item active" data-customer-id="0" onclick="selectCustomer(event, 0, 'Khách lẻ', '-')">
             <div class="customer-info">
                 <p class="customer-name">Khách lẻ</p>
                 <p class="customer-phone">-</p>
@@ -119,15 +149,16 @@ function renderCustomers(customers) {
 
 function addToCart(productId, productName, productPrice) {
     const existingItem = cart.find(item => item.productId === productId);
+    const qty = getCurrentQty();
     
     if (existingItem) {
-        existingItem.quantity += 1;
+        existingItem.quantity += qty;
     } else {
         cart.push({
             productId,
             productName,
             productPrice,
-            quantity: 1
+            quantity: qty
         });
     }
     
@@ -182,13 +213,14 @@ function removeFromCart(idx) {
     updateTotal();
 }
 
-function selectCustomer(customerId, customerName, customerPhone) {
+function selectCustomer(evt, customerId, customerName, customerPhone) {
     selectedCustomer = { id: customerId, name: customerName, phone: customerPhone };
     
     document.querySelectorAll('.customer-item').forEach(item => {
         item.classList.remove('active');
     });
-    event.target.closest('.customer-item').classList.add('active');
+    const row = evt?.target?.closest('.customer-item');
+    if (row) row.classList.add('active');
     
     document.getElementById('selectedCustomer').innerHTML = `
         <div>
@@ -216,36 +248,45 @@ function formatPrice(price) {
 }
 
 function setupEventListeners() {
-    // Price filter
-    document.getElementById('priceRange').addEventListener('change', (e) => {
-        currentPriceFilter = parseInt(e.target.value);
-        document.getElementById('priceValue').textContent = formatPrice(currentPriceFilter);
-        filterProducts();
-    });
-    
-    // Category filter
-    document.querySelectorAll('.category-item').forEach(btn => {
+    // Category chips
+    document.querySelectorAll('#categoryChips .chip').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.category-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('#categoryChips .chip').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             currentCategory = e.target.dataset.category;
             filterProducts();
         });
     });
-    
+
     // Search
     document.getElementById('searchInput').addEventListener('input', (e) => {
-        filterProducts(e.target.value);
+        currentSearch = e.target.value;
+        filterProducts();
     });
-    
+
     // Sort
     document.getElementById('sortSelect').addEventListener('change', (e) => {
-        sortProducts(e.target.value);
+        currentSort = e.target.value;
+        sortProducts(currentSort);
+    });
+
+    // Qty change
+    document.getElementById('qtyInput').addEventListener('change', () => {
+        const val = getCurrentQty();
+        document.getElementById('qtyInput').value = val;
     });
     
     // Discount input
     document.getElementById('discountInput').addEventListener('input', () => {
         updateTotal();
+    });
+
+    // Quick cash buttons (set discount for demo)
+    document.querySelectorAll('.quick-cash .chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.getElementById('discountInput').value = btn.dataset.cash;
+            updateTotal();
+        });
     });
     
     // Cart buttons
@@ -262,7 +303,8 @@ function setupEventListeners() {
             alert('Giỏ hàng trống!');
             return;
         }
-        alert(`Lưu hóa đơn:\n- Khách: ${selectedCustomer?.name}\n- ${cart.length} sản phẩm\n- Tổng: ${document.getElementById('totalAmount').textContent}`);
+        const cust = selectedCustomer?.name || 'Khách lẻ';
+        alert(`Lưu hóa đơn:\n- Khách: ${cust}\n- ${cart.length} sản phẩm\n- Tổng: ${document.getElementById('totalAmount').textContent}`);
     });
     
     document.getElementById('checkoutBtn').addEventListener('click', () => {
@@ -270,7 +312,8 @@ function setupEventListeners() {
             alert('Giỏ hàng trống!');
             return;
         }
-        alert(`Thanh toán:\n- Khách: ${selectedCustomer?.name}\n- ${cart.length} sản phẩm\n- Tổng: ${document.getElementById('totalAmount').textContent}`);
+        const cust = selectedCustomer?.name || 'Khách lẻ';
+        alert(`Thanh toán:\n- Khách: ${cust}\n- ${cart.length} sản phẩm\n- Tổng: ${document.getElementById('totalAmount').textContent}`);
     });
     
     // Logout
@@ -283,16 +326,15 @@ function setupEventListeners() {
 }
 
 function filterProducts(searchTerm = '') {
+    const keyword = searchTerm || currentSearch;
     let filtered = products.filter(p => {
-        const matchPrice = (p.price || 0) <= currentPriceFilter;
         const matchCategory = currentCategory === 'all' || p.categoryId === parseInt(currentCategory);
-        const matchSearch = !searchTerm || 
-                           (p.name && p.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           (p.code && p.code.toLowerCase().includes(searchTerm.toLowerCase()));
-        
-        return matchPrice && matchCategory && matchSearch;
+        const matchSearch = !keyword || 
+                           (p.name && p.name.toLowerCase().includes(keyword.toLowerCase())) ||
+                           (p.code && p.code.toLowerCase().includes(keyword.toLowerCase()));
+        return matchCategory && matchSearch;
     });
-    
+
     renderProducts(filtered);
 }
 
@@ -310,4 +352,9 @@ function sortProducts(sortBy) {
     }
     
     filterProducts();
+}
+
+function getCurrentQty() {
+    const raw = parseInt(document.getElementById('qtyInput').value, 10);
+    return Number.isFinite(raw) && raw > 0 ? raw : 1;
 }

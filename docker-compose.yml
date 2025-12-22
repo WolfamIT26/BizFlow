@@ -92,7 +92,7 @@ services:
   # =========================
   frontend:
     build:
-      context: ./frontend
+      context: ./FE
       dockerfile: Dockerfile
     container_name: bizflow-frontend
     ports:
