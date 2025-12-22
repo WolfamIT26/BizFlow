@@ -5,6 +5,7 @@ import com.example.bizflow.entity.Branch;
 import com.example.bizflow.service.BranchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class BranchController {
     private BranchService branchService;
 
     @PostMapping
-    public ResponseEntity<?> createBranch(@RequestBody CreateBranchRequest request) {
+    public ResponseEntity<?> createBranch(@RequestBody @NonNull CreateBranchRequest request) {
         try {
             Branch branch = branchService.createBranch(request);
             return ResponseEntity.ok(branch);
@@ -32,7 +33,7 @@ public class BranchController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getBranchById(@PathVariable Long id) {
+    public ResponseEntity<?> getBranchById(@PathVariable @NonNull Long id) {
         Branch branch = branchService.getBranchById(id);
         if (branch != null) {
             return ResponseEntity.ok(branch);
@@ -41,7 +42,7 @@ public class BranchController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateBranch(@PathVariable Long id, @RequestBody CreateBranchRequest request) {
+    public ResponseEntity<?> updateBranch(@PathVariable @NonNull Long id, @RequestBody @NonNull CreateBranchRequest request) {
         try {
             Branch branch = branchService.updateBranch(id, request);
             return ResponseEntity.ok(branch);
@@ -51,7 +52,7 @@ public class BranchController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteBranch(@PathVariable Long id) {
+    public ResponseEntity<?> deleteBranch(@PathVariable @NonNull Long id) {
         branchService.deleteBranch(id);
         return ResponseEntity.ok("Branch deleted successfully");
     }

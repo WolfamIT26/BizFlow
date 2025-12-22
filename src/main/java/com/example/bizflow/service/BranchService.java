@@ -6,6 +6,7 @@ import com.example.bizflow.entity.User;
 import com.example.bizflow.repository.BranchRepository;
 import com.example.bizflow.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class BranchService {
     @Autowired
     private UserRepository userRepository;
 
+    @SuppressWarnings("null")
     public Branch createBranch(CreateBranchRequest request) {
         if (branchRepository.findByName(request.getName()) != null) {
             throw new RuntimeException("Branch name already exists");
@@ -42,11 +44,12 @@ public class BranchService {
         return branchRepository.findAll();
     }
 
-    public Branch getBranchById(Long id) {
+    public Branch getBranchById(@NonNull Long id) {
         return branchRepository.findById(id).orElse(null);
     }
 
-    public Branch updateBranch(Long id, CreateBranchRequest request) {
+    @SuppressWarnings("null")
+    public Branch updateBranch(@NonNull Long id, @NonNull CreateBranchRequest request) {
         Branch branch = branchRepository.findById(id).orElseThrow(() -> new RuntimeException("Branch not found"));
         branch.setAddress(request.getAddress());
         branch.setPhone(request.getPhone());
@@ -60,7 +63,7 @@ public class BranchService {
         return branchRepository.save(branch);
     }
 
-    public void deleteBranch(Long id) {
+    public void deleteBranch(@NonNull Long id) {
         branchRepository.deleteById(id);
     }
 }

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Bán hàng</title>
+    <link rel="stylesheet" href="../assets/css/employee-dashboard.css">
+    <style>
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <h1 class="logo">BizFlow</h1>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Tìm sản phẩm, SKU, tên khách...">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="9" cy="9" r="8"></circle>
+                    <line x1="14" y1="14" x2="19" y2="19"></line>
+                </svg>
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="notificationBtn" class="icon-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                </svg>
+            </button>
+            <div class="user-menu">
+                <div class="user-avatar" id="userBtn">
+                    <span id="userInitial">E</span>
+                </div>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-info-dropdown">
+                        <p id="userNameDropdown">Nhân viên</p>
+                        <span id="userRoleDropdown" class="role-badge">EMPLOYEE</span>
+                    </div>
+                    <hr>
+                    <button id="logoutBtn" class="dropdown-item logout">Đăng xuất</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <!-- Sidebar trái: Tìm kiếm, Bộ lọc -->
+        <aside class="sidebar left-sidebar">
+            <div class="sidebar-section">
+                <h3>Danh mục</h3>
+                <div class="category-list">
+                    <button class="category-item active" data-category="all">Tất cả</button>
+                    <button class="category-item" data-category="1">Áo</button>
+                    <button class="category-item" data-category="2">Quần</button>
+                    <button class="category-item" data-category="3">Giày</button>
+                    <button class="category-item" data-category="4">Phụ kiện</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Lọc theo giá</h3>
+                <div class="price-filter">
+                    <input type="range" id="priceRange" min="0" max="1000000" step="10000" value="1000000" class="slider">
+                    <div class="price-display">
+                        <span>0đ - <span id="priceValue">1.000.000đ</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Khách hàng</h3>
+                <div class="customer-search">
+                    <input type="text" id="customerSearch" placeholder="Tìm khách...">
+                </div>
+                <div class="customer-list" id="customerList">
+                    <div class="customer-item active" data-customer-id="0">
+                        <div class="customer-info">
+                            <p class="customer-name">Khách lẻ</p>
+                            <p class="customer-phone">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content: Sản phẩm -->
+        <main class="main-content">
+            <div class="products-header">
+                <h2>Sản phẩm</h2>
+                <div class="sort-filter">
+                    <select id="sortSelect">
+                        <option value="name">Theo tên A-Z</option>
+                        <option value="price-low">Giá thấp đến cao</option>
+                        <option value="price-high">Giá cao đến thấp</option>
+                    </select>
+                </div>
+            </div>
+            <div class="products-grid" id="productsGrid">
+                <!-- Products will be loaded here -->
+            </div>
+        </main>
+
+        <!-- Sidebar phải: Giỏ hàng -->
+        <aside class="sidebar right-sidebar">
+            <div class="cart-header">
+                <h3>🛒 Giỏ hàng</h3>
+                <button class="clear-cart-btn" id="clearCartBtn">Xóa hết</button>
+            </div>
+
+            <div class="cart-items" id="cartItems">
+                <div class="empty-cart">
+                    <p>Giỏ hàng trống</p>
+                </div>
+            </div>
+
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span>Tạm tính:</span>
+                    <span id="subtotal">0đ</span>
+                </div>
+                <div class="summary-row">
+                    <span>Giảm giá:</span>
+                    <input type="number" id="discountInput" placeholder="0" min="0" class="discount-input">
+                </div>
+                <div class="summary-row total">
+                    <span>Tổng cộng:</span>
+                    <span id="totalAmount">0đ</span>
+                </div>
+            </div>
+
+            <div class="cart-actions">
+                <button id="saveBillBtn" class="btn btn-primary">Lưu hóa đơn</button>
+                <button id="checkoutBtn" class="btn btn-success">Thanh toán</button>
+            </div>
+
+            <div class="sidebar-section customer-section">
+                <h3>Khách hàng hiện tại</h3>
+                <div id="selectedCustomer" class="selected-customer">
+                    <p class="text-muted">Khách lẻ</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="../assets/js/employee-dashboard.js"></script>
+</body>
+</html>

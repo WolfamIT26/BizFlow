@@ -8,6 +8,7 @@ import com.example.bizflow.repository.BranchRepository;
 import com.example.bizflow.repository.UserRepository;
 import com.example.bizflow.util.PasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public class UserService {
     @Autowired
     private BranchRepository branchRepository;
 
+    @SuppressWarnings("null")
     public User createUser(CreateUserRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
@@ -48,11 +50,12 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User getUserById(Long id) {
+    public User getUserById(@NonNull Long id) {
         return userRepository.findById(id).orElse(null);
     }
 
-    public User updateUser(Long id, CreateUserRequest request) {
+    @SuppressWarnings("null")
+    public User updateUser(@NonNull Long id, @NonNull CreateUserRequest request) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
@@ -68,7 +71,7 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public void deleteUser(Long id) {
+    public void deleteUser(@NonNull Long id) {
         userRepository.deleteById(id);
     }
 }
