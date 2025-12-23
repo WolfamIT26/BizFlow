@@ -19,6 +19,10 @@ BizFlow là hệ thống quản lý bán hàng và tồn kho được xây dựn
 - **Backend**: Java Spring Boot 3.1.5 + MySQL
 - **Frontend**: HTML5, CSS3, JavaScript
 
+> Dự án có hai bộ schema:
+> - Full 24 bảng: cho mô hình nhiều cửa hàng, nhiều nghiệp vụ.
+> - Small 13 bảng: gọn cho hộ kinh doanh nhỏ (dùng file db/init/001_schema_small.sql + 002_seed_small.sql).
+
 Hệ thống cung cấp giải pháp quản lý toàn diện cho các cửa hàng và doanh nghiệp nhỏ.
 
 ---
