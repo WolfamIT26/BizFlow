@@ -185,15 +185,7 @@
         </div>
 
         <div class="card">
-            <h2>🔐 Thông tin Token</h2>
-            <div class="info-item">
-                <label>Access Token</label>
-                <div class="token-section" id="tokenInfo">Token sẽ hiển thị ở đây</div>
-            </div>
-        </div>
-
-        <div class="card">
-            <h2>📋 Chức năng chính</h2>
+            <h2> Chức năng chính</h2>
             <div class="menu">
                 <div class="menu-item" onclick="alert('Chức năng này sẽ được phát triển!')">
                     <div class="icon">📊</div>
@@ -253,7 +245,6 @@
             document.getElementById('username').textContent = username || '-';
             document.getElementById('role').textContent = role || '-';
             document.getElementById('userGreeting').innerHTML = `Xin chào, <strong>${username || 'Manager'}</strong>`;
-            document.getElementById('tokenInfo').textContent = token || 'Token không tìm thấy';
         }
 
         function logout() {
