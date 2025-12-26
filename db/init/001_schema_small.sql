@@ -1,25 +1,40 @@
--- BizFlow Small: 13 tables for single/small shop
+﻿-- BizFlow Small: aligned schema for current backend entities
 CREATE DATABASE IF NOT EXISTS bizflow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE bizflow_db;
 
--- Roles
+-- Roles (optional reference)
 CREATE TABLE IF NOT EXISTS roles (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(30) UNIQUE NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Users (1 role/user, small team)
+-- Branches
+CREATE TABLE IF NOT EXISTS branches (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  address VARCHAR(255),
+  phone VARCHAR(20),
+  email VARCHAR(100),
+  owner_id BIGINT,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB;
+
+-- Users
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   password VARCHAR(255) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
   full_name VARCHAR(100),
-  phone VARCHAR(20),
-  email VARCHAR(100),
-  role_id BIGINT NOT NULL,
+  phone_number VARCHAR(20),
+  role VARCHAR(20) NOT NULL,
+  branch_id BIGINT,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_user_role_fk FOREIGN KEY (role_id) REFERENCES roles(id)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  note TEXT,
+  CONSTRAINT fk_user_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Shops (optional multi-branch; keep simple)
@@ -36,7 +51,7 @@ CREATE TABLE IF NOT EXISTS shops (
 CREATE TABLE IF NOT EXISTS customers (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   shop_id BIGINT,
-  full_name VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
   phone VARCHAR(50),
   email VARCHAR(100),
   address VARCHAR(255),
@@ -57,8 +72,9 @@ CREATE TABLE IF NOT EXISTS products (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   shop_id BIGINT,
   category_id BIGINT,
+  code VARCHAR(100) NOT NULL UNIQUE,
   name VARCHAR(255) NOT NULL,
-  price DECIMAL(12,2) NOT NULL,
+  price DECIMAL(15,2) NOT NULL,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_product_shop FOREIGN KEY (shop_id) REFERENCES shops(id) ON DELETE SET NULL,

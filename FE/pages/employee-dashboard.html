@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -7,78 +7,200 @@
     <link rel="stylesheet" href="../assets/css/employee-dashboard.css">
 </head>
 <body class="pos-body">
-    <!-- Top bar / hóa đơn tab -->
     <header class="pos-header">
-        <div class="brand">BizFlow POS</div>
-        <div class="order-tabs">
-            <button class="order-tab active">Hóa đơn 1</button>
-            <button class="order-tab ghost" title="Thêm hóa đơn">+</button>
-            <button class="order-tab ghost">HĐ lưu tạm</button>
+        <div class="header-left">
+            <div class="logo-mark" aria-label="BizFlow">
+                BIZFLOW
+            </div>
+            <div class="order-tabs">
+                <button class="order-tab active">Hóa đơn 1 <span class="tab-close">×</span></button>
+                <button class="order-tab ghost" title="Thêm hóa đơn">+</button>
+                <button class="order-tab ghost">HĐ lưu tạm</button>
+            </div>
         </div>
         <div class="header-actions">
-            <div class="store">Tại cửa hàng</div>
+            <div class="store">TRƯỜNG CHINH</div>
+            <button class="icon-btn" title="Thông báo" aria-label="Thông báo">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M12 3a6 6 0 0 0-6 6v3.5L4 15v1h16v-1l-2-2.5V9a6 6 0 0 0-6-6Z" />
+                    <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
+                </svg>
+            </button>
+            <button class="icon-btn" title="Đồng bộ" aria-label="Đồng bộ">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M4 12a8 8 0 0 1 13.66-5.66" />
+                    <path d="M18 4v4h-4" />
+                    <path d="M20 12a8 8 0 0 1-13.66 5.66" />
+                    <path d="M6 20v-4h4" />
+                </svg>
+            </button>
             <div class="user-chip" id="userBtn">
                 <span id="userInitial">E</span>
                 <span id="userNameDropdown">Nhân viên</span>
             </div>
-            <button id="logoutBtn" class="icon-btn" title="Đăng xuất">⎋</button>
+            <button id="logoutBtn" class="icon-btn" title="Đăng xuất" aria-label="Đăng xuất">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M10 6H5v12h5" />
+                    <path d="M14 16l4-4-4-4" />
+                    <path d="M18 12H9" />
+                </svg>
+            </button>
+            <button class="icon-btn" title="Ứng dụng" aria-label="Ứng dụng">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <circle cx="6" cy="6" r="1.5" />
+                    <circle cx="12" cy="6" r="1.5" />
+                    <circle cx="18" cy="6" r="1.5" />
+                    <circle cx="6" cy="12" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="18" cy="12" r="1.5" />
+                </svg>
+            </button>
         </div>
     </header>
 
-    <!-- Toolbar -->
     <section class="pos-toolbar">
         <div class="toolbar-search">
-            <span class="key-hint">F3</span>
-            <input id="searchInput" type="text" placeholder="Nhập tên hàng hóa, mã vạch, mã SKU">
+            <button class="dropdown-btn">Tìm kiếm</button>
+            <input id="searchInput" type="text" placeholder="(F3) Nhập tên hàng hóa, mã vạch, mã SKU">
         </div>
         <div class="toolbar-qty">
+            <span class="barcode" aria-hidden="true">|||</span>
             <label for="qtyInput">SL</label>
             <input id="qtyInput" type="number" min="1" value="1">
         </div>
         <div class="toolbar-toggle">
-            <label><input type="checkbox" id="splitLine"> Tách dòng</label>
+            <label class="switch">
+                <input type="checkbox" id="splitLine">
+                <span class="slider"></span>
+            </label>
+            <span>Tách dòng</span>
         </div>
-        <div class="toolbar-actions">
-            <button class="ghost-btn" id="customerQuickBtn">Chọn khách hàng</button>
-        </div>
+        <button class="toolbar-chip">
+            <span class="chip-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <circle cx="12" cy="8" r="3" />
+                    <path d="M5 20a7 7 0 0 1 14 0" />
+                </svg>
+            </span>
+            <span>Phạm Huy Đức V</span>
+            <span class="chip-caret">▾</span>
+        </button>
+        <button class="toolbar-chip">
+            <span class="chip-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M4 12l8-8 8 8-8 8-8-8Z" />
+                    <path d="M9 12h6" />
+                </svg>
+            </span>
+            <span>(Alt + B) Chọn bảng giá</span>
+            <span class="chip-caret">▾</span>
+        </button>
+        <button class="toolbar-chip toolbar-store">
+            <span class="chip-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M4 10h16l-2-5H6l-2 5Z" />
+                    <path d="M6 10v9h12v-9" />
+                </svg>
+            </span>
+            <span>Tại cửa hàng</span>
+            <span class="chip-caret">▾</span>
+        </button>
     </section>
 
-    <!-- Layout -->
     <section class="pos-layout">
         <div class="product-panel">
-            <div class="chip-row" id="categoryChips">
-                <button class="chip active" data-category="all">Tất cả</button>
-                <button class="chip" data-category="1">Áo</button>
-                <button class="chip" data-category="2">Quần</button>
-                <button class="chip" data-category="3">Giày</button>
-                <button class="chip" data-category="4">Phụ kiện</button>
-            </div>
-
-            <div class="products-toolbar">
-                <div class="sort-filter">
-                    <select id="sortSelect">
-                        <option value="name">Sắp xếp: Tên A-Z</option>
-                        <option value="price-low">Giá thấp đến cao</option>
-                        <option value="price-high">Giá cao đến thấp</option>
-                    </select>
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icons">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6 8h12l-1.2 11H7.2L6 8Zm2-3h8l1 3H7l1-3Z" />
+                        </svg>
+                    </div>
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M7 4h10l2 5-3 11H8L5 9l2-5Z" />
+                        </svg>
+                    </div>
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 16c2-6 7-8 12-8h4v3h-4c-4 0-7 1-9 5H4Z" />
+                        </svg>
+                    </div>
+                </div>
+                <p class="empty-text">Chưa có hàng hóa nào, ấn F3 để tìm kiếm hàng hóa</p>
+                <div class="empty-actions">
+                    <button class="ghost-btn">Chọn hàng hóa</button>
+                    <button class="ghost-btn">Nhập khẩu hàng hóa</button>
                 </div>
             </div>
 
-            <div class="products-grid" id="productsGrid"></div>
+            <div class="suggestion-panel">
+                <div class="suggestion-header">
+                    <h3>TƯ VẤN BÁN HÀNG</h3>
+                    <div class="suggestion-controls">
+                        <div class="suggestion-search">
+                            <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                                <circle cx="11" cy="11" r="7" />
+                                <path d="M16.5 16.5L21 21" />
+                            </svg>
+                            <input type="text" placeholder="(Shift + F3) Tìm kiếm">
+                        </div>
+                        <div class="suggestion-filter">
+                            <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                                <path d="M4 6h16" />
+                                <path d="M8 12h8" />
+                                <path d="M10 18h4" />
+                            </svg>
+                            <select id="sortSelect">
+                                <option value="name">Lọc theo nhóm hàng hóa</option>
+                                <option value="price-low">Giá thấp đến cao</option>
+                                <option value="price-high">Giá cao đến thấp</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="products-grid" id="productsGrid"></div>
+            </div>
         </div>
 
         <aside class="side-panel">
             <div class="customer-panel">
-                <div class="customer-search-box">
-                    <input id="customerSearch" type="text" placeholder="(F4) Tìm khách hàng">
-                </div>
-                <div class="customer-list" id="customerList">
-                    <div class="customer-item active" data-customer-id="0">
-                        <div>
-                            <p class="customer-name">Khách lẻ</p>
-                            <p class="customer-phone">-</p>
-                        </div>
+                <div class="customer-header">
+                    <div class="customer-title">
+                        <span class="store-pill">Tại cửa hàng</span>
                     </div>
+                    <div class="customer-actions">
+                        <button class="icon-btn small" title="Giao hàng" aria-label="Giao hàng">
+                            <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                                <path d="M3 16h11v-7H7l-4 4v3Z" />
+                                <path d="M14 10h3l4 4v2h-7Z" />
+                                <circle cx="7" cy="18" r="2" />
+                                <circle cx="17" cy="18" r="2" />
+                            </svg>
+                        </button>
+                        <button class="icon-btn small" title="Quà tặng" aria-label="Quà tặng">
+                            <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                                <path d="M4 10h16v10H4z" />
+                                <path d="M2 8h20v2H2z" />
+                                <path d="M12 8v12" />
+                                <path d="M8 8c-1.5 0-2.5-1-2.5-2s1-2 2.5-1 2 3 2 3-0.5 0-2 0Z" />
+                                <path d="M16 8c1.5 0 2.5-1 2.5-2s-1-2-2.5-1-2 3-2 3 0.5 0 2 0Z" />
+                            </svg>
+                        </button>
+                        <button class="icon-btn small" title="Khác" aria-label="Khác">▾</button>
+                    </div>
+                </div>
+                <div class="customer-search-box">
+                    <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="M16.5 16.5L21 21" />
+                    </svg>
+                    <input id="customerSearch" type="text" placeholder="(F4) SĐT, tên khách hàng">
+                    <button class="icon-btn mini">+</button>
+                </div>
+                <div class="customer-dropdown" id="customerList">
+                    <div class="customer-empty">Đang tải khách hàng...</div>
                 </div>
             </div>
 
@@ -93,13 +215,25 @@
                     <div class="empty-cart">Chưa có hàng hóa nào</div>
                 </div>
 
+                <div class="invoice-toggle">
+                    <label class="switch">
+                        <input type="checkbox" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span>In hóa đơn</span>
+                    <label class="checkbox">
+                        <input type="checkbox">
+                        <span>Đặt hàng</span>
+                    </label>
+                </div>
+
                 <div class="cart-summary">
                     <div class="summary-row">
                         <span>Tạm tính</span>
                         <span id="subtotal">0đ</span>
                     </div>
                     <div class="summary-row">
-                        <span>Giảm giá</span>
+                        <span>Gợi ý tiền mặt</span>
                         <input id="discountInput" type="number" min="0" placeholder="0">
                     </div>
                     <div class="summary-row total">
@@ -115,8 +249,8 @@
                 </div>
 
                 <div class="cart-actions">
-                    <button id="saveBillBtn" class="ghost-btn">Lưu tạm</button>
-                    <button id="checkoutBtn" class="primary-btn">Thu tiền</button>
+                    <button id="saveBillBtn" class="ghost-btn">Lưu tạm (F10)</button>
+                    <button id="checkoutBtn" class="primary-btn">Thu tiền (F9)</button>
                 </div>
             </div>
         </aside>

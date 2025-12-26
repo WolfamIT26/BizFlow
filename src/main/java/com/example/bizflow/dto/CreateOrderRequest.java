@@ -1,0 +1,54 @@
+package com.example.bizflow.dto;
+
+import java.util.List;
+
+public class CreateOrderRequest {
+    private Long customerId;
+    private Long userId;
+    private Boolean paid;
+    private String paymentMethod;
+    private List<OrderItemRequest> items;
+
+    public CreateOrderRequest() {
+    }
+
+    public Long getCustomerId() {
+        return customerId;
+    }
+
+    public void setCustomerId(Long customerId) {
+        this.customerId = customerId;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Boolean getPaid() {
+        return paid;
+    }
+
+    public void setPaid(Boolean paid) {
+        this.paid = paid;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public List<OrderItemRequest> getItems() {
+        return items;
+    }
+
+    public void setItems(List<OrderItemRequest> items) {
+        this.items = items;
+    }
+}
