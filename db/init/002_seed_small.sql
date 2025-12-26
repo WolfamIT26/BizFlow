@@ -16,7 +16,8 @@ ON DUPLICATE KEY UPDATE address=VALUES(address), phone=VALUES(phone), email=VALU
 -- Users (BCrypt hashes)
 INSERT INTO users (username, password, email, full_name, phone_number, role, branch_id, enabled) VALUES
 ('admin', '$2a$10$7gz3idM0iA0ikYyibDutqe31yrWDdVh2NIRa1gCj0QXVNw9723f0G', 'admin@bizflow.com', 'Admin', '0900000000', 'ADMIN', 1, TRUE),
-('employee', '$2a$10$iDS5.CarVV4hxkD1P5oVYePzl/M8gs3jse7bGOAjhQBZ6iefSllWy', 'employee@bizflow.com', 'Employee', '0902222222', 'EMPLOYEE', 1, TRUE)
+('employee', '$2a$10$iDS5.CarVV4hxkD1P5oVYePzl/M8gs3jse7bGOAjhQBZ6iefSllWy', 'employee@bizflow.com', 'Employee', '0902222222', 'EMPLOYEE', 1, TRUE),
+('vietphd', '$2a$10$AwqQCrhiMkiGj.88g6ji/uqQvk6txMGyMApmq8vBJB0.RMBcpGiHC', 'nhanvien1@gmail.com', 'Viet PhD', '0902313141', 'EMPLOYEE', 1, TRUE)
 ON DUPLICATE KEY UPDATE email=VALUES(email), full_name=VALUES(full_name), phone_number=VALUES(phone_number), role=VALUES(role), branch_id=VALUES(branch_id), enabled=VALUES(enabled);
 
 -- Shops

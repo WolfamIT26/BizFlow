@@ -43,10 +43,11 @@ DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS roles;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Load small schema
-SOURCE db/init/001_schema_small.sql;
+-- NOTE: These files are mounted into /docker-entrypoint-initdb.d inside the MySQL container
+-- so we reference them directly here.
+SOURCE 001_schema_small.sql;
 -- Seed small data
-SOURCE db/init/002_seed_small.sql;
+SOURCE 002_seed_small.sql;
 
 -- Verify
 SELECT 'SMALL migration completed' AS status;
