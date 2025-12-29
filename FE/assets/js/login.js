@@ -62,7 +62,12 @@ window.addEventListener('DOMContentLoaded',()=>{
             showLoginError('Bạn không có quyền truy cập ứng dụng này. Vui lòng kiểm tra lại.');
           }
         }else{
-          showLoginError('Tên đăng nhập hoặc mật khẩu không đúng');
+          // Phân biệt lỗi kết nối (gateway/backend) và lỗi sai thông tin
+          if(res.status >= 500 || res.status === 0){
+            showLoginError('Lỗi kết nối máy chủ .Vui lòng thử lại sau.');
+          }else{
+            showLoginError('Tên đăng nhập hoặc mật khẩu không đúng');
+          }
         }
       }catch(err){
         showLoginError('Lỗi kết nối: '+err.message);
