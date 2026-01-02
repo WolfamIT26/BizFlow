@@ -75,16 +75,19 @@
             </label>
             <span>Tách dòng</span>
         </div>
-        <button class="toolbar-chip">
+        <button class="toolbar-chip" id="employeeSelector">
             <span class="chip-icon">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
                     <circle cx="12" cy="8" r="3" />
                     <path d="M5 20a7 7 0 0 1 14 0" />
                 </svg>
             </span>
-            <span>Phạm Huy Đức V</span>
+            <span id="selectedEmployeeName">Phạm Huy Đức V</span>
             <span class="chip-caret">▾</span>
         </button>
+        <div class="employee-dropdown" id="employeeList" style="display: none;">
+            <div class="employee-empty">Đang tải...</div>
+        </div>
         <button class="toolbar-chip">
             <span class="chip-icon">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">

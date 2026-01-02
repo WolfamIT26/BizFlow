@@ -4,6 +4,7 @@ const API_BASE = resolveApiBase();
 let products = [];
 let cart = [];
 let selectedCustomer = null;
+let selectedEmployee = null;
 let currentCategory = 'all';
 let topSearchTerm = '';
 let bottomSearchTerm = '';
@@ -12,6 +13,8 @@ let customersLoaded = false;
 let customers = [];
 let customerSearchTerm = '';
 let currentPaymentMethod = 'CASH';
+let employeesLoaded = false;
+let employees = [];
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -32,6 +35,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupCustomerModal();
     setupProductDetailModal();
     setupCustomerDetailModal();
+    setupEmployeeSelector();
     toggleCashPanel(true);
 
     document.getElementById('productsGrid').innerHTML =
@@ -43,6 +47,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     customerSearchInput?.addEventListener('focus', () => {
         if (customerSearchInput.classList.contains('has-selection')) {
             return;
+        }
+        const customerList = document.getElementById('customerList');
+        if (customerList) {
+            customerList.style.display = 'block';
         }
         if (!customersLoaded) {
             loadCustomers().then(() => applyCustomerFilter());
@@ -122,7 +130,8 @@ async function loadCustomers() {
             throw new Error('Failed to load customers');
         }
 
-        customers = await response.json();
+        const rawCustomers = await response.json();
+        customers = dedupeCustomers(rawCustomers);
         applyCustomerFilter();
         customersLoaded = true;
     } catch (err) {
@@ -163,16 +172,15 @@ function renderCustomers(customers) {
 function applyCustomerFilter() {
     const keyword = customerSearchTerm.trim().toLowerCase();
     const searchInput = document.getElementById('customerSearch');
-    if (!keyword && searchInput?.classList.contains('has-selection')) {
-        const list = document.getElementById('customerList');
+    const list = document.getElementById('customerList');
+    if (searchInput?.classList.contains('has-selection')) {
         if (list) {
-            list.innerHTML = '';
-        }
-        const addBtn = document.getElementById('addCustomerBtn');
-        if (addBtn) {
-            addBtn.style.display = 'none';
+            list.style.display = 'none';
         }
         return;
+    }
+    if (list) {
+        list.style.display = 'block';
     }
     if (!keyword) {
         renderCustomers(getSuggestedCustomers());
@@ -191,6 +199,23 @@ function applyCustomerFilter() {
 
 function getSuggestedCustomers() {
     return customers.slice(0, 8);
+}
+
+function normalizeCustomerKey(customer) {
+    const phone = (customer.phone || '').replace(/\s+/g, '');
+    if (phone) return `phone:${phone}`;
+    return `id:${customer.id || Math.random()}`;
+}
+
+function dedupeCustomers(list) {
+    const seen = new Map();
+    (list || []).forEach(c => {
+        const key = normalizeCustomerKey(c);
+        if (!seen.has(key)) {
+            seen.set(key, c);
+        }
+    });
+    return Array.from(seen.values());
 }
 
 function addToCart(productId, productName, productPrice) {
@@ -347,13 +372,6 @@ function selectCustomer(evt, customerId, customerName, customerPhone) {
     const row = evt?.target?.closest('.customer-item');
     if (row) row.classList.add('active');
 
-    document.getElementById('selectedCustomer').innerHTML = `
-        <div>
-            <p class="customer-name">${customerName}</p>
-            <p class="customer-phone">${customerPhone}</p>
-        </div>
-    `;
-
     const searchInput = document.getElementById('customerSearch');
     if (searchInput) {
         searchInput.value = customerName || customerPhone || '';
@@ -376,6 +394,8 @@ function selectCustomer(evt, customerId, customerName, customerPhone) {
     if (clearBtn) {
         clearBtn.style.display = 'inline-flex';
     }
+
+    openCustomerDetail(customerId);
 }
 
 function clearSelectedCustomer() {
@@ -404,7 +424,7 @@ function clearSelectedCustomer() {
     customerSearchTerm = '';
     const customerList = document.getElementById('customerList');
     if (customerList) {
-        customerList.style.display = '';
+        customerList.style.display = 'block';
     }
     applyCustomerFilter();
 }
@@ -530,6 +550,14 @@ function setupEventListeners() {
     clearCustomerBtn?.addEventListener('click', () => {
         clearSelectedCustomer();
     });
+    document.addEventListener('click', (e) => {
+        const panel = document.querySelector('.customer-panel');
+        const customerList = document.getElementById('customerList');
+        if (!panel || !customerList) return;
+        if (!panel.contains(e.target)) {
+            customerList.style.display = 'none';
+        }
+    });
     customerSearch?.addEventListener('click', () => {
         if (customerSearch.classList.contains('has-selection') && selectedCustomer?.id) {
             openCustomerDetail(selectedCustomer.id);
@@ -549,7 +577,7 @@ function setupEventListeners() {
         }
         const customerList = document.getElementById('customerList');
         if (customerList) {
-            customerList.style.display = '';
+            customerList.style.display = 'block';
         }
         if (!customersLoaded) {
             loadCustomers().then(() => applyCustomerFilter());
@@ -611,7 +639,16 @@ function setupCustomerModal() {
     if (!addButton || !modal || !closeBtn || !form) return;
 
     addButton.addEventListener('click', () => {
-        openCustomerModalWithPhone('');
+        const searchValue = document.getElementById('customerSearch')?.value.trim();
+        const normalized = (searchValue || '').replace(/\s+/g, '');
+        if (normalized) {
+            const existing = customers.find(c => (c.phone || '').replace(/\s+/g, '') === normalized);
+            if (existing) {
+                selectCustomer(null, existing.id, existing.name, existing.phone || '-');
+                return;
+            }
+        }
+        openCustomerModalWithPhone(searchValue || '');
     });
 
     closeBtn.addEventListener('click', () => closeCustomerModal());
@@ -672,7 +709,7 @@ function openCustomerModalWithPhone(phone) {
     form.reset();
     const phoneInput = document.getElementById('customerPhoneInput');
     if (phoneInput) {
-        phoneInput.value = phone || '';
+        phoneInput.value = phone || document.getElementById('customerSearch')?.value.trim() || '';
     }
     const confirmInput = document.getElementById('customerConfirmInput');
     if (confirmInput) {
@@ -698,6 +735,16 @@ async function createCustomerFromForm() {
     if (!name) {
         alert('Vui lòng nhập tên khách hàng.');
         return;
+    }
+
+    const normalizedPhone = (phone || '').replace(/\s+/g, '');
+    if (normalizedPhone) {
+        const existing = customers.find(c => (c.phone || '').replace(/\s+/g, '') === normalizedPhone);
+        if (existing) {
+            selectCustomer(null, existing.id, existing.name, existing.phone || '-');
+            closeCustomerModal();
+            return;
+        }
     }
 
     if (!confirmed) {
@@ -999,4 +1046,111 @@ function toggleEmptyState(isEmpty) {
     const emptyState = document.getElementById('emptyState');
     if (!emptyState) return;
     emptyState.style.display = isEmpty ? 'grid' : 'none';
+}
+
+function setupEmployeeSelector() {
+    const button = document.getElementById('employeeSelector');
+    const dropdown = document.getElementById('employeeList');
+    
+    if (!button || !dropdown) return;
+
+    button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.style.display !== 'none';
+        dropdown.style.display = isOpen ? 'none' : 'block';
+        
+        if (!isOpen && !employeesLoaded) {
+            loadEmployees();
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!dropdown || !button) return;
+        if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+async function loadEmployees() {
+    if (employeesLoaded) return;
+
+    const dropdown = document.getElementById('employeeList');
+    if (!dropdown) return;
+
+    dropdown.innerHTML = '<div class="employee-empty">Đang tải...</div>';
+
+    try {
+        const response = await fetch(`${API_BASE}/users`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken')}` }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
+            throw new Error('Failed to load employees');
+        }
+
+        const allUsers = await response.json();
+        // Filter for users with EMPLOYEE role (exclude ADMIN, OWNER, MANAGER)
+        employees = allUsers.filter(u => {
+            const userRole = u.role ? (typeof u.role === 'string' ? u.role : u.role.name || '') : '';
+            return userRole === 'EMPLOYEE';
+        });
+        employeesLoaded = true;
+        renderEmployees();
+    } catch (err) {
+        console.error('Error loading employees:', err);
+        dropdown.innerHTML = '<div class="employee-empty">Lỗi tải danh sách nhân viên</div>';
+    }
+}
+
+function renderEmployees() {
+    const dropdown = document.getElementById('employeeList');
+    if (!dropdown) return;
+
+    if (!employees || employees.length === 0) {
+        dropdown.innerHTML = '<div class="employee-empty">Chưa có nhân viên</div>';
+        return;
+    }
+
+    const employeesHtml = employees.map(emp => {
+        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nhân viên') : 'Nhân viên';
+        return `
+        <div class="employee-item" data-employee-id="${emp.id}" onclick="selectEmployee(event, ${emp.id}, '${emp.username.replace(/'/g, "\\'")}', '${(emp.fullName || emp.username).replace(/'/g, "\\'")}')">
+            <div class="employee-info">
+                <p class="employee-name">${emp.fullName || emp.username}</p>
+                <p class="employee-role">${roleDisplay}</p>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chưa có nhân viên</div>';
+}
+
+function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
+    selectedEmployee = { id: employeeId, username: employeeUsername, name: employeeName };
+
+    const button = document.getElementById('employeeSelector');
+    if (button) {
+        const nameSpan = button.querySelector('span:not(.chip-caret)');
+        if (nameSpan) {
+            nameSpan.textContent = employeeName || employeeUsername;
+        }
+    }
+
+    const dropdown = document.getElementById('employeeList');
+    if (dropdown) {
+        dropdown.style.display = 'none';
+    }
+
+    document.querySelectorAll('.employee-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const row = evt?.target?.closest('.employee-item');
+    if (row) row.classList.add('active');
 }
