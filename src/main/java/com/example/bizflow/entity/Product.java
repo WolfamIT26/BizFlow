@@ -19,12 +19,14 @@ public class Product {
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "sku", nullable = false)
+    // SKU column in the existing DB contains product codes (unique)
+    @Column(name = "sku", unique = true, nullable = false)
     private String code;
 
     @Column(name = "barcode")
     private String barcode;
 
+    // Use `product_name` column which contains the actual product name in existing dump
     @Column(name = "product_name", nullable = false)
     private String name;
 
@@ -46,4 +48,40 @@ public class Product {
         this.price = price;
         this.status = "active";
     }
+
+    // Explicit getters/setters to ensure availability even without Lombok processing
+    public BigDecimal getPrice() {
+        return this.price;
+    }
+
+    public void setPrice(BigDecimal price) {
+        this.price = price;
+    }
+
+    public Long getCategoryId() {
+        return this.categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCode() {
+        return this.code;
+    }
+
+    public void setCode(String code) {
+        this.code = code;
+    }
+
+    public String getStatus() {
+        return this.status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
 }
+
+
+
