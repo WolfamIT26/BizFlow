@@ -36,6 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupProductDetailModal();
     setupCustomerDetailModal();
     setupEmployeeSelector();
+    setupAppMenuModal();
     toggleCashPanel(true);
 
     document.getElementById('productsGrid').innerHTML =
@@ -71,6 +72,30 @@ function resolveApiBase() {
     }
 
     return `${window.location.origin}/api`;
+}
+
+function setupAppMenuModal() {
+    const modal = document.getElementById('appMenuModal');
+    const openBtn = document.getElementById('appMenuBtn');
+    const closeBtn = document.getElementById('closeAppMenu');
+    if (!modal || !openBtn || !closeBtn) return;
+
+    openBtn.addEventListener('click', () => {
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+    });
 }
 
 function checkAuth() {
@@ -499,8 +524,6 @@ function setTierByPoints(points) {
         tier = 'gold';
     } else if (points >= 3000) {
         tier = 'silver';
-    } else {
-        tier = 'member';
     }
 
     tierSelect.value = tier;
@@ -635,6 +658,9 @@ function setupCustomerModal() {
     const cancelBtn = document.getElementById('cancelCustomerModal');
     const form = document.getElementById('customerForm');
     const pointsInput = document.getElementById('customerPointsInput');
+    const citySelect = document.getElementById('customerCitySelect');
+    const districtSelect = document.getElementById('customerDistrictSelect');
+    const wardSelect = document.getElementById('customerWardSelect');
 
     if (!addButton || !modal || !closeBtn || !form) return;
 
@@ -668,6 +694,23 @@ function setupCustomerModal() {
     pointsInput?.addEventListener('input', () => {
         const raw = parseInt(pointsInput.value, 10) || 0;
         setTierByPoints(raw);
+    });
+
+    citySelect?.addEventListener('change', () => {
+        const code = citySelect.value;
+        resetSelect(districtSelect, 'Quận/Huyện');
+        resetSelect(wardSelect, 'Xã/Phường');
+        if (code) {
+            loadDistricts(code);
+        }
+    });
+
+    districtSelect?.addEventListener('change', () => {
+        const code = districtSelect.value;
+        resetSelect(wardSelect, 'Xã/Phường');
+        if (code) {
+            loadWards(code);
+        }
     });
 }
 
@@ -716,6 +759,7 @@ function openCustomerModalWithPhone(phone) {
         confirmInput.checked = false;
     }
     document.getElementById('customerNameInput')?.focus();
+    loadCities();
 }
 
 function closeCustomerModal() {
@@ -730,6 +774,9 @@ async function createCustomerFromForm() {
     const phone = document.getElementById('customerPhoneInput')?.value.trim();
     const email = document.getElementById('customerEmailInput')?.value.trim();
     const address = document.getElementById('customerAddressInput')?.value.trim();
+    const citySelect = document.getElementById('customerCitySelect');
+    const districtSelect = document.getElementById('customerDistrictSelect');
+    const wardSelect = document.getElementById('customerWardSelect');
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
@@ -745,6 +792,16 @@ async function createCustomerFromForm() {
             closeCustomerModal();
             return;
         }
+    }
+
+    if (!phone) {
+        alert('Vui lòng nhập số điện thoại.');
+        return;
+    }
+
+    if (!citySelect?.value || !districtSelect?.value || !wardSelect?.value || !address) {
+        alert('Vui lòng nhập đầy đủ địa chỉ.');
+        return;
     }
 
     if (!confirmed) {
@@ -790,6 +847,77 @@ async function createCustomerFromForm() {
         console.error(err);
         alert('Lỗi kết nối khi tạo khách hàng.');
     }
+}
+
+async function loadCities() {
+    const citySelect = document.getElementById('customerCitySelect');
+    if (!citySelect || citySelect.options.length > 1) return;
+
+    try {
+        const res = await fetch('https://provinces.open-api.vn/api/p/');
+        if (!res.ok) return;
+        const data = await res.json();
+        data.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.code;
+            opt.textContent = item.name;
+            citySelect.appendChild(opt);
+        });
+    } catch (err) {
+        console.error('Load cities error:', err);
+    }
+}
+
+async function loadDistricts(cityCode) {
+    const districtSelect = document.getElementById('customerDistrictSelect');
+    if (!districtSelect) return;
+    districtSelect.disabled = true;
+    try {
+        const res = await fetch(`https://provinces.open-api.vn/api/p/${cityCode}?depth=2`);
+        if (!res.ok) return;
+        const data = await res.json();
+        resetSelect(districtSelect, 'Quận/Huyện');
+        (data.districts || []).forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.code;
+            opt.textContent = item.name;
+            districtSelect.appendChild(opt);
+        });
+        districtSelect.disabled = false;
+    } catch (err) {
+        console.error('Load districts error:', err);
+    }
+}
+
+async function loadWards(districtCode) {
+    const wardSelect = document.getElementById('customerWardSelect');
+    if (!wardSelect) return;
+    wardSelect.disabled = true;
+    try {
+        const res = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
+        if (!res.ok) return;
+        const data = await res.json();
+        resetSelect(wardSelect, 'Xã/Phường');
+        (data.wards || []).forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.code;
+            opt.textContent = item.name;
+            wardSelect.appendChild(opt);
+        });
+        wardSelect.disabled = false;
+    } catch (err) {
+        console.error('Load wards error:', err);
+    }
+}
+
+function resetSelect(select, placeholder) {
+    if (!select) return;
+    select.innerHTML = '';
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = placeholder;
+    select.appendChild(opt);
+    select.disabled = true;
 }
 
 function filterProducts(searchTerm = '') {

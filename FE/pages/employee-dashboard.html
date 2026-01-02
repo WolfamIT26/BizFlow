@@ -45,7 +45,7 @@
                     <path d="M18 12H9" />
                 </svg>
             </button>
-            <button class="icon-btn" title="Ứng dụng" aria-label="Ứng dụng">
+            <button id="appMenuBtn" class="icon-btn" title="Ứng dụng" aria-label="Ứng dụng">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
                     <circle cx="6" cy="6" r="1.5" />
                     <circle cx="12" cy="6" r="1.5" />
@@ -327,7 +327,7 @@
     </section>
 
     <div class="modal" id="customerModal" aria-hidden="true">
-        <div class="modal-content">
+        <div class="modal-content customer-modal">
             <div class="modal-header">
                 <h3>Thêm khách hàng</h3>
                 <button id="closeCustomerModal" class="icon-btn small" type="button" aria-label="Đóng">×</button>
@@ -341,12 +341,12 @@
                             <input type="text" placeholder="Tự động">
                         </label>
                         <label class="form-field">
-                            <span>Khách hàng *</span>
+                            <span class="required-label">Khách hàng <span class="required-star">*</span></span>
                             <input id="customerNameInput" type="text" placeholder="Tên khách hàng" required>
                         </label>
                         <label class="form-field">
-                            <span>Số điện thoại *</span>
-                            <input id="customerPhoneInput" type="tel" placeholder="Số điện thoại">
+                            <span class="required-label">Số điện thoại <span class="required-star">*</span></span>
+                            <input id="customerPhoneInput" type="tel" placeholder="Số điện thoại" required>
                         </label>
                         <label class="form-field">
                             <span>Email</span>
@@ -369,47 +369,18 @@
                             </div>
                         </div>
                         <div class="form-field address-group">
-                            <span>Địa chỉ</span>
+                            <span class="required-label">Địa chỉ <span class="required-star">*</span></span>
                             <div class="address-grid">
-                                <input type="text" list="citySuggestions" placeholder="Tỉnh/Thành phố">
-                                <datalist id="citySuggestions">
-                                    <option value="Hà Nội"></option>
-                                    <option value="Hồ Chí Minh"></option>
-                                    <option value="Đà Nẵng"></option>
-                                    <option value="Cần Thơ"></option>
-                                    <option value="Hải Phòng"></option>
-                                    <option value="Bình Dương"></option>
-                                    <option value="Đồng Nai"></option>
-                                    <option value="Khánh Hòa"></option>
-                                    <option value="Nghệ An"></option>
-                                    <option value="Thanh Hóa"></option>
-                                </datalist>
-                                <input type="text" list="districtSuggestions" placeholder="Quận/Huyện">
-                                <datalist id="districtSuggestions">
-                                    <option value="Quận 1"></option>
-                                    <option value="Quận 3"></option>
-                                    <option value="Quận 7"></option>
-                                    <option value="Quận 10"></option>
-                                    <option value="Bình Thạnh"></option>
-                                    <option value="Gò Vấp"></option>
-                                    <option value="Thủ Đức"></option>
-                                    <option value="Tân Bình"></option>
-                                    <option value="Phú Nhuận"></option>
-                                </datalist>
-                                <input type="text" list="wardSuggestions" placeholder="Xã/Phường">
-                                <datalist id="wardSuggestions">
-                                    <option value="Phường 1"></option>
-                                    <option value="Phường 5"></option>
-                                    <option value="Phường 7"></option>
-                                    <option value="Phường 10"></option>
-                                    <option value="Phường 12"></option>
-                                    <option value="Phường 14"></option>
-                                    <option value="Phường 15"></option>
-                                    <option value="Phường 17"></option>
-                                    <option value="Phường 25"></option>
-                                    <option value="Phường Linh Trung"></option>
-                                </datalist>
-                                <input id="customerAddressInput" type="text" placeholder="Số nhà, tên đường">
+                                <select id="customerCitySelect" required>
+                                    <option value="">Tỉnh/Thành phố</option>
+                                </select>
+                                <select id="customerDistrictSelect" required disabled>
+                                    <option value="">Quận/Huyện</option>
+                                </select>
+                                <select id="customerWardSelect" required disabled>
+                                    <option value="">Xã/Phường</option>
+                                </select>
+                                <input id="customerAddressInput" type="text" placeholder="Số nhà, tên đường" required>
                             </div>
                         </div>
                     </div>
@@ -426,7 +397,7 @@
                             <span>Hạng thẻ</span>
                             <select id="customerTierSelect">
                                 <option value="">Chọn hạng</option>
-                                <option value="member">Member (>= 1.000 điểm)</option>
+                                <option value="member">Member (<= 1.000 điểm)</option>
                                 <option value="silver">Silver (>= 3.000 điểm)</option>
                                 <option value="gold">Gold (>= 9.000 điểm)</option>
                                 <option value="platinum">Platinum (>= 15.000 điểm)</option>
@@ -602,6 +573,89 @@
             <div class="modal-actions">
                 <button type="button" class="ghost-btn" onclick="closeCustomerDetail()">Đóng</button>
                 <button type="button" class="primary-btn">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal side" id="appMenuModal" aria-hidden="true">
+        <div class="modal-content app-menu">
+            <div class="modal-header">
+                <h3>Ứng dụng</h3>
+                <button id="closeAppMenu" class="icon-btn small" type="button" aria-label="Đóng">×</button>
+            </div>
+            <div class="app-menu-grid">
+                <button class="app-tile">
+                    <span class="app-icon app-blue">BH</span>
+                    <span>Bán hàng</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-purple">ĐH</span>
+                    <span>Đơn hàng</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-pink">HD</span>
+                    <span>DS hóa đơn</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-green">ON</span>
+                    <span>Đơn hàng online</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">ĐR</span>
+                    <span>Đổi trả hàng</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-cyan">YC</span>
+                    <span>YC điều chuyển</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-green">NT</span>
+                    <span>Nạp tiền TT</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-indigo">TC</span>
+                    <span>Thu chi</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-blue">MH</span>
+                    <span>Màn hình phụ</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">IN</span>
+                    <span>Máy in - Mẫu in</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-teal">BC</span>
+                    <span>Báo cáo theo ngày</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-gray">NK</span>
+                    <span>Nhật ký truy cập</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-indigo">QL</span>
+                    <span>Trang quản lý</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-blue">TH</span>
+                    <span>Thiết lập hiển thị</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-pink">MT</span>
+                    <span>HĐĐT từ MTT</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-purple">HD</span>
+                    <span>Hướng dẫn</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-cyan">GY</span>
+                    <span>Góp ý cải tiến</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">GT</span>
+                    <span>Giới thiệu</span>
+                </button>
             </div>
         </div>
     </div>
