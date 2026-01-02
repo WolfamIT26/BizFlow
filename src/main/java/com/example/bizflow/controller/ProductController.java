@@ -21,7 +21,7 @@ public class ProductController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> getAllProducts() {
         try {
-            List<Product> products = productRepository.findByActive(true);
+            List<Product> products = productRepository.findByStatus("active");
             return ResponseEntity.ok(products);
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error fetching products: " + e.getMessage());

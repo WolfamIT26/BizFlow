@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     java.util.List<Product> findByCategoryId(Long categoryId);
     java.util.Optional<Product> findByCode(String code);
-    java.util.List<Product> findByActive(Boolean active);
+    java.util.List<Product> findByStatus(String status);
 }

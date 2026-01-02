@@ -1,13 +1,17 @@
 ﻿// Employee Dashboard - Sales JavaScript
-const API_BASE = '/api';
+const API_BASE = resolveApiBase();
 
 let products = [];
 let cart = [];
 let selectedCustomer = null;
 let currentCategory = 'all';
-let currentSearch = '';
+let topSearchTerm = '';
+let bottomSearchTerm = '';
 let currentSort = 'name';
 let customersLoaded = false;
+let customers = [];
+let customerSearchTerm = '';
+let currentPaymentMethod = 'CASH';
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -20,18 +24,46 @@ window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
     selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
-    document.getElementById('selectedCustomer').textContent = 'Khách lẻ';
+    const selectedCustomerLabel = document.getElementById('selectedCustomer');
+    if (selectedCustomerLabel) {
+        selectedCustomerLabel.textContent = 'Khách lẻ';
+    }
     setupEventListeners();
+    setupCustomerModal();
+    setupProductDetailModal();
+    setupCustomerDetailModal();
+    toggleCashPanel(true);
 
     document.getElementById('productsGrid').innerHTML =
         '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Đang tải...</div>';
 
     await Promise.all([loadProducts()]);
 
-    document.getElementById('customerSearch')?.addEventListener('focus', () => {
-        if (!customersLoaded) loadCustomers();
-    }, { once: true });
+    const customerSearchInput = document.getElementById('customerSearch');
+    customerSearchInput?.addEventListener('focus', () => {
+        if (customerSearchInput.classList.contains('has-selection')) {
+            return;
+        }
+        if (!customersLoaded) {
+            loadCustomers().then(() => applyCustomerFilter());
+            return;
+        }
+        applyCustomerFilter();
+    });
 });
+
+function resolveApiBase() {
+    const configured = window.API_BASE_URL || window.API_BASE;
+    if (configured) {
+        return configured.replace(/\/$/, '');
+    }
+
+    if (window.location.protocol === 'file:') {
+        return 'http://localhost:8080/api';
+    }
+
+    return `${window.location.origin}/api`;
+}
 
 function checkAuth() {
     const token = sessionStorage.getItem('accessToken');
@@ -90,39 +122,21 @@ async function loadCustomers() {
             throw new Error('Failed to load customers');
         }
 
-        const customers = await response.json();
-        renderCustomers(customers);
+        customers = await response.json();
+        applyCustomerFilter();
         customersLoaded = true;
     } catch (err) {
         console.error('Error loading customers:', err);
     }
 }
 
-function renderProducts(filteredProducts = null) {
-    const displayProducts = filteredProducts || products;
-    const grid = document.getElementById('productsGrid');
-
-    if (!displayProducts || displayProducts.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Không có sản phẩm</div>';
-        return;
-    }
-
-    grid.innerHTML = displayProducts.map(p => `
-        <div class="product-card">
-            <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-            <div class="product-image">${PRODUCT_ICON}</div>
-            <div class="product-name">${p.name || 'Sản phẩm'}</div>
-            <div class="product-sku">${p.code || 'SKU'}</div>
-            <button class="product-button" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
-                Thêm vào giỏ
-            </button>
-        </div>
-    `).join('');
-}
-
 function renderCustomers(customers) {
     const list = document.getElementById('customerList');
+    if (!list) return;
+
     if (!customers || customers.length === 0) {
+        const emptyMessage = customerSearchTerm ? 'Không tìm thấy khách hàng' : 'Chưa có khách hàng';
+        list.innerHTML = `<div class="customer-empty">${emptyMessage}</div>`;
         return;
     }
 
@@ -146,18 +160,66 @@ function renderCustomers(customers) {
     list.innerHTML = customersHtml || '<div class="customer-empty">Chưa có khách hàng</div>';
 }
 
-function addToCart(productId, productName, productPrice) {
-    const existingItem = cart.find(item => item.productId === productId);
-    const qty = getCurrentQty();
+function applyCustomerFilter() {
+    const keyword = customerSearchTerm.trim().toLowerCase();
+    const searchInput = document.getElementById('customerSearch');
+    if (!keyword && searchInput?.classList.contains('has-selection')) {
+        const list = document.getElementById('customerList');
+        if (list) {
+            list.innerHTML = '';
+        }
+        const addBtn = document.getElementById('addCustomerBtn');
+        if (addBtn) {
+            addBtn.style.display = 'none';
+        }
+        return;
+    }
+    if (!keyword) {
+        renderCustomers(getSuggestedCustomers());
+        return;
+    }
 
-    if (existingItem) {
-        existingItem.quantity += qty;
+    const filtered = customers.filter(c => {
+        const name = (c.name || '').toLowerCase();
+        const phone = (c.phone || '').toLowerCase();
+        const email = (c.email || '').toLowerCase();
+        return name.includes(keyword) || phone.includes(keyword) || email.includes(keyword);
+    });
+
+    renderCustomers(filtered);
+}
+
+function getSuggestedCustomers() {
+    return customers.slice(0, 8);
+}
+
+function addToCart(productId, productName, productPrice) {
+    const qty = getCurrentQty();
+    const splitLine = document.getElementById('splitLine')?.checked;
+    const product = products.find(p => p.id === productId) || {};
+
+    if (!splitLine) {
+        const existingItem = cart.find(item => item.productId === productId);
+        if (existingItem) {
+            existingItem.quantity += qty;
+        } else {
+            cart.push({
+                productId,
+                productName,
+                productPrice,
+                quantity: qty,
+                productCode: product.code || product.barcode || '',
+                unit: product.unit || ''
+            });
+        }
     } else {
         cart.push({
             productId,
             productName,
             productPrice,
-            quantity: qty
+            quantity: qty,
+            productCode: product.code || product.barcode || '',
+            unit: product.unit || ''
         });
     }
 
@@ -169,7 +231,6 @@ function clearCart(resetCustomer = true) {
     cart = [];
     renderCart();
     updateTotal();
-    document.getElementById('discountInput').value = '';
     if (resetCustomer) {
         selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
         document.getElementById('selectedCustomer').textContent = 'Khách lẻ';
@@ -188,7 +249,7 @@ async function createOrder(isPaid) {
         userId,
         customerId,
         paid: isPaid,
-        paymentMethod: isPaid ? 'CASH' : null,
+        paymentMethod: isPaid ? currentPaymentMethod : null,
         items: cart.map(item => ({
             productId: item.productId,
             quantity: item.quantity
@@ -222,26 +283,34 @@ async function createOrder(isPaid) {
 
 function renderCart() {
     const cartContainer = document.getElementById('cartItems');
-
+    const emptyState = document.getElementById('emptyState');
     if (cart.length === 0) {
-        cartContainer.innerHTML = '<div class="empty-cart"><p>Giỏ hàng trống</p></div>';
+        if (cartContainer) {
+            cartContainer.innerHTML = '';
+        }
+        if (emptyState) {
+            emptyState.style.display = 'grid';
+        }
         toggleEmptyState(true);
         return;
     }
 
     toggleEmptyState(false);
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
     cartContainer.innerHTML = cart.map((item, idx) => `
-        <div class="cart-item">
-            <div class="cart-item-info">
-                <div class="cart-item-name">${item.productName}</div>
-                <div class="cart-item-price">${formatPrice(item.productPrice)}</div>
-                <div class="cart-item-qty">
-                    <button class="qty-btn" onclick="updateQty(${idx}, -1)">-</button>
-                    <input type="number" class="qty-input" value="${item.quantity}" onchange="setQty(${idx}, this.value)">
-                    <button class="qty-btn" onclick="updateQty(${idx}, 1)">+</button>
-                </div>
-            </div>
-            <button class="cart-item-remove" onclick="removeFromCart(${idx})">x</button>
+        <div class="cart-row">
+            <span>${idx + 1}</span>
+            <span>${item.productCode || '-'}</span>
+            <span class="cart-name">${item.productName}</span>
+            <span class="cart-qty">
+                <input type="number" class="qty-input" value="${item.quantity}" onchange="setQty(${idx}, this.value)">
+            </span>
+            <span>${item.unit || '-'}</span>
+            <span>${formatPrice(item.productPrice)}</span>
+            <span>${formatPrice(item.productPrice * item.quantity)}</span>
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
         </div>
     `).join('');
 }
@@ -284,15 +353,71 @@ function selectCustomer(evt, customerId, customerName, customerPhone) {
             <p class="customer-phone">${customerPhone}</p>
         </div>
     `;
+
+    const searchInput = document.getElementById('customerSearch');
+    if (searchInput) {
+        searchInput.value = customerName || customerPhone || '';
+        searchInput.classList.add('has-selection');
+        searchInput.readOnly = true;
+    }
+
+    customerSearchTerm = '';
+    const customerList = document.getElementById('customerList');
+    if (customerList) {
+        customerList.innerHTML = '';
+        customerList.style.display = 'none';
+    }
+
+    const addBtn = document.getElementById('addCustomerBtn');
+    if (addBtn) {
+        addBtn.style.display = 'none';
+    }
+    const clearBtn = document.getElementById('clearCustomerBtn');
+    if (clearBtn) {
+        clearBtn.style.display = 'inline-flex';
+    }
+}
+
+function clearSelectedCustomer() {
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    const selectedView = document.getElementById('selectedCustomer');
+    if (selectedView) {
+        selectedView.textContent = 'Khách lẻ';
+    }
+
+    const searchInput = document.getElementById('customerSearch');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.classList.remove('has-selection');
+        searchInput.readOnly = false;
+    }
+
+    const addBtn = document.getElementById('addCustomerBtn');
+    if (addBtn) {
+        addBtn.style.display = '';
+    }
+    const clearBtn = document.getElementById('clearCustomerBtn');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+
+    customerSearchTerm = '';
+    const customerList = document.getElementById('customerList');
+    if (customerList) {
+        customerList.style.display = '';
+    }
+    applyCustomerFilter();
 }
 
 function updateTotal() {
     const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-    const discount = parseInt(document.getElementById('discountInput').value, 10) || 0;
-    const total = Math.max(0, subtotal - discount);
+    const total = Math.max(0, subtotal);
 
     document.getElementById('subtotal').textContent = formatPrice(subtotal);
     document.getElementById('totalAmount').textContent = formatPrice(total);
+    document.getElementById('amountDue').textContent = formatPrice(total);
+    updateChangeDue(total);
+    setDefaultTierByTotal(total);
 }
 
 function formatPrice(price) {
@@ -309,9 +434,72 @@ function formatPriceCompact(price) {
     }).format(price);
 }
 
+function updateChangeDue(forcedTotal = null) {
+    const changeLabel = document.getElementById('changeAmount');
+    if (!changeLabel) return;
+
+    if (currentPaymentMethod !== 'CASH') {
+        changeLabel.textContent = formatPrice(0);
+        return;
+    }
+
+    const totalAmount = forcedTotal !== null
+        ? forcedTotal
+        : parseInt(document.getElementById('totalAmount').textContent.replace(/\D/g, ''), 10) || 0;
+    const cashReceived = parseInt(document.getElementById('cashReceivedInput')?.value, 10) || 0;
+    const change = Math.max(0, cashReceived - totalAmount);
+    changeLabel.textContent = formatPrice(change);
+}
+
+function toggleCashPanel(show) {
+    const panel = document.getElementById('cashPanel');
+    if (!panel) return;
+    panel.style.display = show ? 'block' : 'none';
+}
+
+function setDefaultTierByTotal(total) {
+    const tierSelect = document.getElementById('customerTierSelect');
+    if (!tierSelect) return;
+    if (total >= 1000000) return;
+    if (!tierSelect.value) {
+        tierSelect.value = 'member';
+    }
+}
+
+function setTierByPoints(points) {
+    const tierSelect = document.getElementById('customerTierSelect');
+    if (!tierSelect) return;
+
+    let tier = 'member';
+    if (points >= 25000) {
+        tier = 'diamond';
+    } else if (points >= 15000) {
+        tier = 'platinum';
+    } else if (points >= 9000) {
+        tier = 'gold';
+    } else if (points >= 3000) {
+        tier = 'silver';
+    } else {
+        tier = 'member';
+    }
+
+    tierSelect.value = tier;
+}
+
 function setupEventListeners() {
     document.getElementById('searchInput').addEventListener('input', (e) => {
-        currentSearch = e.target.value;
+        topSearchTerm = e.target.value;
+        filterProducts();
+    });
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleBarcodeSearch();
+        }
+    });
+
+    document.getElementById('suggestionSearchInput')?.addEventListener('input', (e) => {
+        bottomSearchTerm = e.target.value;
         filterProducts();
     });
 
@@ -325,18 +513,63 @@ function setupEventListeners() {
         document.getElementById('qtyInput').value = val;
     });
 
-    document.getElementById('discountInput').addEventListener('input', () => {
-        updateTotal();
+    document.getElementById('cashReceivedInput')?.addEventListener('input', () => {
+        updateChangeDue();
+    });
+
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
+        input.addEventListener('change', () => {
+            currentPaymentMethod = input.value;
+            toggleCashPanel(currentPaymentMethod === 'CASH');
+            updateChangeDue();
+        });
+    });
+
+    const customerSearch = document.getElementById('customerSearch');
+    const clearCustomerBtn = document.getElementById('clearCustomerBtn');
+    clearCustomerBtn?.addEventListener('click', () => {
+        clearSelectedCustomer();
+    });
+    customerSearch?.addEventListener('click', () => {
+        if (customerSearch.classList.contains('has-selection') && selectedCustomer?.id) {
+            openCustomerDetail(selectedCustomer.id);
+        }
+    });
+
+    customerSearch?.addEventListener('input', (e) => {
+        customerSearchTerm = e.target.value || '';
+        e.target.classList.remove('has-selection');
+        const addBtn = document.getElementById('addCustomerBtn');
+        if (addBtn) {
+            addBtn.style.display = '';
+        }
+        const clearBtn = document.getElementById('clearCustomerBtn');
+        if (clearBtn) {
+            clearBtn.style.display = 'none';
+        }
+        const customerList = document.getElementById('customerList');
+        if (customerList) {
+            customerList.style.display = '';
+        }
+        if (!customersLoaded) {
+            loadCustomers().then(() => applyCustomerFilter());
+            return;
+        }
+        applyCustomerFilter();
     });
 
     document.querySelectorAll('.quick-cash .chip').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.getElementById('discountInput').value = btn.dataset.cash;
-            updateTotal();
+            const cashInput = document.getElementById('cashReceivedInput');
+            if (cashInput) {
+                cashInput.value = btn.dataset.cash;
+            }
+            updateChangeDue();
         });
     });
 
-    document.getElementById('clearCartBtn').addEventListener('click', () => {
+    const clearCartBtn = document.getElementById('clearCartBtn');
+    clearCartBtn?.addEventListener('click', () => {
         if (confirm('Xóa tất cả sản phẩm trong giỏ?')) {
             clearCart(false);
         }
@@ -367,17 +600,172 @@ function setupEventListeners() {
     });
 }
 
-function filterProducts(searchTerm = '') {
-    const keyword = searchTerm || currentSearch;
-    const filtered = products.filter(p => {
-        const matchCategory = currentCategory === 'all' || p.categoryId === parseInt(currentCategory, 10);
-        const matchSearch = !keyword ||
-            (p.name && p.name.toLowerCase().includes(keyword.toLowerCase())) ||
-            (p.code && p.code.toLowerCase().includes(keyword.toLowerCase()));
-        return matchCategory && matchSearch;
+function setupCustomerModal() {
+    const addButton = document.getElementById('addCustomerBtn');
+    const modal = document.getElementById('customerModal');
+    const closeBtn = document.getElementById('closeCustomerModal');
+    const cancelBtn = document.getElementById('cancelCustomerModal');
+    const form = document.getElementById('customerForm');
+    const pointsInput = document.getElementById('customerPointsInput');
+
+    if (!addButton || !modal || !closeBtn || !form) return;
+
+    addButton.addEventListener('click', () => {
+        openCustomerModalWithPhone('');
     });
 
-    renderProducts(filtered);
+    closeBtn.addEventListener('click', () => closeCustomerModal());
+    cancelBtn?.addEventListener('click', () => closeCustomerModal());
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeCustomerModal();
+        }
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await createCustomerFromForm();
+    });
+
+    pointsInput?.addEventListener('input', () => {
+        const raw = parseInt(pointsInput.value, 10) || 0;
+        setTierByPoints(raw);
+    });
+}
+
+function setupProductDetailModal() {
+    const modal = document.getElementById('productDetailModal');
+    if (!modal) return;
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeProductDetail();
+        }
+    });
+}
+
+function setupCustomerDetailModal() {
+    const modal = document.getElementById('customerDetailModal');
+    const selectedView = document.getElementById('selectedCustomer');
+    if (!modal || !selectedView) return;
+
+    selectedView.addEventListener('click', () => {
+        if (!selectedCustomer || !selectedCustomer.id) return;
+        openCustomerDetail(selectedCustomer.id);
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeCustomerDetail();
+        }
+    });
+}
+
+function openCustomerModalWithPhone(phone) {
+    const modal = document.getElementById('customerModal');
+    const form = document.getElementById('customerForm');
+    if (!modal || !form) return;
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    form.reset();
+    const phoneInput = document.getElementById('customerPhoneInput');
+    if (phoneInput) {
+        phoneInput.value = phone || '';
+    }
+    const confirmInput = document.getElementById('customerConfirmInput');
+    if (confirmInput) {
+        confirmInput.checked = false;
+    }
+    document.getElementById('customerNameInput')?.focus();
+}
+
+function closeCustomerModal() {
+    const modal = document.getElementById('customerModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+async function createCustomerFromForm() {
+    const name = document.getElementById('customerNameInput')?.value.trim();
+    const phone = document.getElementById('customerPhoneInput')?.value.trim();
+    const email = document.getElementById('customerEmailInput')?.value.trim();
+    const address = document.getElementById('customerAddressInput')?.value.trim();
+    const confirmed = document.getElementById('customerConfirmInput')?.checked;
+
+    if (!name) {
+        alert('Vui lòng nhập tên khách hàng.');
+        return;
+    }
+
+    if (!confirmed) {
+        alert('Vui lòng xác nhận thông tin khách hàng.');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_BASE}/customers`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            },
+            body: JSON.stringify({
+                name,
+                phone: phone || null,
+                email: email || null,
+                address: address || null
+            })
+        });
+
+    if (!res.ok) {
+        const message = await res.text();
+        alert(message || 'Không thể tạo khách hàng.');
+        return;
+    }
+
+    const created = await res.json();
+        customers.unshift(created);
+        customersLoaded = true;
+        customerSearchTerm = '';
+        const searchInput = document.getElementById('customerSearch');
+    if (searchInput) searchInput.value = '';
+    applyCustomerFilter();
+    closeCustomerModal();
+    selectCustomer(null, created.id, created.name, created.phone || '-');
+    if (searchInput) {
+        searchInput.value = created.name || created.phone || '';
+        searchInput.classList.add('has-selection');
+    }
+    } catch (err) {
+        console.error(err);
+        alert('Lỗi kết nối khi tạo khách hàng.');
+    }
+}
+
+function filterProducts(searchTerm = '') {
+    const explicitKeyword = normalizeKeyword(searchTerm);
+    const topKeyword = explicitKeyword || normalizeKeyword(topSearchTerm);
+    const bottomKeyword = normalizeKeyword(bottomSearchTerm);
+
+    if (bottomKeyword) {
+        const filtered = filterProductList(products, bottomKeyword);
+        setSuggestionMode('bottom');
+        renderProducts(filtered, 'detailed');
+        return;
+    }
+
+    if (topKeyword) {
+        const filtered = filterProductList(products, topKeyword);
+        setSuggestionMode('top');
+        renderProducts(filtered, 'compact');
+        return;
+    }
+
+    setSuggestionMode('default');
+    renderProducts(getBestSellerProducts(), 'default');
 }
 
 function sortProducts(sortBy) {
@@ -398,9 +786,213 @@ function sortProducts(sortBy) {
     filterProducts();
 }
 
+function getBestSellerProducts() {
+    return [...products]
+        .sort((a, b) => (a.id || 0) - (b.id || 0))
+        .slice(0, 10);
+}
+
 function getCurrentQty() {
     const raw = parseInt(document.getElementById('qtyInput').value, 10);
     return Number.isFinite(raw) && raw > 0 ? raw : 1;
+}
+
+function stripDiacritics(value) {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizeKeyword(value) {
+    return stripDiacritics((value || '').toString().trim().toLowerCase());
+}
+
+function escapeForSingleQuote(value) {
+    return (value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function filterProductList(list, keyword) {
+    return list.filter(p => {
+        const matchCategory = currentCategory === 'all' || p.categoryId === parseInt(currentCategory, 10);
+        const matchSearch = productMatchesKeyword(p, keyword);
+        return matchCategory && matchSearch;
+    });
+}
+
+function productMatchesKeyword(product, keyword) {
+    const normalized = normalizeKeyword(keyword);
+    if (!normalized) return true;
+    const name = normalizeKeyword(product.name);
+    const code = normalizeKeyword(product.code);
+    const barcode = normalizeKeyword(product.barcode);
+    return name.includes(normalized) || code.includes(normalized) || barcode.includes(normalized);
+}
+
+function handleBarcodeSearch() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    const keyword = normalizeKeyword(input.value);
+    if (!keyword) return;
+
+    const exactMatch = products.find(p =>
+        normalizeKeyword(p.code) === keyword ||
+        normalizeKeyword(p.barcode) === keyword
+    );
+    if (exactMatch) {
+        addToCart(exactMatch.id, exactMatch.name, exactMatch.price || 0);
+        input.value = '';
+        const suggestionInput = document.getElementById('suggestionSearchInput');
+        if (suggestionInput) suggestionInput.value = '';
+        topSearchTerm = '';
+        bottomSearchTerm = '';
+        filterProducts();
+        return;
+    }
+
+    const nameMatch = products.find(p => normalizeKeyword(p.name) === keyword);
+    if (nameMatch) {
+        addToCart(nameMatch.id, nameMatch.name, nameMatch.price || 0);
+        input.value = '';
+        const suggestionInput = document.getElementById('suggestionSearchInput');
+        if (suggestionInput) suggestionInput.value = '';
+        topSearchTerm = '';
+        bottomSearchTerm = '';
+        filterProducts();
+        return;
+    }
+
+    filterProducts(keyword);
+}
+
+function getStockValue(product) {
+    const candidates = [product.stock, product.quantity, product.inventory, product.onHand];
+    const found = candidates.find(val => Number.isFinite(Number(val)));
+    return Number.isFinite(Number(found)) ? Number(found) : 0;
+}
+
+function renderProducts(filteredProducts = null, viewMode = 'default') {
+    const displayProducts = filteredProducts || products;
+    const grid = document.getElementById('productsGrid');
+
+    if (!displayProducts || displayProducts.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Không có sản phẩm</div>';
+        return;
+    }
+
+    if (viewMode === 'compact') {
+        grid.innerHTML = displayProducts.map(p => `
+            <div class="product-card compact" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                <div class="product-name">${p.name || 'Sản phẩm'}</div>
+                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                <div class="product-stock">Tồn: ${getStockValue(p)}</div>
+            </div>
+        `).join('');
+        return;
+    }
+
+    if (viewMode === 'detailed') {
+        grid.innerHTML = displayProducts.map(p => `
+            <div class="product-card detailed" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
+                <div class="product-image">${PRODUCT_ICON}</div>
+                <div class="product-name">${p.name || 'Sản phẩm'}</div>
+                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                <div class="product-meta">
+                    <span>${p.unit ? `ĐVT: ${p.unit}` : 'ĐVT: -'}</span>
+                    <span>Tồn: ${getStockValue(p)}</span>
+                </div>
+                <div class="product-description">${p.description || 'Chưa có mô tả'}</div>
+            </div>
+        `).join('');
+        return;
+    }
+
+    grid.innerHTML = displayProducts.map(p => `
+        <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+            <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
+            <div class="product-image">${PRODUCT_ICON}</div>
+            <div class="product-name">${p.name || 'Sản phẩm'}</div>
+            <div class="product-sku">${p.code || 'SKU'}</div>
+        </div>
+    `).join('');
+}
+
+function setSuggestionMode(mode) {
+    const title = document.getElementById('suggestionTitle');
+    const controls = document.getElementById('suggestionControls');
+
+    if (!controls || !title) return;
+
+    if (mode === 'bottom') {
+        controls.style.display = 'flex';
+        title.textContent = 'TƯ VẤN BÁN HÀNG';
+        return;
+    }
+
+    if (mode === 'top') {
+        controls.style.display = 'none';
+        title.textContent = 'KẾT QUẢ TÌM KIẾM';
+        return;
+    }
+
+    controls.style.display = 'flex';
+    title.textContent = 'SẢN PHẨM BÁN CHẠY';
+}
+
+function openProductDetail(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+
+    const modal = document.getElementById('productDetailModal');
+    if (!modal) return;
+
+    document.getElementById('detailProductName').textContent = product.name || 'Sản phẩm';
+    document.getElementById('detailProductSku').textContent = product.code || product.barcode || '-';
+    document.getElementById('detailProductBarcode').textContent = product.barcode || '-';
+    document.getElementById('detailProductUnit').textContent = product.unit || '-';
+    document.getElementById('detailProductPrice').textContent = formatPrice(product.price || 0);
+    document.getElementById('detailProductStock').textContent = getStockValue(product);
+    document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
+
+    const addBtn = document.getElementById('detailAddToCart');
+    if (addBtn) {
+        addBtn.onclick = () => addToCart(product.id, product.name, product.price || 0);
+    }
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeProductDetail() {
+    const modal = document.getElementById('productDetailModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function openCustomerDetail(customerId) {
+    const modal = document.getElementById('customerDetailModal');
+    if (!modal) return;
+
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return;
+
+    document.getElementById('detailCustomerName').textContent = (customer.name || '').toUpperCase();
+    const nameCard = document.getElementById('detailCustomerNameCard');
+    if (nameCard) {
+        nameCard.textContent = customer.name || '-';
+    }
+    document.getElementById('detailCustomerPhone').textContent = customer.phone || '-';
+    document.getElementById('detailCustomerEmail').textContent = customer.email || '-';
+    document.getElementById('detailCustomerAddress').textContent = customer.address || '-';
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeCustomerDetail() {
+    const modal = document.getElementById('customerDetailModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
 }
 
 function toggleEmptyState(isEmpty) {

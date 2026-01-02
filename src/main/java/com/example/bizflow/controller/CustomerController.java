@@ -41,7 +41,7 @@ public class CustomerController {
     }
     
     @PostMapping
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> createCustomer(@RequestBody @NonNull Customer customer) {
         try {
             Customer saved = customerRepository.save(customer);
