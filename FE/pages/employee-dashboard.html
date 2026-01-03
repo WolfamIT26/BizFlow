@@ -666,6 +666,41 @@
         </div>
     </div>
 
+    <!-- Transfer QR Modal -->
+    <div class="modal" id="transferQrModal" aria-hidden="true">
+        <div class="modal-content transfer-qr">
+            <div class="modal-header">
+                <h3>Thanh toán chuyển khoản</h3>
+                <button id="transferCloseBtn" class="icon-btn small" type="button" aria-label="Đóng">×</button>
+            </div>
+            <div class="transfer-qr-body">
+                <div class="qr-column">
+                    <div id="qrCodeContainer" style="width:260px;height:260px;margin:10px auto;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;">
+                        <!-- QR code will be rendered here -->
+                    </div>
+                    <div id="transferPayload" style="margin-top:8px;word-break:break-word;color:#333;font-size:13px;text-align:center;"></div>
+                    <div style="text-align:center;margin-top:8px;"><small>Quét mã để chuyển khoản</small></div>
+                </div>
+                <div class="info-column">
+                    <div class="info-box">
+                        <p><strong>Ngân hàng:</strong> ACB</p>
+                        <p><strong>Số tài khoản:</strong> 123456789</p>
+                        <p><strong>Chủ tài khoản:</strong> BIZFLOW CO</p>
+                        <p><strong>Số tiền:</strong> <span id="transferAmount">0₫</span></p>
+                        <p><strong>Mã đơn:</strong> <span id="transferOrderId">-</span></p>
+                        <p><strong>Mã thanh toán:</strong> <span id="transferPaymentToken">-</span></p>
+                        <p><small>Nội dung chuyển khoản: Thanh toán đơn #<span id="transferOrderIdSmall">-</span></small></p>
+                    </div>
+                    <div style="margin-top:12px;display:flex;gap:8px;">
+                        <button id="transferConfirmBtn" class="primary-btn">Đã chuyển xong</button>
+                        <button id="transferCancelBtn" class="ghost-btn">Đóng</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="../assets/js/employee-dashboard.js"></script>
 </body>
 </html>

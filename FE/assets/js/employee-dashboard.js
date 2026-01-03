@@ -354,7 +354,8 @@ async function createOrder(isPaid) {
         userId,
         customerId,
         paid: isPaid,
-        paymentMethod: isPaid ? currentPaymentMethod : null,
+        // Always send the chosen payment method so backend can create pending transfer payments with tokens
+        paymentMethod: currentPaymentMethod,
         items: cart.map(item => ({
             productId: item.productId,
             quantity: item.quantity
@@ -378,14 +379,145 @@ async function createOrder(isPaid) {
         }
 
         const data = await res.json();
-        alert(isPaid ? `Thanh toán thành công. Mã đơn: ${data.orderId}` : `Đã lưu tạm đơn: ${data.orderId}`);
-        clearCart(true);
-        saveActiveInvoiceState();
+        console.log('createOrder response:', data);
+        if (isPaid) {
+            alert(`Thanh toán thành công. Mã đơn: ${data.orderId}`);
+            clearCart(true);
+            saveActiveInvoiceState();
+        } else {
+            // Created unpaid order: keep cart so cashier can confirm after transfer
+            alert(`Đã tạo đơn chờ thanh toán. Mã đơn: ${data.orderId}`);
+        }
+        return data;
     } catch (err) {
         alert('Lỗi kết nối khi tạo đơn hàng.');
         console.error(err);
     }
 }
+
+// ----- Transfer QR modal & payment helpers -----
+function showTransferQrModal(orderId, amount, token) {
+    console.log('showTransferQrModal called with', { orderId, amount, token });
+    const modal = document.getElementById('transferQrModal');
+    if (!modal) return;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('transferOrderId').textContent = orderId;
+    document.getElementById('transferOrderIdSmall').textContent = orderId;
+    document.getElementById('transferAmount').textContent = formatPrice(amount);
+    if (token) {
+        const tokenEl = document.getElementById('transferPaymentToken');
+        if (tokenEl) tokenEl.textContent = token;
+    }
+
+    // if token missing, generate a short sample token
+    if (!token) {
+        token = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+        const tokenEl = document.getElementById('transferPaymentToken');
+        if (tokenEl) tokenEl.textContent = token + ' (mã tượng trưng)';
+    }
+
+    const payload = `ACB|123456789|BIZFLOW CO|Số tiền:${formatPriceCompact(amount)}|Nội dung:Thanh toán đơn #${orderId}|token:${token || ''}`;
+
+    // show payload text for debugging/scan
+    const payloadEl = document.getElementById('transferPayload');
+    if (payloadEl) payloadEl.textContent = payload;
+
+    const qrContainer = document.getElementById('qrCodeContainer');
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+
+        // Build image URL using a reliable QR image API (qrserver) — this is similar to what qr-code.io does
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
+
+        // Create an image fallback first. If it fails, try client-side QR lib, then show text.
+        const img = document.createElement('img');
+        img.alt = 'QR code';
+        img.width = 240;
+        img.height = 240;
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '8px';
+        img.src = qrImgUrl;
+
+        img.onload = () => {
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(img);
+        };
+
+        img.onerror = () => {
+            // Fallback to client-side QR rendering
+            qrContainer.innerHTML = '';
+            try {
+                if (window.QRCode) {
+                    new QRCode(qrContainer, { text: payload, width: 240, height: 240 });
+                    const inner = qrContainer.querySelector('img,canvas');
+                    if (inner) inner.style.borderRadius = '8px';
+                } else {
+                    qrContainer.textContent = payload;
+                }
+            } catch (e) {
+                console.warn('QR generation failed', e);
+                qrContainer.textContent = payload;
+            }
+        };
+
+        // Append image immediately so the browser attempts to load it (onload/onerror will handle the rest)
+        qrContainer.appendChild(img);
+    }
+}
+
+// Duplicate showTransferQrModal removed — using the enhanced implementation above.
+
+async function payOrder(orderId) {
+    try {
+        const token = document.getElementById('transferPaymentToken')?.textContent || null;
+        const body = { method: 'TRANSFER' };
+        if (token) body.token = token;
+
+        const res = await fetch(`${API_BASE}/orders/${orderId}/pay`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            alert(text || 'Không thể xác nhận thanh toán.');
+            return;
+        }
+        alert('✅ Thanh toán chuyển khoản được xác nhận.');
+        hideTransferQrModal();
+        clearCart(true);
+        saveActiveInvoiceState();
+    } catch (err) {
+        alert('Lỗi kết nối khi xác nhận thanh toán.');
+        console.error(err);
+    }
+}
+
+function hideTransferQrModal() {
+    const modal = document.getElementById('transferQrModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+// Duplicate payOrder removed — using the token-aware implementation above.
+
+// wire modal buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('transferConfirmBtn');
+    const closeBtn = document.getElementById('transferCloseBtn');
+    const cancelBtn = document.getElementById('transferCancelBtn');
+    if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+        const orderId = document.getElementById('transferOrderId').textContent;
+        await payOrder(orderId);
+    });
+    if (closeBtn) closeBtn.addEventListener('click', hideTransferQrModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideTransferQrModal);
+});
 
 function renderCart() {
     const cartContainer = document.getElementById('cartItems');
@@ -494,6 +626,10 @@ function updateTotal() {
     document.getElementById('amountDue').textContent = formatPrice(total);
     updateChangeDue(total);
     setDefaultTierByTotal(total);
+}
+
+function getTotalAmount() {
+    return cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
 }
 
 function formatPrice(price) {
@@ -663,9 +799,22 @@ function setupEventListeners() {
         saveDraftInvoice();
     });
 
-    document.getElementById('checkoutBtn').addEventListener('click', () => {
+    document.getElementById('checkoutBtn').addEventListener('click', async () => {
+        // If transfer selected, create unpaid order then show QR code
+        if (currentPaymentMethod === 'TRANSFER') {
+            const res = await createOrder(false);
+            if (res && res.orderId) {
+                const amount = res.totalAmount ? parseFloat(res.totalAmount) : getTotalAmount();
+                const token = res.paymentToken || res.token || null;
+                showTransferQrModal(res.orderId, amount, token);
+            }
+            return;
+        }
+
+        // Other methods proceed as before
         createOrder(true);
     });
+
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
         if (confirm('Đăng xuất?')) {

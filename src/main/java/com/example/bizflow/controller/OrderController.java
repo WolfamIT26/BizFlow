@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -107,11 +109,24 @@ public class OrderController {
         orderItemRepository.saveAll(orderItems);
 
         boolean paid = Boolean.TRUE.equals(request.getPaid());
+        String paymentToken = null;
         if (paid) {
             Payment payment = new Payment();
             payment.setOrder(savedOrder);
             payment.setMethod(request.getPaymentMethod() == null ? "CASH" : request.getPaymentMethod());
             payment.setAmount(total);
+            payment.setStatus("PAID");
+            payment.setPaidAt(java.time.LocalDateTime.now());
+            paymentRepository.save(payment);
+        } else if (request.getPaymentMethod() != null && "TRANSFER".equalsIgnoreCase(request.getPaymentMethod())) {
+            // create pending transfer payment with a token
+            Payment payment = new Payment();
+            payment.setOrder(savedOrder);
+            payment.setMethod("TRANSFER");
+            payment.setAmount(total);
+            payment.setStatus("PENDING");
+            paymentToken = java.util.UUID.randomUUID().toString();
+            payment.setToken(paymentToken);
             paymentRepository.save(payment);
         }
 
@@ -119,7 +134,39 @@ public class OrderController {
                 savedOrder.getId(),
                 total,
                 orderItems.size(),
-                paid
+                paid,
+                paymentToken
         ));
+    }
+
+    @PostMapping("/{orderId}/pay")
+    public ResponseEntity<?> payOrder(@PathVariable Long orderId, @RequestBody Map<String, String> body) {
+        Order order = orderRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Payment payment = null;
+        if (body != null && body.get("token") != null) {
+            payment = paymentRepository.findByToken(body.get("token"));
+        }
+        if (payment == null) {
+            // fallback: find pending payment for this order
+            payment = paymentRepository.findFirstByOrderIdAndStatusOrderByIdDesc(orderId, "PENDING").orElse(null);
+        }
+
+        if (payment == null) {
+            // create a new payment record if none exists
+            payment = new Payment();
+            payment.setOrder(order);
+            payment.setMethod((body != null && body.get("method") != null) ? body.get("method") : "TRANSFER");
+            payment.setAmount(order.getTotalAmount());
+        }
+
+        payment.setStatus("PAID");
+        payment.setPaidAt(java.time.LocalDateTime.now());
+        paymentRepository.save(payment);
+
+        return ResponseEntity.ok("Payment recorded.");
     }
 }
