@@ -165,22 +165,33 @@ java -jar target/bizflow-1.0.0.jar
 
 ### Option 2: Chạy qua Docker Compose
 
+#### ⚠️ LẦN ĐẦU TIÊN hoặc khi cần RESET DATABASE:
+
 ```bash
-# Build và chạy cả MySQL + App
-docker-compose up --build
+# Xóa volume MySQL cũ (nếu có) để import database mới
+docker compose down -v
 
-# Hoặc chỉ build
-docker-compose build
+# Build và chạy (database sẽ tự động import từ db/init/)
+docker compose up --build -d
 
+# Hoặc nếu đã build rồi
+docker compose up -d
+```
+
+#### Các lần sau (không cần reset database):
+
+```bash
 # Chạy background
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f app
+docker compose logs -f backend
 
 # Stop
-docker-compose down
+docker compose down
 ```
+
+> **LƯU Ý QUAN TRỌNG**: MySQL chỉ import file SQL từ `db/init/` **lần đầu tiên** tạo container. Nếu bạn pull code mới có database update, **phải chạy `docker compose down -v`** để xóa volume cũ trước khi chạy lại!
 
 ---
 
