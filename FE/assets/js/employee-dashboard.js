@@ -13,6 +13,13 @@ let customersLoaded = false;
 let customers = [];
 let customerSearchTerm = '';
 let currentPaymentMethod = 'CASH';
+let invoices = [];
+let savedInvoices = [];
+let activeInvoiceId = null;
+let invoiceSequence = 1;
+let cityCache = [];
+let districtCache = [];
+let wardCache = [];
 let employeesLoaded = false;
 let employees = [];
 
@@ -26,6 +33,7 @@ const PRODUCT_ICON = `
 window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
+    await loadCurrentEmployee();
     selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
     const selectedCustomerLabel = document.getElementById('selectedCustomer');
     if (selectedCustomerLabel) {
@@ -38,6 +46,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupEmployeeSelector();
     setupAppMenuModal();
     toggleCashPanel(true);
+    initInvoices();
 
     document.getElementById('productsGrid').innerHTML =
         '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Đang tải...</div>';
@@ -113,6 +122,53 @@ function loadUserInfo() {
 
     document.getElementById('userInitial').textContent = userInitial;
     document.getElementById('userNameDropdown').textContent = username || 'Nhân viên';
+}
+
+async function loadCurrentEmployee() {
+    const userId = sessionStorage.getItem('userId');
+    if (!userId) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/users/${userId}`, {
+            headers: {
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            }
+        });
+
+        if (!res.ok) {
+            if (res.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
+            throw new Error('Không tải được thông tin nhân viên');
+        }
+
+        const data = await res.json();
+        selectedEmployee = {
+            id: data.id,
+            username: data.username,
+            name: data.fullName || data.username
+        };
+
+        const employeeNameEl = document.getElementById('selectedEmployeeName');
+        if (employeeNameEl) {
+            employeeNameEl.textContent = selectedEmployee.name || selectedEmployee.username;
+        }
+
+        const userNameDropdown = document.getElementById('userNameDropdown');
+        if (userNameDropdown) {
+            userNameDropdown.textContent = data.username || data.fullName || 'Nhân viên';
+        }
+
+        const userInitialEl = document.getElementById('userInitial');
+        if (userInitialEl) {
+            const initial = (data.fullName || data.username || 'E')[0]?.toUpperCase() || 'E';
+            userInitialEl.textContent = initial;
+        }
+    } catch (err) {
+        console.error('Error loading current employee', err);
+    }
 }
 
 async function loadProducts() {
@@ -282,8 +338,7 @@ function clearCart(resetCustomer = true) {
     renderCart();
     updateTotal();
     if (resetCustomer) {
-        selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
-        document.getElementById('selectedCustomer').textContent = 'Khách lẻ';
+        clearSelectedCustomer();
     }
 }
 
@@ -325,6 +380,7 @@ async function createOrder(isPaid) {
         const data = await res.json();
         alert(isPaid ? `Thanh toán thành công. Mã đơn: ${data.orderId}` : `Đã lưu tạm đơn: ${data.orderId}`);
         clearCart(true);
+        saveActiveInvoiceState();
     } catch (err) {
         alert('Lỗi kết nối khi tạo đơn hàng.');
         console.error(err);
@@ -389,41 +445,14 @@ function removeFromCart(idx) {
 }
 
 function selectCustomer(evt, customerId, customerName, customerPhone) {
-    selectedCustomer = { id: customerId, name: customerName, phone: customerPhone };
-
-    document.querySelectorAll('.customer-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    const row = evt?.target?.closest('.customer-item');
-    if (row) row.classList.add('active');
-
-    const searchInput = document.getElementById('customerSearch');
-    if (searchInput) {
-        searchInput.value = customerName || customerPhone || '';
-        searchInput.classList.add('has-selection');
-        searchInput.readOnly = true;
-    }
-
-    customerSearchTerm = '';
-    const customerList = document.getElementById('customerList');
-    if (customerList) {
-        customerList.innerHTML = '';
-        customerList.style.display = 'none';
-    }
-
-    const addBtn = document.getElementById('addCustomerBtn');
-    if (addBtn) {
-        addBtn.style.display = 'none';
-    }
-    const clearBtn = document.getElementById('clearCustomerBtn');
-    if (clearBtn) {
-        clearBtn.style.display = 'inline-flex';
-    }
-
-    openCustomerDetail(customerId);
+    applyCustomerSelection(
+        { id: customerId, name: customerName, phone: customerPhone },
+        { openDetail: true, highlightEvent: evt }
+    );
 }
 
-function clearSelectedCustomer() {
+function clearSelectedCustomer(options = {}) {
+    const { showList = true } = options;
     selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
     const selectedView = document.getElementById('selectedCustomer');
     if (selectedView) {
@@ -449,9 +478,11 @@ function clearSelectedCustomer() {
     customerSearchTerm = '';
     const customerList = document.getElementById('customerList');
     if (customerList) {
-        customerList.style.display = 'block';
+        customerList.style.display = showList ? 'block' : 'none';
     }
-    applyCustomerFilter();
+    if (showList) {
+        applyCustomerFilter();
+    }
 }
 
 function updateTotal() {
@@ -626,17 +657,10 @@ function setupEventListeners() {
         }
     });
 
-    document.querySelectorAll('.tab-close').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm('Xóa toàn bộ đơn hiện tại?')) {
-                clearCart(true);
-            }
-        });
-    });
+    setupInvoiceTabs();
 
     document.getElementById('saveBillBtn').addEventListener('click', () => {
-        createOrder(false);
+        saveDraftInvoice();
     });
 
     document.getElementById('checkoutBtn').addEventListener('click', () => {
@@ -651,6 +675,346 @@ function setupEventListeners() {
     });
 }
 
+function initInvoices() {
+    invoices = [];
+    savedInvoices = [];
+    invoiceSequence = 1;
+    const initial = createInvoiceState();
+    invoices.push(initial);
+    activeInvoiceId = initial.id;
+    renderInvoiceTabs();
+    applyInvoiceState(initial);
+}
+
+function createInvoiceState(name) {
+    const id = `invoice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    return {
+        id,
+        name: name || `Hóa đơn ${invoiceSequence++}`,
+        cart: [],
+        selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
+        paymentMethod: 'CASH',
+        cashReceived: '',
+        paymentNote: '',
+        splitLine: false,
+        topSearchTerm: '',
+        bottomSearchTerm: ''
+    };
+}
+
+function getActiveInvoice() {
+    return invoices.find(inv => inv.id === activeInvoiceId) || null;
+}
+
+function cloneCart(items) {
+    return (items || []).map(item => ({ ...item }));
+}
+
+function saveActiveInvoiceState() {
+    const invoice = getActiveInvoice();
+    if (!invoice) return;
+    invoice.cart = cloneCart(cart);
+    invoice.selectedCustomer = selectedCustomer
+        ? { ...selectedCustomer }
+        : { id: 0, name: 'Khách lẻ', phone: '-' };
+    invoice.paymentMethod = currentPaymentMethod;
+    invoice.cashReceived = document.getElementById('cashReceivedInput')?.value || '';
+    invoice.paymentNote = document.getElementById('paymentNote')?.value || '';
+    invoice.splitLine = document.getElementById('splitLine')?.checked || false;
+    invoice.topSearchTerm = topSearchTerm || '';
+    invoice.bottomSearchTerm = bottomSearchTerm || '';
+}
+
+function applyInvoiceState(invoice) {
+    cart = cloneCart(invoice.cart);
+    currentPaymentMethod = invoice.paymentMethod || 'CASH';
+    topSearchTerm = invoice.topSearchTerm || '';
+    bottomSearchTerm = invoice.bottomSearchTerm || '';
+    const topSearchInput = document.getElementById('searchInput');
+    if (topSearchInput) {
+        topSearchInput.value = topSearchTerm;
+    }
+    const bottomSearchInput = document.getElementById('suggestionSearchInput');
+    if (bottomSearchInput) {
+        bottomSearchInput.value = bottomSearchTerm;
+    }
+    const splitLine = document.getElementById('splitLine');
+    if (splitLine) {
+        splitLine.checked = !!invoice.splitLine;
+    }
+
+    const cashInput = document.getElementById('cashReceivedInput');
+    if (cashInput) {
+        cashInput.value = invoice.cashReceived || '';
+    }
+    const noteInput = document.getElementById('paymentNote');
+    if (noteInput) {
+        noteInput.value = invoice.paymentNote || '';
+    }
+
+    const methodInputs = document.querySelectorAll('input[name="paymentMethod"]');
+    methodInputs.forEach(input => {
+        input.checked = input.value === currentPaymentMethod;
+    });
+    toggleCashPanel(currentPaymentMethod === 'CASH');
+    updateChangeDue();
+
+    if (invoice.selectedCustomer && invoice.selectedCustomer.id > 0) {
+        applyCustomerSelection(invoice.selectedCustomer, { openDetail: false });
+    } else {
+        clearSelectedCustomer({ showList: false });
+    }
+
+    renderCart();
+    updateTotal();
+    filterProducts();
+}
+
+function renderInvoiceTabs() {
+    const container = document.getElementById('orderTabs');
+    if (!container) return;
+    const tabs = invoices.map(invoice => `
+        <button class="order-tab ${invoice.id === activeInvoiceId ? 'active' : ''}" data-invoice-id="${invoice.id}">
+            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">×</span>
+        </button>
+    `).join('');
+    container.innerHTML = `
+        ${tabs}
+        <button class="order-tab ghost" id="addInvoiceBtn" title="Thêm hóa đơn">+</button>
+        <button class="order-tab ghost" id="savedInvoiceBtn">HĐ lưu tạm</button>
+    `;
+}
+
+function setupInvoiceTabs() {
+    const container = document.getElementById('orderTabs');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('#addInvoiceBtn');
+        if (addBtn) {
+            createAndSwitchInvoice();
+            return;
+        }
+
+        const savedBtn = e.target.closest('#savedInvoiceBtn');
+        if (savedBtn) {
+            toggleSavedBillsPanel();
+            return;
+        }
+
+        const closeBtn = e.target.closest('.tab-close');
+        if (closeBtn) {
+            e.stopPropagation();
+            const invoiceId = closeBtn.getAttribute('data-close');
+            if (invoiceId && confirm('Xóa hóa đơn này?')) {
+                removeInvoice(invoiceId);
+            }
+            return;
+        }
+
+        const tab = e.target.closest('.order-tab[data-invoice-id]');
+        if (tab) {
+            const invoiceId = tab.getAttribute('data-invoice-id');
+            if (invoiceId) {
+                switchInvoice(invoiceId);
+            }
+        }
+    });
+
+    const savedPanel = document.getElementById('savedBillsPanel');
+    const closeSavedBtn = document.getElementById('closeSavedBills');
+    closeSavedBtn?.addEventListener('click', () => toggleSavedBillsPanel(false));
+
+    document.addEventListener('click', (e) => {
+        if (!savedPanel || savedPanel.getAttribute('aria-hidden') === 'true') return;
+        const savedBtn = document.getElementById('savedInvoiceBtn');
+        if (savedPanel.contains(e.target) || savedBtn?.contains(e.target)) return;
+        toggleSavedBillsPanel(false);
+    });
+
+    savedPanel?.addEventListener('click', (e) => {
+        const openBtn = e.target.closest('[data-open-draft]');
+        if (openBtn) {
+            const draftId = openBtn.getAttribute('data-open-draft');
+            if (draftId) {
+                openSavedInvoice(draftId);
+            }
+        }
+        const removeBtn = e.target.closest('[data-remove-draft]');
+        if (removeBtn) {
+            const draftId = removeBtn.getAttribute('data-remove-draft');
+            if (draftId) {
+                removeSavedInvoice(draftId);
+            }
+        }
+    });
+}
+
+function createAndSwitchInvoice() {
+    saveActiveInvoiceState();
+    const invoice = createInvoiceState();
+    invoices.push(invoice);
+    activeInvoiceId = invoice.id;
+    renderInvoiceTabs();
+    applyInvoiceState(invoice);
+}
+
+function switchInvoice(invoiceId) {
+    if (invoiceId === activeInvoiceId) return;
+    saveActiveInvoiceState();
+    activeInvoiceId = invoiceId;
+    const invoice = getActiveInvoice();
+    if (invoice) {
+        renderInvoiceTabs();
+        applyInvoiceState(invoice);
+    }
+}
+
+function removeInvoice(invoiceId) {
+    if (!invoiceId) return;
+    const index = invoices.findIndex(inv => inv.id === invoiceId);
+    if (index === -1) return;
+    const wasActive = invoiceId === activeInvoiceId;
+    invoices.splice(index, 1);
+    if (invoices.length === 0) {
+        invoiceSequence = 1;
+        const fresh = createInvoiceState();
+        invoices.push(fresh);
+        activeInvoiceId = fresh.id;
+        renderInvoiceTabs();
+        applyInvoiceState(fresh);
+        return;
+    }
+    if (wasActive) {
+        activeInvoiceId = invoices[0].id;
+        renderInvoiceTabs();
+        applyInvoiceState(invoices[0]);
+    } else {
+        renderInvoiceTabs();
+    }
+}
+
+function saveDraftInvoice() {
+    if (cart.length === 0) {
+        alert('Giỏ hàng trống, không thể lưu tạm.');
+        return;
+    }
+    saveActiveInvoiceState();
+    const invoice = getActiveInvoice();
+    if (!invoice) return;
+    const draft = {
+        ...invoice,
+        cart: cloneCart(invoice.cart),
+        savedAt: new Date().toISOString()
+    };
+    savedInvoices.unshift(draft);
+    removeInvoice(invoice.id);
+    renderSavedBills();
+    toggleSavedBillsPanel(false);
+}
+
+function renderSavedBills() {
+    const list = document.getElementById('savedBillsList');
+    const empty = document.getElementById('savedBillsEmpty');
+    if (!list || !empty) return;
+    if (savedInvoices.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+    list.innerHTML = savedInvoices.map(draft => {
+        const total = draft.cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
+        const customerName = draft.selectedCustomer?.name || 'Khách lẻ';
+        return `
+            <div class="saved-bill-item">
+                <button class="saved-bill-open" data-open-draft="${draft.id}">
+                    <strong>${draft.name}</strong>
+                    <span>${customerName}</span>
+                    <span>${formatPrice(total)}</span>
+                </button>
+                <button class="saved-bill-remove" data-remove-draft="${draft.id}">×</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function toggleSavedBillsPanel(forceState) {
+    const panel = document.getElementById('savedBillsPanel');
+    const button = document.getElementById('savedInvoiceBtn');
+    if (!panel || !button) return;
+    const show = typeof forceState === 'boolean' ? forceState : panel.getAttribute('aria-hidden') === 'true';
+    if (show) {
+        renderSavedBills();
+        const rect = button.getBoundingClientRect();
+        panel.style.top = `${rect.bottom + window.scrollY + 8}px`;
+        panel.style.left = `${rect.left + window.scrollX}px`;
+        panel.classList.add('show');
+        panel.setAttribute('aria-hidden', 'false');
+    } else {
+        panel.classList.remove('show');
+        panel.setAttribute('aria-hidden', 'true');
+    }
+}
+
+function openSavedInvoice(draftId) {
+    const index = savedInvoices.findIndex(draft => draft.id === draftId);
+    if (index === -1) return;
+    saveActiveInvoiceState();
+    const draft = savedInvoices.splice(index, 1)[0];
+    invoices.push(draft);
+    activeInvoiceId = draft.id;
+    renderInvoiceTabs();
+    applyInvoiceState(draft);
+    renderSavedBills();
+    toggleSavedBillsPanel(false);
+}
+
+function removeSavedInvoice(draftId) {
+    const index = savedInvoices.findIndex(draft => draft.id === draftId);
+    if (index === -1) return;
+    savedInvoices.splice(index, 1);
+    renderSavedBills();
+}
+
+function applyCustomerSelection(customer, options = {}) {
+    const { openDetail = false, highlightEvent = null } = options;
+    selectedCustomer = { id: customer.id, name: customer.name, phone: customer.phone };
+
+    document.querySelectorAll('.customer-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const row = highlightEvent?.target?.closest?.('.customer-item');
+    if (row) row.classList.add('active');
+
+    const searchInput = document.getElementById('customerSearch');
+    if (searchInput) {
+        searchInput.value = customer.name || customer.phone || '';
+        searchInput.classList.add('has-selection');
+        searchInput.readOnly = true;
+    }
+
+    customerSearchTerm = '';
+    const customerList = document.getElementById('customerList');
+    if (customerList) {
+        customerList.innerHTML = '';
+        customerList.style.display = 'none';
+    }
+
+    const addBtn = document.getElementById('addCustomerBtn');
+    if (addBtn) {
+        addBtn.style.display = 'none';
+    }
+    const clearBtn = document.getElementById('clearCustomerBtn');
+    if (clearBtn) {
+        clearBtn.style.display = 'inline-flex';
+    }
+
+    if (openDetail && customer.id) {
+        openCustomerDetail(customer.id);
+    }
+}
+
 function setupCustomerModal() {
     const addButton = document.getElementById('addCustomerBtn');
     const modal = document.getElementById('customerModal');
@@ -658,9 +1022,9 @@ function setupCustomerModal() {
     const cancelBtn = document.getElementById('cancelCustomerModal');
     const form = document.getElementById('customerForm');
     const pointsInput = document.getElementById('customerPointsInput');
-    const citySelect = document.getElementById('customerCitySelect');
-    const districtSelect = document.getElementById('customerDistrictSelect');
-    const wardSelect = document.getElementById('customerWardSelect');
+    const cityInput = document.getElementById('customerCityInput');
+    const districtInput = document.getElementById('customerDistrictInput');
+    const wardInput = document.getElementById('customerWardInput');
 
     if (!addButton || !modal || !closeBtn || !form) return;
 
@@ -696,20 +1060,60 @@ function setupCustomerModal() {
         setTierByPoints(raw);
     });
 
-    citySelect?.addEventListener('change', () => {
-        const code = citySelect.value;
-        resetSelect(districtSelect, 'Quận/Huyện');
-        resetSelect(wardSelect, 'Xã/Phường');
-        if (code) {
-            loadDistricts(code);
+    cityInput?.addEventListener('focus', () => {
+        renderDatalistOptions(document.getElementById('customerCityList'), cityCache);
+    });
+
+    cityInput?.addEventListener('input', () => {
+        filterDatalist('customerCityList', cityCache, cityInput.value);
+        const match = findMatchByName(cityCache, cityInput.value);
+        if (match && cityInput.dataset.code !== String(match.code)) {
+            cityInput.value = match.displayName || match.name;
+            cityInput.dataset.code = match.code;
+            resetAddressInput(districtInput);
+            resetAddressInput(wardInput);
+            loadDistricts(match.code);
+            return;
+        }
+        if (!match) {
+            cityInput.dataset.code = '';
+            resetAddressInput(districtInput);
+            resetAddressInput(wardInput);
         }
     });
 
-    districtSelect?.addEventListener('change', () => {
-        const code = districtSelect.value;
-        resetSelect(wardSelect, 'Xã/Phường');
-        if (code) {
-            loadWards(code);
+    districtInput?.addEventListener('focus', () => {
+        renderDatalistOptions(document.getElementById('customerDistrictList'), districtCache);
+    });
+
+    districtInput?.addEventListener('input', () => {
+        filterDatalist('customerDistrictList', districtCache, districtInput.value);
+        const match = findMatchByName(districtCache, districtInput.value);
+        if (match && districtInput.dataset.code !== String(match.code)) {
+            districtInput.value = match.displayName || match.name;
+            districtInput.dataset.code = match.code;
+            resetAddressInput(wardInput);
+            loadWards(match.code);
+            return;
+        }
+        if (!match) {
+            districtInput.dataset.code = '';
+            resetAddressInput(wardInput);
+        }
+    });
+
+    wardInput?.addEventListener('focus', () => {
+        renderDatalistOptions(document.getElementById('customerWardList'), wardCache);
+    });
+
+    wardInput?.addEventListener('input', () => {
+        filterDatalist('customerWardList', wardCache, wardInput.value);
+        const match = findMatchByName(wardCache, wardInput.value);
+        if (match) {
+            wardInput.value = match.displayName || match.name;
+            wardInput.dataset.code = match.code;
+        } else {
+            wardInput.dataset.code = '';
         }
     });
 }
@@ -758,6 +1162,20 @@ function openCustomerModalWithPhone(phone) {
     if (confirmInput) {
         confirmInput.checked = false;
     }
+    const cityInput = document.getElementById('customerCityInput');
+    const districtInput = document.getElementById('customerDistrictInput');
+    const wardInput = document.getElementById('customerWardInput');
+    if (cityInput) {
+        cityInput.value = '';
+        cityInput.dataset.code = '';
+    }
+    resetAddressInput(districtInput);
+    resetAddressInput(wardInput);
+    const districtList = document.getElementById('customerDistrictList');
+    const wardList = document.getElementById('customerWardList');
+    if (districtList) districtList.innerHTML = '';
+    if (wardList) wardList.innerHTML = '';
+
     document.getElementById('customerNameInput')?.focus();
     loadCities();
 }
@@ -774,9 +1192,9 @@ async function createCustomerFromForm() {
     const phone = document.getElementById('customerPhoneInput')?.value.trim();
     const email = document.getElementById('customerEmailInput')?.value.trim();
     const address = document.getElementById('customerAddressInput')?.value.trim();
-    const citySelect = document.getElementById('customerCitySelect');
-    const districtSelect = document.getElementById('customerDistrictSelect');
-    const wardSelect = document.getElementById('customerWardSelect');
+    const cityInput = document.getElementById('customerCityInput');
+    const districtInput = document.getElementById('customerDistrictInput');
+    const wardInput = document.getElementById('customerWardInput');
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
@@ -798,8 +1216,15 @@ async function createCustomerFromForm() {
         alert('Vui lòng nhập số điện thoại.');
         return;
     }
+    if (!/^\d{9,11}$/.test(phone)) {
+        alert('Số điện thoại phải là 9-11 chữ số.');
+        return;
+    }
 
-    if (!citySelect?.value || !districtSelect?.value || !wardSelect?.value || !address) {
+    const cityCode = cityInput?.dataset.code || '';
+    const districtCode = districtInput?.dataset.code || '';
+    const wardCode = wardInput?.dataset.code || '';
+    if (!cityInput?.value || !districtInput?.value || !wardInput?.value || !address || !cityCode || !districtCode || !wardCode) {
         alert('Vui lòng nhập đầy đủ địa chỉ.');
         return;
     }
@@ -850,74 +1275,128 @@ async function createCustomerFromForm() {
 }
 
 async function loadCities() {
-    const citySelect = document.getElementById('customerCitySelect');
-    if (!citySelect || citySelect.options.length > 1) return;
+    const cityList = document.getElementById('customerCityList');
+    if (!cityList || cityList.children.length > 0) return;
 
     try {
         const res = await fetch('https://provinces.open-api.vn/api/p/');
         if (!res.ok) return;
         const data = await res.json();
-        data.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.code;
-            opt.textContent = item.name;
-            citySelect.appendChild(opt);
-        });
+        cityCache = data || [];
+        renderDatalistOptions(cityList, cityCache);
     } catch (err) {
         console.error('Load cities error:', err);
     }
 }
 
 async function loadDistricts(cityCode) {
-    const districtSelect = document.getElementById('customerDistrictSelect');
-    if (!districtSelect) return;
-    districtSelect.disabled = true;
+    const districtInput = document.getElementById('customerDistrictInput');
+    const districtList = document.getElementById('customerDistrictList');
+    if (!districtInput || !districtList) return;
+    districtInput.disabled = true;
     try {
         const res = await fetch(`https://provinces.open-api.vn/api/p/${cityCode}?depth=2`);
         if (!res.ok) return;
         const data = await res.json();
-        resetSelect(districtSelect, 'Quận/Huyện');
-        (data.districts || []).forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.code;
-            opt.textContent = item.name;
-            districtSelect.appendChild(opt);
-        });
-        districtSelect.disabled = false;
+        districtCache = data.districts || [];
+        renderDatalistOptions(districtList, districtCache);
+        districtInput.disabled = false;
     } catch (err) {
         console.error('Load districts error:', err);
     }
 }
 
 async function loadWards(districtCode) {
-    const wardSelect = document.getElementById('customerWardSelect');
-    if (!wardSelect) return;
-    wardSelect.disabled = true;
+    const wardInput = document.getElementById('customerWardInput');
+    const wardList = document.getElementById('customerWardList');
+    if (!wardInput || !wardList) return;
+    wardInput.disabled = true;
     try {
         const res = await fetch(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
         if (!res.ok) return;
         const data = await res.json();
-        resetSelect(wardSelect, 'Xã/Phường');
-        (data.wards || []).forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item.code;
-            opt.textContent = item.name;
-            wardSelect.appendChild(opt);
-        });
-        wardSelect.disabled = false;
+        wardCache = data.wards || [];
+        renderDatalistOptions(wardList, wardCache);
+        wardInput.disabled = false;
     } catch (err) {
         console.error('Load wards error:', err);
     }
 }
 
-function resetSelect(select, placeholder) {
-    if (!select) return;
-    select.innerHTML = '';
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = placeholder;
-    select.appendChild(opt);
-    select.disabled = true;
+function resetAddressInput(input) {
+    if (!input) return;
+    input.value = '';
+    input.dataset.code = '';
+    input.disabled = true;
+}
+
+function getAddressDisplayName(item) {
+    const rawName = item?.name || '';
+    const cleaned = rawName.replace(/^(Tỉnh|Thành phố)\s+/i, '').trim();
+    return cleaned || rawName;
+}
+
+function getAddressVariants(item) {
+    const rawName = item?.name || '';
+    const displayName = getAddressDisplayName(item);
+    const variants = [displayName];
+    if (displayName !== rawName) {
+        variants.push(rawName);
+    }
+    return variants;
+}
+
+function renderDatalistOptions(listEl, items) {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    const seen = new Set();
+    (items || []).forEach(item => {
+        const displayName = getAddressDisplayName(item);
+        if (!displayName || seen.has(displayName)) return;
+        const option = document.createElement('option');
+        option.value = displayName;
+        listEl.appendChild(option);
+        seen.add(displayName);
+    });
+}
+
+function findMatchByName(items, value) {
+    const normalized = normalizeKeyword(value);
+    if (!normalized) return null;
+    const list = items || [];
+    for (const item of list) {
+        const variants = getAddressVariants(item);
+        for (const variant of variants) {
+            if (normalizeKeyword(variant) === normalized) {
+                return {
+                    ...item,
+                    displayName: variant
+                };
+            }
+        }
+    }
+    return null;
+}
+
+function filterDatalist(listId, items, query) {
+    const listEl = document.getElementById(listId);
+    if (!listEl) return;
+    const normalizedQuery = normalizeKeyword(query);
+    listEl.innerHTML = '';
+    const seen = new Set();
+    (items || []).forEach(item => {
+        const variants = getAddressVariants(item);
+        const matches = !normalizedQuery || variants.some(variant => (
+            normalizeKeyword(variant).includes(normalizedQuery)
+        ));
+        if (!matches) return;
+        const displayName = getAddressDisplayName(item);
+        if (!displayName || seen.has(displayName)) return;
+        const option = document.createElement('option');
+        option.value = displayName;
+        listEl.appendChild(option);
+        seen.add(displayName);
+    });
 }
 
 function filterProducts(searchTerm = '') {
@@ -926,38 +1405,25 @@ function filterProducts(searchTerm = '') {
     const bottomKeyword = normalizeKeyword(bottomSearchTerm);
 
     if (bottomKeyword) {
-        const filtered = filterProductList(products, bottomKeyword);
+        const filtered = applySort(filterProductList(products, bottomKeyword));
         setSuggestionMode('bottom');
         renderProducts(filtered, 'detailed');
         return;
     }
 
     if (topKeyword) {
-        const filtered = filterProductList(products, topKeyword);
+        const filtered = applySort(filterProductList(products, topKeyword));
         setSuggestionMode('top');
         renderProducts(filtered, 'compact');
         return;
     }
 
     setSuggestionMode('default');
-    renderProducts(getBestSellerProducts(), 'default');
+    renderProducts(applySort(getBestSellerProducts()), 'default');
 }
 
 function sortProducts(sortBy) {
-    switch (sortBy) {
-        case 'name':
-            products.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            break;
-        case 'price-low':
-            products.sort((a, b) => (a.price || 0) - (b.price || 0));
-            break;
-        case 'price-high':
-            products.sort((a, b) => (b.price || 0) - (a.price || 0));
-            break;
-        default:
-            break;
-    }
-
+    currentSort = sortBy;
     filterProducts();
 }
 
@@ -965,6 +1431,23 @@ function getBestSellerProducts() {
     return [...products]
         .sort((a, b) => (a.id || 0) - (b.id || 0))
         .slice(0, 10);
+}
+
+function applySort(list) {
+    const sorted = [...(list || [])];
+    switch (currentSort) {
+        case 'price-low':
+            sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+            break;
+        case 'price-high':
+            sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+            break;
+        case 'name':
+        default:
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            break;
+    }
+    return sorted;
 }
 
 function getCurrentQty() {

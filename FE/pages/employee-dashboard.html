@@ -12,10 +12,10 @@
             <div class="logo-mark" aria-label="BizFlow">
                 BIZFLOW
             </div>
-            <div class="order-tabs">
-                <button class="order-tab active">Hóa đơn 1 <span class="tab-close">×</span></button>
-                <button class="order-tab ghost" title="Thêm hóa đơn">+</button>
-                <button class="order-tab ghost">HĐ lưu tạm</button>
+            <div class="order-tabs" id="orderTabs">
+                <button class="order-tab active" data-invoice-id="default">Hóa đơn 1 <span class="tab-close">×</span></button>
+                <button class="order-tab ghost" id="addInvoiceBtn" title="Thêm hóa đơn">+</button>
+                <button class="order-tab ghost" id="savedInvoiceBtn">HĐ lưu tạm</button>
             </div>
         </div>
         <div class="header-actions">
@@ -58,6 +58,15 @@
         </div>
     </header>
 
+    <div class="saved-bills-panel" id="savedBillsPanel" aria-hidden="true">
+        <div class="saved-bills-header">
+            <span>Hóa đơn lưu tạm</span>
+            <button id="closeSavedBills" class="icon-btn mini" type="button" aria-label="Đóng">×</button>
+        </div>
+        <div class="saved-bills-list" id="savedBillsList"></div>
+        <div class="saved-bills-empty" id="savedBillsEmpty">Chưa có hóa đơn lưu tạm</div>
+    </div>
+
     <section class="pos-toolbar">
         <div class="toolbar-search">
             <button class="dropdown-btn">Tìm kiếm</button>
@@ -82,7 +91,7 @@
                     <path d="M5 20a7 7 0 0 1 14 0" />
                 </svg>
             </span>
-            <span id="selectedEmployeeName">Phạm Huy Đức V</span>
+            <span id="selectedEmployeeName">Đang tải...</span>
             <span class="chip-caret">▾</span>
         </button>
         <div class="employee-dropdown" id="employeeList" style="display: none;">
@@ -371,15 +380,12 @@
                         <div class="form-field address-group">
                             <span class="required-label">Địa chỉ <span class="required-star">*</span></span>
                             <div class="address-grid">
-                                <select id="customerCitySelect" required>
-                                    <option value="">Tỉnh/Thành phố</option>
-                                </select>
-                                <select id="customerDistrictSelect" required disabled>
-                                    <option value="">Quận/Huyện</option>
-                                </select>
-                                <select id="customerWardSelect" required disabled>
-                                    <option value="">Xã/Phường</option>
-                                </select>
+                                <input id="customerCityInput" type="text" list="customerCityList" placeholder="Tỉnh/Thành phố" required>
+                                <datalist id="customerCityList"></datalist>
+                                <input id="customerDistrictInput" type="text" list="customerDistrictList" placeholder="Quận/Huyện" required disabled>
+                                <datalist id="customerDistrictList"></datalist>
+                                <input id="customerWardInput" type="text" list="customerWardList" placeholder="Xã/Phường" required disabled>
+                                <datalist id="customerWardList"></datalist>
                                 <input id="customerAddressInput" type="text" placeholder="Số nhà, tên đường" required>
                             </div>
                         </div>

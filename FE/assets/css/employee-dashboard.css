@@ -104,6 +104,85 @@
     color: #ff6b6b;
 }
 
+.saved-bills-panel {
+    position: absolute;
+    min-width: 260px;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
+    padding: 10px;
+    z-index: 60;
+    display: none;
+}
+
+.saved-bills-panel.show {
+    display: block;
+}
+
+.saved-bills-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 13px;
+    color: #2f3644;
+    margin-bottom: 8px;
+}
+
+.saved-bills-list {
+    display: grid;
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.saved-bills-empty {
+    font-size: 12px;
+    color: #8b91a1;
+    padding: 8px 4px;
+}
+
+.saved-bill-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.saved-bill-open {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: #f7f8ff;
+    border-radius: 10px;
+    padding: 8px 10px;
+    text-align: left;
+    display: grid;
+    gap: 2px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #2f3644;
+}
+
+.saved-bill-open strong {
+    font-size: 12px;
+}
+
+.saved-bill-open span {
+    color: #7b8294;
+    font-size: 11px;
+}
+
+.saved-bill-remove {
+    border: 1px solid var(--border);
+    background: #ffffff;
+    color: #ff6b6b;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
 .header-actions {
     display: flex;
     align-items: center;
@@ -1249,6 +1328,23 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;
+}
+
+.address-search {
+    border: 1px solid #d6d9e3;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+    background: #fff;
+}
+
+.customer-modal .address-search {
+    border: none;
+    border-bottom: 1px solid #d6d9e3;
+    border-radius: 0;
+    padding: 4px 2px 3px;
+    font-size: 11px;
+    background: transparent;
 }
 
 .address-grid input:last-child {
