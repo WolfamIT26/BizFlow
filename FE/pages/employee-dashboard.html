@@ -71,6 +71,20 @@
         <div class="toolbar-search">
             <button class="dropdown-btn">Tìm kiếm</button>
             <input id="searchInput" type="text" placeholder="(F3) Nhập tên hàng hóa, mã vạch, mã SKU">
+            <div class="toolbar-search-results" id="toolbarSearchResults" aria-hidden="true">
+                <div class="toolbar-search-row header">
+                    <span>#</span>
+                    <span>Mã SP</span>
+                    <span>SKU</span>
+                    <span>Tên sản phẩm</span>
+                    <span>SL</span>
+                    <span>ĐVT</span>
+                    <span>Đơn giá</span>
+                    <span>Thành tiền</span>
+                </div>
+                <div class="toolbar-search-list" id="toolbarSearchList"></div>
+                <div class="toolbar-search-empty" id="toolbarSearchEmpty">Không có sản phẩm</div>
+            </div>
         </div>
         <div class="toolbar-qty">
             <span class="barcode" aria-hidden="true">|||</span>
@@ -503,7 +517,7 @@
             </div>
             <div class="modal-actions">
                 <button type="button" class="ghost-btn" onclick="closeProductDetail()">Đóng</button>
-                <button type="button" class="primary-btn" id="detailAddToCart">Thêm vào giỏ</button>
+                <button type="button" class="primary-btn" id="detailAddToCart">Xác nhận</button>
             </div>
         </div>
     </div>

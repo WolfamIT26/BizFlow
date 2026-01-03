@@ -25,6 +25,15 @@ public class Order {
     @Column(name = "total_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
+    @Column(name = "invoice_number", unique = true, length = 30)
+    private String invoiceNumber;
+
+    @Column(name = "status", length = 30)
+    private String status;
+
+    @Column(name = "is_return")
+    private Boolean returnOrder = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -64,6 +73,30 @@ public class Order {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getInvoiceNumber() {
+        return invoiceNumber;
+    }
+
+    public void setInvoiceNumber(String invoiceNumber) {
+        this.invoiceNumber = invoiceNumber;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public Boolean getReturnOrder() {
+        return returnOrder;
+    }
+
+    public void setReturnOrder(Boolean returnOrder) {
+        this.returnOrder = returnOrder;
     }
 
     public LocalDateTime getCreatedAt() {

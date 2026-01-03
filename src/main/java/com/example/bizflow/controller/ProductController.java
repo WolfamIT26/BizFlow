@@ -24,7 +24,12 @@ public class ProductController {
             List<Product> products = productRepository.findByStatus("active");
             return ResponseEntity.ok(products);
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error fetching products: " + e.getMessage());
+            try {
+                List<Product> products = productRepository.findAll();
+                return ResponseEntity.ok(products);
+            } catch (Exception fallback) {
+                return ResponseEntity.status(500).body("Error fetching products: " + e.getMessage());
+            }
         }
     }
     

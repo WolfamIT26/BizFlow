@@ -7,6 +7,7 @@ public class CreateOrderRequest {
     private Long userId;
     private Boolean paid;
     private String paymentMethod;
+    private Boolean returnOrder;
     private List<OrderItemRequest> items;
 
     public CreateOrderRequest() {
@@ -42,6 +43,14 @@ public class CreateOrderRequest {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    public Boolean getReturnOrder() {
+        return returnOrder;
+    }
+
+    public void setReturnOrder(Boolean returnOrder) {
+        this.returnOrder = returnOrder;
     }
 
     public List<OrderItemRequest> getItems() {

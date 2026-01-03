@@ -32,6 +32,8 @@ app:
     secret: my-secret-key-for-jwt-token-generation-and-verification
     access-token-expiration: 3600000
     refresh-token-expiration: 86400000
+  invoice:
+    branch-prefix: TC
 
 logging:
   level:
