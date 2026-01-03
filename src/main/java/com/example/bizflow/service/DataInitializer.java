@@ -32,13 +32,13 @@ public class DataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         long count = productRepository.count();
         if (count > 0) {
-            logger.info("Products already exist ({}). Checking for inactive/null 'active' flags to fix.", count);
-            // Fixup: if many products have null active, set them to true so UI shows them
+            logger.info("Products already exist ({}). Checking for inactive status to fix.", count);
+            // Fixup: if many products have null or inactive status, set them to active so UI shows them
             List<Product> all = productRepository.findAll();
             List<Product> toEnable = new ArrayList<>();
             for (Product p : all) {
-                if (p.getActive() == null || Boolean.FALSE.equals(p.getActive())) {
-                    p.setActive(Boolean.TRUE);
+                if (p.getStatus() == null || "inactive".equalsIgnoreCase(p.getStatus())) {
+                    p.setStatus("active");
                     toEnable.add(p);
                 }
             }

@@ -25,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/orders")
+@SuppressWarnings("null")
 public class OrderController {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
@@ -56,12 +57,14 @@ public class OrderController {
 
         User user = null;
         if (request.getUserId() != null) {
-            user = userRepository.findById(request.getUserId()).orElse(null);
+            Long userId = request.getUserId();
+            user = userRepository.findById(userId).orElse(null);
         }
 
         Customer customer = null;
         if (request.getCustomerId() != null && request.getCustomerId() > 0) {
-            customer = customerRepository.findById(request.getCustomerId()).orElse(null);
+            Long customerId = request.getCustomerId();
+            customer = customerRepository.findById(customerId).orElse(null);
         }
 
         Order order = new Order();
@@ -80,9 +83,10 @@ public class OrderController {
                 return ResponseEntity.badRequest().body("Quantity must be greater than 0.");
             }
 
-            Product product = productRepository.findById(itemRequest.getProductId()).orElse(null);
+            Long productId = itemRequest.getProductId();
+            Product product = productRepository.findById(productId).orElse(null);
             if (product == null) {
-                return ResponseEntity.badRequest().body("Product not found: " + itemRequest.getProductId());
+                return ResponseEntity.badRequest().body("Product not found: " + productId);
             }
 
             BigDecimal price = product.getPrice() == null ? BigDecimal.ZERO : product.getPrice();
