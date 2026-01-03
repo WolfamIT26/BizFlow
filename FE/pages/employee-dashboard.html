@@ -670,21 +670,28 @@
     <div class="modal" id="transferQrModal" aria-hidden="true">
         <div class="modal-content transfer-qr">
             <div class="modal-header">
-                <h3>Thanh toán chuyển khoản</h3>
+                <h3>Thanh toán chuyển khoản (VietQR)</h3>
                 <button id="transferCloseBtn" class="icon-btn small" type="button" aria-label="Đóng">×</button>
             </div>
             <div class="transfer-qr-body">
                 <div class="qr-column">
-                    <div id="qrCodeContainer" style="width:260px;height:260px;margin:10px auto;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;">
-                        <!-- QR code will be rendered here -->
+                    <div class="qr-card">
+                        <img id="transferBankLogo" class="bank-logo" src="" alt="Bank logo" style="display:none;" />
+                        <div id="qrCodeContainer" class="qr-box" aria-label="QR code area" style="width:260px;height:260px;margin:10px auto;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:8px;overflow:hidden;">
+                            <!-- QR code will be rendered here -->
+                        </div>
                     </div>
-                    <div id="transferPayload" style="margin-top:8px;word-break:break-word;color:#333;font-size:13px;text-align:center;"></div>
-                    <div style="text-align:center;margin-top:8px;"><small>Quét mã để chuyển khoản</small></div>
+                    <div id="transferPayload" class="qr-payload" style="margin-top:8px;word-break:break-word;color:#333;font-size:13px;text-align:center;"></div>
+                    <div class="qr-actions" style="text-align:center;margin-top:8px;">
+                        <button id="downloadQrBtn" class="ghost-btn mini" type="button">Tải mã</button>
+                        <button id="copyTokenBtn" class="ghost-btn mini" type="button">Sao chép mã</button>
+                    </div>
+                    <div class="qr-note" style="text-align:center;margin-top:8px;"><small>Quét mã VietQR để thanh toán (số tiền sẽ được điền sẵn)</small></div>
                 </div>
                 <div class="info-column">
                     <div class="info-box">
-                        <p><strong>Ngân hàng:</strong> ACB</p>
-                        <p><strong>Số tài khoản:</strong> 123456789</p>
+                        <p><strong>Ngân hàng:</strong> VCB</p>
+                        <p><strong>Số tài khoản:</strong> 1021209511</p>
                         <p><strong>Chủ tài khoản:</strong> BIZFLOW CO</p>
                         <p><strong>Số tiền:</strong> <span id="transferAmount">0₫</span></p>
                         <p><strong>Mã đơn:</strong> <span id="transferOrderId">-</span></p>

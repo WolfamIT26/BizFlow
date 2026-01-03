@@ -405,64 +405,132 @@ function showTransferQrModal(orderId, amount, token) {
     document.getElementById('transferOrderId').textContent = orderId;
     document.getElementById('transferOrderIdSmall').textContent = orderId;
     document.getElementById('transferAmount').textContent = formatPrice(amount);
-    if (token) {
+
+    // Ensure token is present (backend token preferred)
+    let displayToken = token;
+    if (displayToken) {
         const tokenEl = document.getElementById('transferPaymentToken');
-        if (tokenEl) tokenEl.textContent = token;
+        if (tokenEl) tokenEl.textContent = displayToken;
+    } else {
+        displayToken = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+        const tokenEl = document.getElementById('transferPaymentToken');
+        if (tokenEl) tokenEl.textContent = displayToken + ' (mã tượng trưng)';
     }
 
-    // if token missing, generate a short sample token
-    if (!token) {
-        token = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
-        const tokenEl = document.getElementById('transferPaymentToken');
-        if (tokenEl) tokenEl.textContent = token + ' (mã tượng trưng)';
-    }
+    // Build a compact human-friendly payload (not VietQR-standardized here)
+    const bankCode = 'VCB';
+    const account = '1021209511';
+    const accountName = 'BIZFLOW CO';
+    const payload = `BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
 
-    const payload = `ACB|123456789|BIZFLOW CO|Số tiền:${formatPriceCompact(amount)}|Nội dung:Thanh toán đơn #${orderId}|token:${token || ''}`;
-
-    // show payload text for debugging/scan
     const payloadEl = document.getElementById('transferPayload');
-    if (payloadEl) payloadEl.textContent = payload;
+    if (payloadEl) {
+        // Show VietQR human-readable summary
+        payloadEl.textContent = `VietQR • ${bankCode} • ${account} • ${accountName} • ${formatPrice(amount)}`;
+    }
 
+    // Bank logo mapping (add known logos here)
+    const bankLogos = {
+        VCB: 'https://img.vietqr.io/image/vietcombank-1021209511-compact.jpg'
+    };
+    const logoUrl = bankLogos[bankCode];
+    const logoEl = document.getElementById('transferBankLogo');
+    if (logoEl) {
+        if (logoUrl) {
+            logoEl.src = logoUrl;
+            logoEl.style.display = '';
+        } else {
+            logoEl.style.display = 'none';
+        }
+    }
+
+    // Generate VietQR image using VietQR.io Quick Link (preferred) and provide robust fallbacks
     const qrContainer = document.getElementById('qrCodeContainer');
+
+    // Build VietQR Quick Link URL
+    // Format: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<DESCRIPTION>&accountName=<ACCOUNT_NAME>
+    const bankQuickId = 'VCB'; // bank identifier for VietQR quicklink (VCB for Vietcombank)
+    const template = 'compact'; // compact template includes logos and info
+    const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
+    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toán đơn #' + orderId)}`;
+    const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
+    const qrQuicklinkBase = `https://img.vietqr.io/image/${bankQuickId}-${account}-${template}.png`;
+    const qrImgUrl = qrQuicklinkBase + (amountParam || addInfoParam || accountNameParam ? `?${[amountParam, addInfoParam, accountNameParam].filter(Boolean).join('&')}` : '');
+
     if (qrContainer) {
         qrContainer.innerHTML = '';
-
-        // Build image URL using a reliable QR image API (qrserver) — this is similar to what qr-code.io does
-        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(payload)}`;
-
-        // Create an image fallback first. If it fails, try client-side QR lib, then show text.
         const img = document.createElement('img');
-        img.alt = 'QR code';
-        img.width = 240;
-        img.height = 240;
+        img.alt = 'VietQR';
+        img.width = 260;
+        img.height = 260;
         img.style.maxWidth = '100%';
         img.style.borderRadius = '8px';
         img.src = qrImgUrl;
 
+        // Successful image load -> use it
         img.onload = () => {
             qrContainer.innerHTML = '';
             qrContainer.appendChild(img);
         };
 
-        img.onerror = () => {
-            // Fallback to client-side QR rendering
+        // If quicklink image fails (network, API), fallback to client-side QR generation using the readable payload
+        img.onerror = async () => {
             qrContainer.innerHTML = '';
             try {
+                // As a fallback, build a simple VietQR-like payload string (not formally signed) so banking apps may still recognize amount/account
+                const fallbackPayload = `VietQR|BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
                 if (window.QRCode) {
-                    new QRCode(qrContainer, { text: payload, width: 240, height: 240 });
+                    new QRCode(qrContainer, { text: fallbackPayload, width: 260, height: 260 });
                     const inner = qrContainer.querySelector('img,canvas');
                     if (inner) inner.style.borderRadius = '8px';
                 } else {
-                    qrContainer.textContent = payload;
+                    // Last resort show token and short payload
+                    qrContainer.textContent = `Mã: ${displayToken}`;
                 }
             } catch (e) {
                 console.warn('QR generation failed', e);
-                qrContainer.textContent = payload;
+                qrContainer.textContent = `Mã: ${displayToken}`;
             }
         };
 
-        // Append image immediately so the browser attempts to load it (onload/onerror will handle the rest)
         qrContainer.appendChild(img);
+    }
+
+    // Download QR handler (fetch the image blob from quicklink and force download)
+    const downloadBtn = document.getElementById('downloadQrBtn');
+    if (downloadBtn) {
+        downloadBtn.onclick = async () => {
+            try {
+                const res = await fetch(qrImgUrl);
+                if (!res.ok) throw new Error('Failed to download QR image');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vietqr-order-${orderId}.png`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Không thể tải mã QR.');
+                console.error(e);
+            }
+        };
+    }
+
+    // Copy token handler
+    const copyBtn = document.getElementById('copyTokenBtn');
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(displayToken);
+                alert('Đã sao chép mã thanh toán');
+            } catch (e) {
+                alert('Không thể sao chép mã.');
+                console.error(e);
+            }
+        };
     }
 }
 
