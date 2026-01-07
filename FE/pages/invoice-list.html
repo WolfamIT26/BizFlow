@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow POS - Danh sách hóa đơn</title>
+    <link rel="stylesheet" href="../assets/css/employee-dashboard.css">
+    <link rel="stylesheet" href="../assets/css/invoice-list.css">
+</head>
+<body class="pos-body">
+    <header class="pos-header invoice-header">
+        <div class="header-left">
+            <button id="backToPos" class="icon-btn" title="Quay lại" aria-label="Quay lại">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M15 6l-6 6 6 6" />
+                </svg>
+            </button>
+            <div class="logo-mark" id="goPosFromLogo" aria-label="BizFlow">
+                BizFlow POS
+            </div>
+            <div class="page-title">Danh sách hóa đơn</div>
+        </div>
+        <div class="header-actions">
+            <div class="store">TRƯỜNG CHINH</div>
+            <div class="user-chip">
+                <span id="userInitial">E</span>
+                <span id="userName">Nhân viên</span>
+            </div>
+            <button id="logoutBtn" class="icon-btn" title="Đăng xuất" aria-label="Đăng xuất">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M10 6H5v12h5" />
+                    <path d="M14 16l4-4-4-4" />
+                    <path d="M18 12H9" />
+                </svg>
+            </button>
+            <button id="appMenuBtn" class="icon-btn" title="Ứng dụng" aria-label="Ứng dụng">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <circle cx="6" cy="6" r="1.5" />
+                    <circle cx="12" cy="6" r="1.5" />
+                    <circle cx="18" cy="6" r="1.5" />
+                    <circle cx="6" cy="12" r="1.5" />
+                    <circle cx="12" cy="12" r="1.5" />
+                    <circle cx="18" cy="12" r="1.5" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="invoice-page">
+        <section class="invoice-toolbar">
+            <div class="search-field">
+                <label for="invoiceSearch">Tìm kiếm</label>
+                <input id="invoiceSearch" type="text" placeholder="Mã hóa đơn, khách hàng, số điện thoại, thu ngân">
+            </div>
+            <div class="filter-field">
+                <label for="statusFilter">Trạng thái</label>
+                <select id="statusFilter">
+                    <option value="all">Tất cả</option>
+                    <option value="PAID">Đã thanh toán</option>
+                    <option value="UNPAID">Chưa thanh toán</option>
+                    <option value="RETURNED">Đổi trả</option>
+                </select>
+            </div>
+            <div class="invoice-summary">
+                <div>
+                    <span class="summary-label">Số hóa đơn</span>
+                    <strong id="invoiceCount">0</strong>
+                </div>
+                <div>
+                    <span class="summary-label">Tổng doanh thu</span>
+                    <strong id="invoiceTotal">0 đ</strong>
+                </div>
+            </div>
+        </section>
+
+        <section class="invoice-table">
+            <div class="invoice-row header">
+                <span>Mã hóa đơn</span>
+                <span>Thời gian</span>
+                <span>Khách hàng</span>
+                <span>Số SP</span>
+                <span>Tổng tiền</span>
+                <span>Trạng thái</span>
+            </div>
+            <div id="invoiceList" class="invoice-body"></div>
+            <div id="invoiceEmpty" class="invoice-empty">Chưa có hóa đơn</div>
+        </section>
+    </main>
+
+    <div class="modal side" id="appMenuModal" aria-hidden="true">
+        <div class="modal-content app-menu">
+            <div class="modal-header">
+                <h3>Ứng dụng</h3>
+                <button id="closeAppMenu" class="icon-btn small" type="button" aria-label="Đóng">×</button>
+            </div>
+            <div class="app-menu-grid">
+                <button class="app-tile" data-app="pos">
+                    <span class="app-icon app-blue">BH</span>
+                    <span>Bán hàng</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-purple">ĐH</span>
+                    <span>Đơn hàng</span>
+                </button>
+                <button class="app-tile" data-app="invoices">
+                    <span class="app-icon app-pink">HD</span>
+                    <span>DS hóa đơn</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-green">ON</span>
+                    <span>Đơn hàng online</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">ĐR</span>
+                    <span>Đổi trả hàng</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-cyan">YC</span>
+                    <span>YC điều chuyển</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-green">NT</span>
+                    <span>Nạp tiền TT</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-indigo">TC</span>
+                    <span>Thu chi</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-blue">MH</span>
+                    <span>Màn hình phụ</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">IN</span>
+                    <span>Máy in - Mẫu in</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-teal">BC</span>
+                    <span>Báo cáo theo ngày</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-gray">NK</span>
+                    <span>Nhật ký truy cập</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-indigo">QL</span>
+                    <span>Trang quản lý</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-blue">TH</span>
+                    <span>Thiết lập hiển thị</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-pink">MT</span>
+                    <span>HĐĐT từ MTT</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-purple">HD</span>
+                    <span>Hướng dẫn</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-cyan">GY</span>
+                    <span>Góp ý cải tiến</span>
+                </button>
+                <button class="app-tile">
+                    <span class="app-icon app-orange">GT</span>
+                    <span>Giới thiệu</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../assets/js/invoice-list.js"></script>
+</body>
+</html>
