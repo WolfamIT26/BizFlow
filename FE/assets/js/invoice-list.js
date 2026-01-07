@@ -8,6 +8,8 @@ window.addEventListener('DOMContentLoaded', () => {
     setupActions();
     setupAppMenuModal();
     setupLogout();
+    setupInvoiceDetailModal();
+    handleInvoicePreset();
     loadInvoices();
 });
 
@@ -53,8 +55,37 @@ function setupActions() {
         window.location.href = '/pages/employee-dashboard.html';
     });
 
-    document.getElementById('invoiceSearch')?.addEventListener('input', applyFilters);
-    document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
+    document.getElementById('datePreset')?.addEventListener('change', applyFilters);
+    document.getElementById('invoicePreset')?.addEventListener('change', handleInvoicePreset);
+    document.getElementById('invoiceDateFrom')?.addEventListener('change', applyFilters);
+    document.getElementById('invoiceDateTo')?.addEventListener('change', applyFilters);
+    const filterIds = [
+        'filterInvoiceNo',
+        'filterInvoiceDate',
+        'filterCreatedDate',
+        'filterOrderCode',
+        'filterStatus',
+        'filterCustomerCode',
+        'filterCustomerName',
+        'filterCustomerPhone',
+        'filterTotal',
+        'filterNote',
+        'filterSales',
+        'filterCashier'
+    ];
+    filterIds.forEach(id => {
+        document.getElementById(id)?.addEventListener('input', applyFilters);
+        document.getElementById(id)?.addEventListener('change', applyFilters);
+    });
+
+    document.getElementById('invoiceList')?.addEventListener('click', (e) => {
+        const link = e.target.closest('.invoice-link');
+        if (!link) return;
+        const orderId = link.getAttribute('data-order-id');
+        if (orderId) {
+            openInvoiceDetail(orderId);
+        }
+    });
 }
 
 function ensureHeaderActions() {
@@ -126,10 +157,9 @@ function setupAppMenuModal() {
         const tile = e.target.closest('.app-tile[data-app]');
         if (!tile) return;
         const target = tile.dataset.app;
-        if (target === 'pos') {
-            window.location.href = '/pages/employee-dashboard.html';
-        } else if (target === 'invoices') {
-            window.location.href = '/pages/invoice-list.html';
+        const route = resolveAppRoute(target);
+        if (route) {
+            window.location.href = route;
         }
     });
 }
@@ -151,71 +181,47 @@ function ensureAppMenuModal() {
                     <span class="app-icon app-blue">BH</span>
                     <span>Bán hàng</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-purple">ĐH</span>
-                    <span>Đơn hàng</span>
-                </button>
                 <button class="app-tile" data-app="invoices">
                     <span class="app-icon app-pink">HD</span>
                     <span>DS hóa đơn</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-green">ON</span>
-                    <span>Đơn hàng online</span>
-                </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="returns">
                     <span class="app-icon app-orange">ĐR</span>
                     <span>Đổi trả hàng</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-cyan">YC</span>
-                    <span>YC điều chuyển</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-green">NT</span>
-                    <span>Nạp tiền TT</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-indigo">TC</span>
-                    <span>Thu chi</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-blue">MH</span>
-                    <span>Màn hình phụ</span>
-                </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="print">
                     <span class="app-icon app-orange">IN</span>
                     <span>Máy in - Mẫu in</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="daily-report">
                     <span class="app-icon app-teal">BC</span>
                     <span>Báo cáo theo ngày</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="access-log">
                     <span class="app-icon app-gray">NK</span>
                     <span>Nhật ký truy cập</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="management">
                     <span class="app-icon app-indigo">QL</span>
                     <span>Trang quản lý</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="display">
                     <span class="app-icon app-blue">TH</span>
                     <span>Thiết lập hiển thị</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="einvoice">
                     <span class="app-icon app-pink">MT</span>
                     <span>HĐĐT từ MTT</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="guide">
                     <span class="app-icon app-purple">HD</span>
                     <span>Hướng dẫn</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="feedback">
                     <span class="app-icon app-cyan">GY</span>
                     <span>Góp ý cải tiến</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="intro">
                     <span class="app-icon app-orange">GT</span>
                     <span>Giới thiệu</span>
                 </button>
@@ -223,6 +229,49 @@ function ensureAppMenuModal() {
         </div>
     `;
     document.body.appendChild(modal);
+}
+
+function resolveAppRoute(target) {
+    switch (target) {
+        case 'pos':
+            return '/pages/employee-dashboard.html';
+        case 'orders':
+            return '/pages/order-list.html';
+        case 'invoices':
+            return '/pages/invoice-list.html';
+        case 'online-orders':
+            return '/pages/online-orders.html';
+        case 'returns':
+            return '/pages/return-orders.html';
+        case 'transfers':
+            return '/pages/transfer-requests.html';
+        case 'topup':
+            return '/pages/topup-wallet.html';
+        case 'cashflow':
+            return '/pages/cashflow.html';
+        case 'secondary':
+            return '/pages/secondary-screen.html';
+        case 'print':
+            return '/pages/print-templates.html';
+        case 'daily-report':
+            return '/pages/daily-report.html';
+        case 'access-log':
+            return '/pages/access-log.html';
+        case 'management':
+            return '/pages/management.html';
+        case 'display':
+            return '/pages/display-settings.html';
+        case 'einvoice':
+            return '/pages/einvoice-mtt.html';
+        case 'guide':
+            return '/pages/guide.html';
+        case 'feedback':
+            return '/pages/feedback.html';
+        case 'intro':
+            return '/pages/introduction.html';
+        default:
+            return '';
+    }
 }
 
 function setupLogout() {
@@ -258,7 +307,6 @@ async function loadInvoices() {
         invoices = await response.json();
         renderInvoices(invoices || []);
     } catch (err) {
-        console.error('Error loading invoices', err);
         if (listEl) listEl.innerHTML = '';
         if (emptyEl) {
             emptyEl.textContent = 'Không thể tải dữ liệu hóa đơn';
@@ -268,22 +316,69 @@ async function loadInvoices() {
 }
 
 function applyFilters() {
-    const keyword = (document.getElementById('invoiceSearch')?.value || '').trim().toLowerCase();
-    const status = document.getElementById('statusFilter')?.value || 'all';
+    const preset = document.getElementById('datePreset')?.value || '';
+    const dateRange = resolveDateRange(preset, '');
+    const invoicePreset = document.getElementById('invoicePreset')?.value || 'today';
+    const invoiceRange = resolveInvoiceRange(invoicePreset);
+
+    const filterInvoiceNo = normalizeText(document.getElementById('filterInvoiceNo')?.value);
+    const filterInvoiceDate = document.getElementById('filterInvoiceDate')?.value || '';
+    const filterCreatedDate = document.getElementById('filterCreatedDate')?.value || '';
+    const filterOrderCode = normalizeText(document.getElementById('filterOrderCode')?.value);
+    const filterStatus = (document.getElementById('filterStatus')?.value || '').trim();
+    const filterCustomerCode = normalizeText(document.getElementById('filterCustomerCode')?.value);
+    const filterCustomerName = normalizeText(document.getElementById('filterCustomerName')?.value);
+    const filterCustomerPhone = normalizeText(document.getElementById('filterCustomerPhone')?.value);
+    const filterTotal = (document.getElementById('filterTotal')?.value || '').trim();
+    const filterNote = normalizeText(document.getElementById('filterNote')?.value);
+    const filterSales = normalizeText(document.getElementById('filterSales')?.value);
+    const filterCashier = normalizeText(document.getElementById('filterCashier')?.value);
+    const totalFilterRule = parseNumberFilter(filterTotal);
 
     const filtered = (invoices || []).filter(inv => {
-        const matchesStatus = status === 'all' || inv.status === status;
-        if (!matchesStatus) return false;
+        if (dateRange) {
+            const createdAt = new Date(inv.createdAt);
+            if (!Number.isNaN(createdAt.getTime())) {
+                if (createdAt < dateRange.start || createdAt > dateRange.end) {
+                    return false;
+                }
+            }
+        }
 
-        if (!keyword) return true;
-        const invoiceNumber = (inv.invoiceNumber || '').toLowerCase();
-        const customerName = (inv.customerName || '').toLowerCase();
-        const customerPhone = (inv.customerPhone || '').toLowerCase();
-        const cashierName = (inv.cashierName || inv.userName || '').toLowerCase();
-        return invoiceNumber.includes(keyword)
-            || customerName.includes(keyword)
-            || customerPhone.includes(keyword)
-            || cashierName.includes(keyword);
+        if (invoiceRange) {
+            const createdAt = new Date(inv.createdAt);
+            if (!Number.isNaN(createdAt.getTime())) {
+                if (createdAt < invoiceRange.start || createdAt > invoiceRange.end) {
+                    return false;
+                }
+            }
+        }
+
+        if (filterInvoiceDate && !matchesDate(inv.createdAt, filterInvoiceDate)) return false;
+        if (filterCreatedDate && !matchesDate(inv.createdAt, filterCreatedDate)) return false;
+
+        const invoiceNumber = normalizeText(inv.invoiceNumber || inv.orderCode || inv.code || (inv.id ? `HD-${inv.id}` : ''));
+        const orderCode = normalizeText(inv.orderCode || inv.code || '');
+        const customerCode = normalizeText(inv.customerCode || (inv.customerId ? `KH${String(inv.customerId).padStart(6, '0')}` : ''));
+        const customerName = normalizeText(inv.customerName || '');
+        const customerPhone = normalizeText(inv.customerPhone || '');
+        const salesName = normalizeText(inv.salesName || inv.userName || '');
+        const cashierName = normalizeText(inv.cashierName || inv.userName || '');
+        const note = normalizeText(inv.note || '');
+        const totalAmount = Number(inv.totalAmount) || 0;
+
+        if (filterStatus && inv.status !== filterStatus) return false;
+        if (filterInvoiceNo && !invoiceNumber.includes(filterInvoiceNo)) return false;
+        if (filterOrderCode && !orderCode.includes(filterOrderCode)) return false;
+        if (filterCustomerCode && !customerCode.includes(filterCustomerCode)) return false;
+        if (filterCustomerName && !customerName.includes(filterCustomerName)) return false;
+        if (filterCustomerPhone && !customerPhone.includes(filterCustomerPhone)) return false;
+        if (filterNote && !note.includes(filterNote)) return false;
+        if (filterSales && !salesName.includes(filterSales)) return false;
+        if (filterCashier && !cashierName.includes(filterCashier)) return false;
+        if (totalFilterRule && !totalFilterRule(totalAmount)) return false;
+
+        return true;
     });
 
     renderInvoices(filtered);
@@ -300,7 +395,7 @@ function renderInvoices(list) {
     if (!list || list.length === 0) {
         listEl.innerHTML = '';
         emptyEl.style.display = 'block';
-        if (countEl) countEl.textContent = '0';
+        if (countEl) countEl.textContent = '0 kết quả';
         if (totalEl) totalEl.textContent = formatPrice(0);
         return;
     }
@@ -308,28 +403,35 @@ function renderInvoices(list) {
     emptyEl.style.display = 'none';
 
     const total = list.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
-    if (countEl) countEl.textContent = String(list.length);
+    if (countEl) countEl.textContent = `${list.length} kết quả`;
     if (totalEl) totalEl.textContent = formatPrice(total);
 
     listEl.innerHTML = list.map(inv => {
         const createdAt = formatDate(inv.createdAt);
+        const invoiceDate = createdAt;
         const customerName = inv.customerName || 'Khách lẻ';
         const customerPhone = inv.customerPhone || '-';
-        const itemCount = inv.itemCount || 0;
         const statusInfo = mapStatus(inv.status);
+        const customerCode = inv.customerCode || (inv.customerId ? `KH${String(inv.customerId).padStart(6, '0')}` : '-');
+        const salesName = inv.salesName || inv.userName || '-';
+        const cashierName = inv.cashierName || inv.userName || '-';
+        const note = inv.note || '-';
 
         const invoiceCode = inv.invoiceNumber || inv.orderCode || inv.code || (inv.id ? `HD-${inv.id}` : '-');
         return `
             <div class="invoice-row">
-                <span>${escapeHtml(invoiceCode)}</span>
+                <span class="invoice-link" data-order-id="${inv.id || ''}">${escapeHtml(invoiceCode)}</span>
+                <span>${invoiceDate}</span>
                 <span>${createdAt}</span>
-                <span class="invoice-customer">
-                    <strong>${escapeHtml(customerName)}</strong>
-                    <span>${escapeHtml(customerPhone)}</span>
-                </span>
-                <span>${itemCount}</span>
-                <span>${formatPrice(inv.totalAmount || 0)}</span>
+                <span>-</span>
                 <span><span class="status-badge ${statusInfo.className}">${statusInfo.label}</span></span>
+                <span>${escapeHtml(customerCode)}</span>
+                <span>${escapeHtml(customerName)}</span>
+                <span>${escapeHtml(customerPhone)}</span>
+                <span>${formatPrice(inv.totalAmount || 0)}</span>
+                <span>${escapeHtml(note)}</span>
+                <span>${escapeHtml(salesName)}</span>
+                <span>${escapeHtml(cashierName)}</span>
             </div>
         `;
     }).join('');
@@ -376,4 +478,220 @@ function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function resolveDateRange(preset, pickedDate) {
+    const now = new Date();
+    if (pickedDate) {
+        const selected = new Date(pickedDate);
+        if (Number.isNaN(selected.getTime())) return null;
+        const start = new Date(selected.setHours(0, 0, 0, 0));
+        const end = new Date(selected.setHours(23, 59, 59, 999));
+        return { start, end };
+    }
+    if (preset === 'all') {
+        return null;
+    }
+    const end = new Date(now);
+    const start = new Date(now);
+    if (preset === 'week') {
+        start.setDate(start.getDate() - 6);
+    } else if (preset === 'month') {
+        start.setDate(start.getDate() - 29);
+    } else if (!preset) {
+        return null;
+    } else {
+        start.setHours(0, 0, 0, 0);
+    }
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+}
+
+function normalizeText(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function matchesDate(value, pickedDate) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+    const target = new Date(pickedDate);
+    if (Number.isNaN(target.getTime())) return false;
+    return date.toISOString().slice(0, 10) === target.toISOString().slice(0, 10);
+}
+
+function parseNumberFilter(raw) {
+    if (!raw) return null;
+    const cleaned = raw.replace(/\s+/g, '').replace(/,/g, '').replace(/\./g, '');
+    const match = cleaned.match(/^(<=|>=|=)?(\d+)$/);
+    if (!match) return null;
+    const op = match[1] || '';
+    const value = Number(match[2]);
+    if (!Number.isFinite(value)) return null;
+    if (op === '<=') return (n) => n <= value;
+    if (op === '>=') return (n) => n >= value;
+    if (op === '=') return (n) => n === value;
+    return (n) => String(Math.round(n)).includes(String(value));
+}
+
+function handleInvoicePreset() {
+    const preset = document.getElementById('invoicePreset')?.value || 'today';
+    const rangeGroup = document.getElementById('invoiceRangeGroup');
+    if (rangeGroup) {
+        rangeGroup.classList.toggle('show', preset === 'custom');
+    }
+    applyFilters();
+}
+
+function resolveInvoiceRange(preset) {
+    const now = new Date();
+    const start = new Date(now);
+    const end = new Date(now);
+    if (preset === 'custom') {
+        const from = document.getElementById('invoiceDateFrom')?.value || '';
+        const to = document.getElementById('invoiceDateTo')?.value || '';
+        if (!from || !to) return null;
+        const fromDate = new Date(from);
+        const toDate = new Date(to);
+        if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) return null;
+        fromDate.setHours(0, 0, 0, 0);
+        toDate.setHours(23, 59, 59, 999);
+        return { start: fromDate, end: toDate };
+    }
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    if (preset === 'today') {
+        return { start, end };
+    }
+    if (preset === 'yesterday') {
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+        return { start, end };
+    }
+    if (preset === 'thisWeek') {
+        const day = start.getDay() || 7;
+        start.setDate(start.getDate() - day + 1);
+        return { start, end };
+    }
+    if (preset === 'lastWeek') {
+        const day = start.getDay() || 7;
+        end.setDate(end.getDate() - day);
+        start.setDate(end.getDate() - 6);
+        return { start, end };
+    }
+    if (preset === 'thisMonth') {
+        start.setDate(1);
+        return { start, end };
+    }
+    if (preset === 'lastMonth') {
+        start.setMonth(start.getMonth() - 1, 1);
+        end.setDate(0);
+        return { start, end };
+    }
+    if (preset === 'last3Months') {
+        start.setMonth(start.getMonth() - 2, 1);
+        return { start, end };
+    }
+    if (preset === 'last6Months') {
+        start.setMonth(start.getMonth() - 5, 1);
+        return { start, end };
+    }
+    return null;
+}
+
+function setupInvoiceDetailModal() {
+    const modal = document.getElementById('invoiceDetailModal');
+    const closeBtn = document.getElementById('closeInvoiceDetail');
+    if (!modal) return;
+
+    const close = () => {
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    };
+    closeBtn?.addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            close();
+        }
+    });
+}
+
+async function openInvoiceDetail(orderId) {
+    const modal = document.getElementById('invoiceDetailModal');
+    const itemsEl = document.getElementById('invoiceDetailItems');
+    if (!modal || !itemsEl) return;
+
+    itemsEl.innerHTML = '<div class="detail-row"><span>Đang tải...</span></div>';
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+
+    try {
+        const response = await fetch(`${API_BASE}/orders/${orderId}`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
+            throw new Error('Không tải được hóa đơn');
+        }
+
+        const data = await response.json();
+        renderInvoiceDetail(data);
+    } catch (err) {
+        itemsEl.innerHTML = '<div class="detail-row"><span>Không thể tải dữ liệu</span></div>';
+    }
+}
+
+function renderInvoiceDetail(data) {
+    if (!data) return;
+    setText('detailInvoiceNumber', data.invoiceNumber || '-');
+    setText('detailEmployee', data.salesName || data.userName || '-');
+    setText('detailCashier', data.cashierName || data.userName || '-');
+    const customerName = data.customerName || 'Khách lẻ';
+    const customerPhone = data.customerPhone || '';
+    setText('detailCustomer', customerPhone ? `${customerName} (${customerPhone})` : customerName);
+
+    const itemsEl = document.getElementById('invoiceDetailItems');
+    const items = Array.isArray(data.items) ? data.items : [];
+    if (!itemsEl) return;
+
+    if (items.length === 0) {
+        itemsEl.innerHTML = '<div class="detail-row"><span>Không có sản phẩm</span></div>';
+        return;
+    }
+
+    itemsEl.innerHTML = items.map(item => {
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.price) || 0;
+        const baseTotal = Number(item.lineTotal) || unitPrice * quantity;
+        const discountPercent = Number(item.discountPercent) || 0;
+        const discountAmount = Number(item.discountAmount) || 0;
+        const discountValue = discountPercent > 0
+            ? baseTotal * (discountPercent / 100)
+            : discountAmount;
+        const lineTotal = Math.max(0, baseTotal - discountValue);
+        const taxRate = Number(item.taxRate) || 0;
+        return `
+            <div class="detail-row">
+                <span class="detail-item-name">
+                    ${escapeHtml(item.productName || '-')}${item.productCode ? `<small>${escapeHtml(item.productCode)}</small>` : ''}
+                </span>
+                <span>${escapeHtml(item.unit || '-')}</span>
+                <span>${quantity}</span>
+                <span>${formatPrice(unitPrice)}</span>
+                <span>${formatPrice(lineTotal)}</span>
+                <span class="detail-tax">${taxRate ? `${taxRate}%` : '0%'}</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+    }
 }

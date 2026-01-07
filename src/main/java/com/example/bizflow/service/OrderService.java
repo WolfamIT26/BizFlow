@@ -40,13 +40,19 @@ public class OrderService {
     public List<OrderSummaryResponse> getAllOrderSummaries() {
         return orderRepository.findAllByOrderByCreatedAtDesc()
                 .stream()
+                .peek(this::ensureInvoiceNumber)
                 .map(this::mapToSummary)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Optional<OrderResponse> getOrderDetail(Long id) {
-        return orderRepository.findByIdWithDetails(id).map(this::mapToResponse);
+        return orderRepository.findByIdWithDetails(id)
+                .map(order -> {
+                    ensureInvoiceNumber(order);
+                    return order;
+                })
+                .map(this::mapToResponse);
     }
 
     @Transactional(readOnly = true)
@@ -58,14 +64,19 @@ public class OrderService {
     public List<OrderSummaryResponse> getCustomerOrderHistory(Long customerId) {
         return orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId)
                 .stream()
+                .peek(this::ensureInvoiceNumber)
                 .map(this::mapToSummary)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public String generateInvoiceNumber(boolean isReturn) {
-        String yymm = LocalDate.now().format(DateTimeFormatter.ofPattern("yyMM"));
-        String basePrefix = invoiceBranchPrefix + "-" + yymm;
+        return generateInvoiceNumberForDate(LocalDate.now(), isReturn);
+    }
+
+    public String generateInvoiceNumberForDate(LocalDate date, boolean isReturn) {
+        String yymmdd = date.format(DateTimeFormatter.ofPattern("yyMMdd"));
+        String basePrefix = invoiceBranchPrefix + "-" + yymmdd;
         int nextSeq = 1;
         Optional<Order> latest = orderRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(basePrefix);
         if (latest.isPresent() && latest.get().getInvoiceNumber() != null) {
@@ -77,7 +88,7 @@ public class OrderService {
         }
         String number = String.format("%s%05d", basePrefix, nextSeq);
         if (isReturn) {
-            number += "-TH";
+            number += "TH";
         }
         return number;
     }
@@ -162,14 +173,35 @@ public class OrderService {
             return 0;
         }
         int start = basePrefix.length();
-        if (invoiceNumber.length() < start + 5) {
+        String trimmed = invoiceNumber;
+        if (trimmed.endsWith("TH")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 2);
+        }
+        if (trimmed.length() < start + 5) {
             return 0;
         }
-        String digits = invoiceNumber.substring(start, start + 5);
+        String digits = trimmed.substring(start, start + 5);
         try {
             return Integer.parseInt(digits);
         } catch (NumberFormatException ex) {
             return 0;
         }
+    }
+
+    private void ensureInvoiceNumber(Order order) {
+        if (order == null) {
+            return;
+        }
+        String current = order.getInvoiceNumber();
+        if (current != null && !current.trim().isEmpty()) {
+            return;
+        }
+        LocalDate date = order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : LocalDate.now();
+        boolean isReturn = Boolean.TRUE.equals(order.getReturnOrder());
+        order.setInvoiceNumber(generateInvoiceNumberForDate(date, isReturn));
+        if (order.getStatus() == null || order.getStatus().trim().isEmpty()) {
+            order.setStatus(isReturn ? "RETURNED" : "PAID");
+        }
+        orderRepository.save(order);
     }
 }

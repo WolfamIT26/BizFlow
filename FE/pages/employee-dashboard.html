@@ -12,6 +12,7 @@
             <div class="logo-mark" aria-label="BizFlow">
                 BizFlow POS
             </div>
+            <span class="app-icon app-blue app-badge">BH</span>
             <div class="order-tabs" id="orderTabs">
                 <button class="order-tab active" data-invoice-id="default">Hóa đơn 1 <span class="tab-close">×</span></button>
                 <button class="order-tab ghost" id="addInvoiceBtn" title="Thêm hóa đơn">+</button>
@@ -257,7 +258,7 @@
             <div class="payment-panel">
                 <div class="invoice-toggle">
                     <label class="switch">
-                        <input type="checkbox" checked>
+                        <input type="checkbox" id="printInvoiceToggle" checked>
                         <span class="slider"></span>
                     </label>
                     <span>In hóa đơn</span>
@@ -474,6 +475,55 @@
         </div>
     </div>
 
+    <div class="modal" id="invoiceModal" aria-hidden="true">
+        <div class="modal-content invoice-modal">
+            <div class="modal-header">
+                <h3>Hóa đơn thanh toán</h3>
+                <button id="closeInvoiceModal" class="icon-btn small" type="button" aria-label="Đóng">×</button>
+            </div>
+            <div class="invoice-receipt" id="invoiceReceipt">
+                <div class="receipt-header">
+                    <div class="receipt-brand">BizFlow POS</div>
+                    <div class="receipt-meta">
+                        <div>Mã hóa đơn: <strong id="invoiceCode">-</strong></div>
+                        <div>Thời gian: <span id="invoiceDate">-</span></div>
+                    </div>
+                </div>
+                <div class="receipt-section">
+                    <div>Thu ngân: <span id="invoiceCashier">-</span></div>
+                    <div>Khách hàng: <span id="invoiceCustomer">-</span></div>
+                    <div>SĐT: <span id="invoicePhone">-</span></div>
+                    <div>Thanh toán: <span id="invoiceMethod">-</span></div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-items">
+                    <div class="receipt-item header">
+                        <span>SP</span>
+                        <span>SL</span>
+                        <span>Đơn giá</span>
+                        <span>Thành tiền</span>
+                    </div>
+                    <div id="invoiceItems"></div>
+                </div>
+                <div class="receipt-divider"></div>
+                <div class="receipt-totals">
+                    <div><span>Tạm tính</span><span id="invoiceSubtotal">0đ</span></div>
+                    <div><span>Tổng cộng</span><span id="invoiceTotal">0đ</span></div>
+                    <div><span>Tiền khách đưa</span><span id="invoiceCashReceived">0đ</span></div>
+                    <div><span>Trả lại</span><span id="invoiceChange">0đ</span></div>
+                </div>
+                <div class="receipt-note" id="invoiceNoteWrap">
+                    <span>Ghi chú:</span>
+                    <span id="invoiceNote">-</span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="ghost-btn" id="printInvoiceBtn">In lại</button>
+                <button class="primary-btn" id="closeInvoiceBtn">Đóng</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal" id="productDetailModal" aria-hidden="true">
         <div class="modal-content">
             <div class="modal-header">
@@ -604,75 +654,51 @@
                 <button id="closeAppMenu" class="icon-btn small" type="button" aria-label="Đóng">×</button>
             </div>
             <div class="app-menu-grid">
-                <button class="app-tile">
+                <button class="app-tile" data-app="pos">
                     <span class="app-icon app-blue">BH</span>
                     <span>Bán hàng</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-purple">ĐH</span>
-                    <span>Đơn hàng</span>
-                </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="invoices">
                     <span class="app-icon app-pink">HD</span>
                     <span>DS hóa đơn</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-green">ON</span>
-                    <span>Đơn hàng online</span>
-                </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="returns">
                     <span class="app-icon app-orange">ĐR</span>
                     <span>Đổi trả hàng</span>
                 </button>
-                <button class="app-tile">
-                    <span class="app-icon app-cyan">YC</span>
-                    <span>YC điều chuyển</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-green">NT</span>
-                    <span>Nạp tiền TT</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-indigo">TC</span>
-                    <span>Thu chi</span>
-                </button>
-                <button class="app-tile">
-                    <span class="app-icon app-blue">MH</span>
-                    <span>Màn hình phụ</span>
-                </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="print">
                     <span class="app-icon app-orange">IN</span>
                     <span>Máy in - Mẫu in</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="daily-report">
                     <span class="app-icon app-teal">BC</span>
                     <span>Báo cáo theo ngày</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="access-log">
                     <span class="app-icon app-gray">NK</span>
                     <span>Nhật ký truy cập</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="management">
                     <span class="app-icon app-indigo">QL</span>
                     <span>Trang quản lý</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="display">
                     <span class="app-icon app-blue">TH</span>
                     <span>Thiết lập hiển thị</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="einvoice">
                     <span class="app-icon app-pink">MT</span>
                     <span>HĐĐT từ MTT</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="guide">
                     <span class="app-icon app-purple">HD</span>
                     <span>Hướng dẫn</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="feedback">
                     <span class="app-icon app-cyan">GY</span>
                     <span>Góp ý cải tiến</span>
                 </button>
-                <button class="app-tile">
+                <button class="app-tile" data-app="intro">
                     <span class="app-icon app-orange">GT</span>
                     <span>Giới thiệu</span>
                 </button>
@@ -723,5 +749,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="../assets/js/employee-dashboard.js"></script>
+    <script src="../assets/js/app-shell.js"></script>
 </body>
 </html>

@@ -4,7 +4,6 @@ import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.entity.Customer;
 import com.example.bizflow.repository.CustomerRepository;
 import com.example.bizflow.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;

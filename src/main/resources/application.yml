@@ -37,5 +37,5 @@ app:
 
 logging:
   level:
-    root: INFO
-    com.example.bizflow: DEBUG
+    root: WARN
+    com.example.bizflow: WARN
