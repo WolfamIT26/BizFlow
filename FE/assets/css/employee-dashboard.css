@@ -1253,6 +1253,98 @@
     margin-bottom: 10px;
 }
 
+/* Transfer QR modal specific styles */
+.modal-content.transfer-qr {
+    width: min(760px, 92vw);
+    padding: 20px;
+}
+
+.transfer-qr-body {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.qr-column {
+    flex: 0 0 260px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-column #qrCodeContainer {
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+/* Enhanced QR card visuals */
+.qr-card {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.bank-logo {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 48px;
+    height: 48px;
+    border-radius: 6px;
+    background: #fff;
+    padding: 4px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    object-fit: contain;
+    display: none;
+    z-index: 2;
+}
+.qr-box img, .qr-box canvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+}
+.qr-payload {
+    margin-top: 8px;
+    word-break: break-word;
+    color: #333;
+    font-size: 13px;
+    text-align: center;
+}
+.qr-actions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+.qr-actions .ghost-btn.mini {
+    padding: 6px 8px;
+    font-size: 13px;
+}
+.qr-note {
+    text-align: center;
+    margin-top: 6px;
+    color: #666;
+    font-size: 13px;
+}
+
+.info-box .payment-token {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: #f5f7fb;
+    border-radius: 6px;
+    word-break: break-all;
+}
+
+
+.info-column {
+    flex: 1 1 360px;
+}
+
 .customer-modal .form-field {
     font-size: 12px;
     color: #6b7280;

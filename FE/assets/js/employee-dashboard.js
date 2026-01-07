@@ -366,7 +366,8 @@ async function createOrder(isPaid) {
         userId,
         customerId,
         paid: isPaid,
-        paymentMethod: isPaid ? currentPaymentMethod : null,
+        // Always send the chosen payment method so backend can create pending transfer payments with tokens
+        paymentMethod: currentPaymentMethod,
         items: cart.map(item => ({
             productId: item.productId,
             quantity: item.quantity
@@ -390,14 +391,213 @@ async function createOrder(isPaid) {
         }
 
         const data = await res.json();
-        alert(isPaid ? `Thanh toán thành công. Mã đơn: ${data.orderId}` : `Đã lưu tạm đơn: ${data.orderId}`);
-        clearCart(true);
-        saveActiveInvoiceState();
+        console.log('createOrder response:', data);
+        if (isPaid) {
+            alert(`Thanh toán thành công. Mã đơn: ${data.orderId}`);
+            clearCart(true);
+            saveActiveInvoiceState();
+        } else {
+            // Created unpaid order: keep cart so cashier can confirm after transfer
+            alert(`Đã tạo đơn chờ thanh toán. Mã đơn: ${data.orderId}`);
+        }
+        return data;
     } catch (err) {
         alert('Lỗi kết nối khi tạo đơn hàng.');
         console.error(err);
     }
 }
+
+// ----- Transfer QR modal & payment helpers -----
+function showTransferQrModal(orderId, amount, token) {
+    console.log('showTransferQrModal called with', { orderId, amount, token });
+    const modal = document.getElementById('transferQrModal');
+    if (!modal) return;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.getElementById('transferOrderId').textContent = orderId;
+    document.getElementById('transferOrderIdSmall').textContent = orderId;
+    document.getElementById('transferAmount').textContent = formatPrice(amount);
+
+    // Ensure token is present (backend token preferred)
+    let displayToken = token;
+    if (displayToken) {
+        const tokenEl = document.getElementById('transferPaymentToken');
+        if (tokenEl) tokenEl.textContent = displayToken;
+    } else {
+        displayToken = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
+        const tokenEl = document.getElementById('transferPaymentToken');
+        if (tokenEl) tokenEl.textContent = displayToken + ' (mã tượng trưng)';
+    }
+
+    // Build a compact human-friendly payload (not VietQR-standardized here)
+    const bankCode = 'VCB';
+    const account = '1021209511';
+    const accountName = 'BIZFLOW CO';
+    const payload = `BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
+
+    const payloadEl = document.getElementById('transferPayload');
+    if (payloadEl) {
+        // Show VietQR human-readable summary
+        payloadEl.textContent = `VietQR • ${bankCode} • ${account} • ${accountName} • ${formatPrice(amount)}`;
+    }
+
+    // Bank logo mapping (add known logos here)
+    const bankLogos = {
+        VCB: 'https://img.vietqr.io/image/vietcombank-1021209511-compact.jpg'
+    };
+    const logoUrl = bankLogos[bankCode];
+    const logoEl = document.getElementById('transferBankLogo');
+    if (logoEl) {
+        if (logoUrl) {
+            logoEl.src = logoUrl;
+            logoEl.style.display = '';
+        } else {
+            logoEl.style.display = 'none';
+        }
+    }
+
+    // Generate VietQR image using VietQR.io Quick Link (preferred) and provide robust fallbacks
+    const qrContainer = document.getElementById('qrCodeContainer');
+
+    // Build VietQR Quick Link URL
+    // Format: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<DESCRIPTION>&accountName=<ACCOUNT_NAME>
+    const bankQuickId = 'VCB'; // bank identifier for VietQR quicklink (VCB for Vietcombank)
+    const template = 'compact'; // compact template includes logos and info
+    const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
+    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toán đơn #' + orderId)}`;
+    const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
+    const qrQuicklinkBase = `https://img.vietqr.io/image/${bankQuickId}-${account}-${template}.png`;
+    const qrImgUrl = qrQuicklinkBase + (amountParam || addInfoParam || accountNameParam ? `?${[amountParam, addInfoParam, accountNameParam].filter(Boolean).join('&')}` : '');
+
+    if (qrContainer) {
+        qrContainer.innerHTML = '';
+        const img = document.createElement('img');
+        img.alt = 'VietQR';
+        img.width = 260;
+        img.height = 260;
+        img.style.maxWidth = '100%';
+        img.style.borderRadius = '8px';
+        img.src = qrImgUrl;
+
+        // Successful image load -> use it
+        img.onload = () => {
+            qrContainer.innerHTML = '';
+            qrContainer.appendChild(img);
+        };
+
+        // If quicklink image fails (network, API), fallback to client-side QR generation using the readable payload
+        img.onerror = async () => {
+            qrContainer.innerHTML = '';
+            try {
+                // As a fallback, build a simple VietQR-like payload string (not formally signed) so banking apps may still recognize amount/account
+                const fallbackPayload = `VietQR|BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
+                if (window.QRCode) {
+                    new QRCode(qrContainer, { text: fallbackPayload, width: 260, height: 260 });
+                    const inner = qrContainer.querySelector('img,canvas');
+                    if (inner) inner.style.borderRadius = '8px';
+                } else {
+                    // Last resort show token and short payload
+                    qrContainer.textContent = `Mã: ${displayToken}`;
+                }
+            } catch (e) {
+                console.warn('QR generation failed', e);
+                qrContainer.textContent = `Mã: ${displayToken}`;
+            }
+        };
+
+        qrContainer.appendChild(img);
+    }
+
+    // Download QR handler (fetch the image blob from quicklink and force download)
+    const downloadBtn = document.getElementById('downloadQrBtn');
+    if (downloadBtn) {
+        downloadBtn.onclick = async () => {
+            try {
+                const res = await fetch(qrImgUrl);
+                if (!res.ok) throw new Error('Failed to download QR image');
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `vietqr-order-${orderId}.png`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Không thể tải mã QR.');
+                console.error(e);
+            }
+        };
+    }
+
+    // Copy token handler
+    const copyBtn = document.getElementById('copyTokenBtn');
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(displayToken);
+                alert('Đã sao chép mã thanh toán');
+            } catch (e) {
+                alert('Không thể sao chép mã.');
+                console.error(e);
+            }
+        };
+    }
+}
+
+// Duplicate showTransferQrModal removed — using the enhanced implementation above.
+
+async function payOrder(orderId) {
+    try {
+        const token = document.getElementById('transferPaymentToken')?.textContent || null;
+        const body = { method: 'TRANSFER' };
+        if (token) body.token = token;
+
+        const res = await fetch(`${API_BASE}/orders/${orderId}/pay`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            alert(text || 'Không thể xác nhận thanh toán.');
+            return;
+        }
+        alert('✅ Thanh toán chuyển khoản được xác nhận.');
+        hideTransferQrModal();
+        clearCart(true);
+        saveActiveInvoiceState();
+    } catch (err) {
+        alert('Lỗi kết nối khi xác nhận thanh toán.');
+        console.error(err);
+    }
+}
+
+function hideTransferQrModal() {
+    const modal = document.getElementById('transferQrModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+// Duplicate payOrder removed — using the token-aware implementation above.
+
+// wire modal buttons
+document.addEventListener('DOMContentLoaded', () => {
+    const confirmBtn = document.getElementById('transferConfirmBtn');
+    const closeBtn = document.getElementById('transferCloseBtn');
+    const cancelBtn = document.getElementById('transferCancelBtn');
+    if (confirmBtn) confirmBtn.addEventListener('click', async () => {
+        const orderId = document.getElementById('transferOrderId').textContent;
+        await payOrder(orderId);
+    });
+    if (closeBtn) closeBtn.addEventListener('click', hideTransferQrModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideTransferQrModal);
+});
 
 function renderCart() {
     const cartContainer = document.getElementById('cartItems');
@@ -506,6 +706,10 @@ function updateTotal() {
     document.getElementById('amountDue').textContent = formatPrice(total);
     updateChangeDue(total);
     setDefaultTierByTotal(total);
+}
+
+function getTotalAmount() {
+    return cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
 }
 
 function formatPrice(price) {
@@ -691,9 +895,22 @@ function setupEventListeners() {
         saveDraftInvoice();
     });
 
-    document.getElementById('checkoutBtn').addEventListener('click', () => {
+    document.getElementById('checkoutBtn').addEventListener('click', async () => {
+        // If transfer selected, create unpaid order then show QR code
+        if (currentPaymentMethod === 'TRANSFER') {
+            const res = await createOrder(false);
+            if (res && res.orderId) {
+                const amount = res.totalAmount ? parseFloat(res.totalAmount) : getTotalAmount();
+                const token = res.paymentToken || res.token || null;
+                showTransferQrModal(res.orderId, amount, token);
+            }
+            return;
+        }
+
+        // Other methods proceed as before
         createOrder(true);
     });
+
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
         if (confirm('Đăng xuất?')) {

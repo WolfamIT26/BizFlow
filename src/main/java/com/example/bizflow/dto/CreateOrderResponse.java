@@ -7,17 +7,25 @@ public class CreateOrderResponse {
     private BigDecimal totalAmount;
     private Integer itemCount;
     private Boolean paid;
-    private String invoiceNumber;
+    private String paymentToken;
 
     public CreateOrderResponse() {
     }
 
-    public CreateOrderResponse(Long orderId, BigDecimal totalAmount, Integer itemCount, Boolean paid, String invoiceNumber) {
+    public CreateOrderResponse(Long orderId, BigDecimal totalAmount, Integer itemCount, Boolean paid, String paymentToken) {
         this.orderId = orderId;
         this.totalAmount = totalAmount;
         this.itemCount = itemCount;
         this.paid = paid;
-        this.invoiceNumber = invoiceNumber;
+        this.paymentToken = paymentToken;
+    }
+
+    public String getPaymentToken() {
+        return paymentToken;
+    }
+
+    public void setPaymentToken(String paymentToken) {
+        this.paymentToken = paymentToken;
     }
 
     public Long getOrderId() {
@@ -50,13 +58,5 @@ public class CreateOrderResponse {
 
     public void setPaid(Boolean paid) {
         this.paid = paid;
-    }
-
-    public String getInvoiceNumber() {
-        return invoiceNumber;
-    }
-
-    public void setInvoiceNumber(String invoiceNumber) {
-        this.invoiceNumber = invoiceNumber;
     }
 }
