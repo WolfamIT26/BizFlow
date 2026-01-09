@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,33 @@ public class OrderController {
     @PostMapping
 @Transactional
 public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
+    @GetMapping("/summary")
+    public ResponseEntity<List<OrderSummaryResponse>> getOrderSummaries() {
+        return ResponseEntity.ok(orderService.getAllOrderSummaries());
+    }
+
+    @GetMapping("/returns/search")
+    public ResponseEntity<List<OrderSummaryResponse>> searchPaidOrders(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
+        java.time.LocalDateTime from = null;
+        java.time.LocalDateTime to = null;
+        if (fromDate != null && !fromDate.trim().isEmpty()) {
+            from = java.time.LocalDate.parse(fromDate.trim()).atStartOfDay();
+        }
+        if (toDate != null && !toDate.trim().isEmpty()) {
+            to = java.time.LocalDate.parse(toDate.trim()).atTime(23, 59, 59);
+        }
+        return ResponseEntity.ok(orderService.searchPaidOrdersByKeyword(keyword, from, to));
+    }
+
+    @GetMapping("/number/{invoiceNumber}")
+    public ResponseEntity<?> getOrderByInvoiceNumber(@PathVariable String invoiceNumber) {
+        return orderService.getOrderByInvoiceNumber(invoiceNumber)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 
     if (request.getItems() == null || request.getItems().isEmpty()) {
         return ResponseEntity.badRequest().body("Order items are required");
@@ -84,6 +112,67 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
         Order order = new Order();
         order.setUser(user);
         order.setCustomer(customer);
+        String orderType = request.getOrderType();
+        boolean isReturn = Boolean.TRUE.equals(request.getReturnOrder())
+                || "RETURN".equalsIgnoreCase(orderType);
+        boolean isExchange = "EXCHANGE".equalsIgnoreCase(orderType);
+        if (isReturn && orderType == null) {
+            orderType = "RETURN";
+        }
+        if (isExchange && orderType == null) {
+            orderType = "EXCHANGE";
+        }
+        boolean paid = Boolean.TRUE.equals(request.getPaid());
+
+        Order order = new Order();
+        order.setUser(user);
+        order.setCustomer(customer);
+        order.setReturnOrder(isReturn);
+        order.setOrderType(orderType);
+        order.setStatus(isReturn ? "RETURNED" : (paid ? "PAID" : "UNPAID"));
+        order.setInvoiceNumber(orderService.generateInvoiceNumberForDate(LocalDate.now(), orderType));
+        if (request.getOriginalOrderId() != null) {
+            orderRepository.findById(request.getOriginalOrderId()).ifPresent(order::setParentOrder);
+        }
+        if (isReturn) {
+            order.setRefundMethod(request.getRefundMethod());
+            order.setReturnReason(request.getReturnReason());
+            order.setReturnNote(request.getReturnNote());
+        }
+        order.setNote(request.getReturnNote());
+
+        BigDecimal total = BigDecimal.ZERO;
+        List<OrderItem> orderItems = new ArrayList<>();
+        for (OrderItemRequest itemRequest : request.getItems()) {
+            if (itemRequest == null || itemRequest.getProductId() == null) {
+                return ResponseEntity.badRequest().body("Product id is required.");
+            }
+
+            int qty = itemRequest.getQuantity() == null ? 0 : itemRequest.getQuantity();
+            if (!isExchange && qty <= 0) {
+                return ResponseEntity.badRequest().body("Quantity must be greater than 0.");
+            }
+            if (isExchange && qty == 0) {
+                return ResponseEntity.badRequest().body("Quantity must not be 0.");
+            }
+
+            Long productId = itemRequest.getProductId();
+            Product product = productRepository.findById(productId).orElse(null);
+            if (product == null) {
+                return ResponseEntity.badRequest().body("Product not found: " + productId);
+            }
+
+            BigDecimal price = product.getPrice() == null ? BigDecimal.ZERO : product.getPrice();
+            BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
+            total = total.add(lineTotal);
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setProduct(product);
+            orderItem.setQuantity(qty);
+            orderItem.setPrice(price);
+            orderItems.add(orderItem);
+        }
 
     BigDecimal total = BigDecimal.ZERO;
     List<OrderItem> items = new ArrayList<>();

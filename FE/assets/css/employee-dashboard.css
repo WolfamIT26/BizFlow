@@ -711,6 +711,18 @@
     border-bottom: 1px solid #eef1f7;
 }
 
+.cart-row.return-item {
+    background: #fef5f5;
+    border-color: #f2c9c9;
+}
+
+.cart-item-locked {
+    font-size: 11px;
+    color: #d97706;
+    font-weight: 700;
+    text-align: center;
+}
+
 .cart-row.header {
     font-weight: 700;
     color: #2f3644;
@@ -1802,25 +1814,29 @@
 }
 
 .app-icon {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
     display: grid;
     place-items: center;
     font-weight: 700;
     color: #fff;
-    font-size: 11px;
+    font-size: 13px;
 }
 
 .app-badge {
-    width: 28px;
-    height: 28px;
+    width: 34px;
+    height: 34px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: 14px;
 }
 
 .header-left .app-badge {
     margin-left: 8px;
+}
+
+.pos-header .page-title {
+    display: none;
 }
 
 .basic-page {
