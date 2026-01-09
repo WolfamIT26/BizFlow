@@ -865,7 +865,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
         </div>
     `).join('');
 }
@@ -888,7 +888,6 @@ function setQty(idx, value) {
 }
 
 function removeFromCart(idx) {
-    if (cart[idx]?.isReturnItem) return;
     cart.splice(idx, 1);
     renderCart();
     updateTotal();
@@ -1399,7 +1398,7 @@ function setupInvoiceTabs() {
         if (closeBtn) {
             e.stopPropagation();
             const invoiceId = closeBtn.getAttribute('data-close');
-            if (invoiceId && confirm('Xóa hóa đơn này?')) {
+            if (invoiceId) {
                 removeInvoice(invoiceId);
             }
             return;
