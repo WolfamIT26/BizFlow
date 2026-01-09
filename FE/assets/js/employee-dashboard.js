@@ -1296,19 +1296,11 @@ function getNextInvoiceNumberFromAll() {
 
 function createInvoiceState(name) {
     const id = `invoice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-<<<<<<< HEAD
-    const sequence = getNextInvoiceSequence();
-    return {
-        id,
-        sequence,
-        name: name || `H\u00f3a \u0111\u01a1n ${sequence}`,
-=======
     const nextNumber = getNextInvoiceNumber();
     invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
     return {
         id,
         name: name || `Hóa đơn ${nextNumber}`,
->>>>>>> b0ed2207297662131e066b02ee447226f315f225
         cart: [],
         selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
         paymentMethod: 'CASH',
@@ -1320,28 +1312,6 @@ function createInvoiceState(name) {
     };
 }
 
-function getNextInvoiceSequence() {
-    const used = [];
-    const collect = (list) => {
-        (list || []).forEach(inv => {
-            if (Number.isFinite(inv?.sequence)) {
-                used.push(inv.sequence);
-                return;
-            }
-            const match = String(inv?.name || '').match(/(\d+)\s*$/);
-            if (match) {
-                used.push(parseInt(match[1], 10));
-            }
-        });
-    };
-    collect(invoices);
-    collect(savedInvoices);
-    const maxUsed = used.length ? Math.max(...used) : 0;
-    if (invoiceSequence <= maxUsed) {
-        invoiceSequence = maxUsed + 1;
-    }
-    return invoiceSequence++;
-}
 
 function getActiveInvoice() {
     return invoices.find(inv => inv.id === activeInvoiceId) || null;
