@@ -50,9 +50,11 @@ app:
     secret: my-secret-key-for-jwt-token-generation-and-verification
     access-token-expiration: 3600000
     refresh-token-expiration: 86400000
+  invoice:
+    branch-prefix: TC
 
 # ================= LOGGING =================
 logging:
   level:
-    root: INFO
-    com.example.bizflow: DEBUG
+    root: WARN
+    com.example.bizflow: WARN

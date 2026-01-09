@@ -4,6 +4,52 @@ let currentEditingBranchId = null;
 let allUsers = [];
 let allBranches = [];
 
+function showPopup(message, options = {}) {
+    const { title = 'Thông báo', type = 'info' } = options;
+    let modal = document.getElementById('appPopup');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'appPopup';
+        modal.className = 'app-popup';
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="app-popup-card" role="dialog" aria-modal="true">
+                <div class="app-popup-header">
+                    <h3 id="appPopupTitle"></h3>
+                    <button type="button" class="close" id="appPopupClose" aria-label="Đóng">×</button>
+                </div>
+                <div id="appPopupMessage" class="app-popup-message"></div>
+                <div class="app-popup-actions">
+                    <button type="button" class="btn-primary" id="appPopupOk">Đóng</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const closePopup = () => {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        };
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closePopup();
+            }
+        });
+        modal.querySelector('#appPopupClose')?.addEventListener('click', closePopup);
+        modal.querySelector('#appPopupOk')?.addEventListener('click', closePopup);
+    }
+
+    const titleEl = modal.querySelector('#appPopupTitle');
+    const messageEl = modal.querySelector('#appPopupMessage');
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message || '';
+
+    modal.classList.remove('type-info', 'type-success', 'type-error');
+    modal.classList.add(`type-${type}`);
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadUserInfo();
@@ -107,7 +153,6 @@ async function loadDashboard() {
         document.getElementById('totalOwners').textContent = owners;
         document.getElementById('totalEmployees').textContent = employees;
     } catch (error) {
-        console.error('Error loading dashboard:', error);
     }
 }
 
@@ -122,7 +167,6 @@ async function loadUsers() {
         renderUsersTable();
         populateOwnerSelect();
     } catch (error) {
-        console.error('Error loading users:', error);
     }
 }
 
@@ -172,7 +216,7 @@ async function deleteUser(id) {
         });
         loadUsers();
     } catch (error) {
-        alert('Lỗi xóa người dùng: ' + error.message);
+        showPopup('Lỗi xóa người dùng: ' + error.message, { type: 'error' });
     }
 }
 
@@ -211,10 +255,10 @@ async function saveUser(e) {
             loadUsers();
             loadDashboard();
         } else {
-            alert('Lỗi: ' + await response.text());
+            showPopup('Lỗi: ' + await response.text(), { type: 'error' });
         }
     } catch (error) {
-        alert('Lỗi: ' + error.message);
+        showPopup('Lỗi: ' + error.message, { type: 'error' });
     }
 }
 
@@ -228,7 +272,6 @@ async function loadBranches() {
         allBranches = await response.json();
         renderBranchesGrid();
     } catch (error) {
-        console.error('Error loading branches:', error);
     }
 }
 
@@ -276,7 +319,7 @@ async function deleteBranch(id) {
         });
         loadBranches();
     } catch (error) {
-        alert('Lỗi xóa chi nhánh: ' + error.message);
+        showPopup('Lỗi xóa chi nhánh: ' + error.message, { type: 'error' });
     }
 }
 
@@ -310,10 +353,10 @@ async function saveBranch(e) {
             loadBranches();
             loadDashboard();
         } else {
-            alert('Lỗi: ' + await response.text());
+            showPopup('Lỗi: ' + await response.text(), { type: 'error' });
         }
     } catch (error) {
-        alert('Lỗi: ' + error.message);
+        showPopup('Lỗi: ' + error.message, { type: 'error' });
     }
 }
 
@@ -363,7 +406,6 @@ async function loadBranchesForSelect() {
             select.appendChild(option);
         });
     } catch (error) {
-        console.error('Error loading branches:', error);
     }
 }
 

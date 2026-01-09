@@ -1,5 +1,4 @@
-﻿// Employee Dashboard - Sales JavaScript
-const API_BASE = resolveApiBase();
+﻿const API_BASE = resolveApiBase();
 
 let products = [];
 let cart = [];
@@ -45,6 +44,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupCustomerDetailModal();
     setupEmployeeSelector();
     setupAppMenuModal();
+    setupInvoiceModal();
     toggleCashPanel(true);
     initInvoices();
 
@@ -88,6 +88,7 @@ function setupAppMenuModal() {
     const openBtn = document.getElementById('appMenuBtn');
     const closeBtn = document.getElementById('closeAppMenu');
     if (!modal || !openBtn || !closeBtn) return;
+    const menuGrid = modal.querySelector('.app-menu-grid');
 
     openBtn.addEventListener('click', () => {
         modal.classList.add('show');
@@ -105,6 +106,59 @@ function setupAppMenuModal() {
             modal.setAttribute('aria-hidden', 'true');
         }
     });
+
+    menuGrid?.addEventListener('click', (e) => {
+        const tile = e.target.closest('.app-tile[data-app]');
+        if (!tile) return;
+        const target = tile.dataset.app;
+        const route = resolveAppRoute(target);
+        if (route) {
+            window.location.href = route;
+        }
+    });
+}
+
+function resolveAppRoute(target) {
+    switch (target) {
+        case 'pos':
+            return '/pages/employee-dashboard.html';
+        case 'orders':
+            return '/pages/order-list.html';
+        case 'invoices':
+            return '/pages/invoice-list.html';
+        case 'online-orders':
+            return '/pages/online-orders.html';
+        case 'returns':
+            return '/pages/return-orders.html';
+        case 'transfers':
+            return '/pages/transfer-requests.html';
+        case 'topup':
+            return '/pages/topup-wallet.html';
+        case 'cashflow':
+            return '/pages/cashflow.html';
+        case 'secondary':
+            return '/pages/secondary-screen.html';
+        case 'print':
+            return '/pages/print-templates.html';
+        case 'daily-report':
+            return '/pages/daily-report.html';
+        case 'access-log':
+            return '/pages/access-log.html';
+        case 'management':
+            return '/pages/management.html';
+        case 'display':
+            return '/pages/display-settings.html';
+        case 'einvoice':
+            return '/pages/einvoice-mtt.html';
+        case 'guide':
+            return '/pages/guide.html';
+        case 'feedback':
+            return '/pages/feedback.html';
+        case 'intro':
+            return '/pages/introduction.html';
+        default:
+            return '';
+    }
 }
 
 function checkAuth() {
@@ -167,7 +221,6 @@ async function loadCurrentEmployee() {
             userInitialEl.textContent = initial;
         }
     } catch (err) {
-        console.error('Error loading current employee', err);
     }
 }
 
@@ -189,7 +242,6 @@ async function loadProducts() {
         products = await response.json();
         filterProducts();
     } catch (err) {
-        console.error('Error loading products:', err);
         renderProducts([]);
     }
 }
@@ -216,7 +268,6 @@ async function loadCustomers() {
         applyCustomerFilter();
         customersLoaded = true;
     } catch (err) {
-        console.error('Error loading customers:', err);
     }
 }
 
@@ -233,15 +284,23 @@ function renderCustomers(customers) {
     const customersHtml = customers.map(c => {
         const phone = c.phone || '-';
         const secondary = c.email || c.address || '-';
+        const customerId = c.id ?? '';
         return `
-        <div class="customer-item" data-customer-id="${c.id}" onclick="selectCustomer(event, ${c.id}, '${c.name}', '${phone}')">
+        <div class="customer-item"
+            data-customer-id="${customerId}"
+            data-customer-name="${escapeHtml(c.name || '')}"
+            data-customer-phone="${escapeHtml(phone)}">
             <div class="customer-info">
-                <p class="customer-name">${c.name || 'Khách hàng'}</p>
-                <p class="customer-phone">${phone}</p>
+                <p class="customer-name">
+                    <button type="button" class="customer-name-btn" data-customer-id="${customerId}" onclick="openCustomerDetailFromButton(event)">
+                        ${escapeHtml(c.name || 'Khách hàng')}
+                    </button>
+                </p>
+                <p class="customer-phone">${escapeHtml(phone)}</p>
             </div>
             <div class="customer-meta">
-                <span class="customer-phone">${phone}</span>
-                <span class="customer-sub">${secondary}</span>
+                <span class="customer-phone">${escapeHtml(phone)}</span>
+                <span class="customer-sub">${escapeHtml(secondary)}</span>
             </div>
         </div>
         `;
@@ -303,29 +362,36 @@ function addToCart(productId, productName, productPrice) {
     const qty = getCurrentQty();
     const splitLine = document.getElementById('splitLine')?.checked;
     const product = products.find(p => p.id === productId) || {};
+    const stock = getStockValue(product);
+    const effectivePrice = getEffectivePrice(product);
+    const resolvedPrice = Number.isFinite(effectivePrice) ? effectivePrice : (productPrice || 0);
 
     if (!splitLine) {
         const existingItem = cart.find(item => item.productId === productId);
         if (existingItem) {
             existingItem.quantity += qty;
+            existingItem.stock = stock;
+            existingItem.productPrice = resolvedPrice;
         } else {
             cart.push({
                 productId,
                 productName,
-                productPrice,
+                productPrice: resolvedPrice,
                 quantity: qty,
                 productCode: product.code || product.barcode || '',
-                unit: product.unit || ''
+                unit: product.unit || '',
+                stock
             });
         }
     } else {
         cart.push({
             productId,
             productName,
-            productPrice,
+            productPrice: resolvedPrice,
             quantity: qty,
             productCode: product.code || product.barcode || '',
-            unit: product.unit || ''
+            unit: product.unit || '',
+            stock
         });
     }
 
@@ -344,7 +410,12 @@ function clearCart(resetCustomer = true) {
 
 async function createOrder(isPaid) {
     if (cart.length === 0) {
-        alert('Giỏ hàng trống!');
+        showPopup('Giỏ hàng trống!', { type: 'error' });
+        return;
+    }
+    const outOfStock = cart.find(item => !Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0);
+    if (outOfStock) {
+        showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
     }
 
@@ -374,30 +445,33 @@ async function createOrder(isPaid) {
 
         if (!res.ok) {
             const message = await res.text();
-            alert(message || 'Không thể tạo đơn hàng.');
+            showPopup(message || 'Không thể tạo đơn hàng.', { type: 'error' });
             return;
         }
 
         const data = await res.json();
-        console.log('createOrder response:', data);
+        const receiptData = buildReceiptData(data);
+        const invoiceCode = receiptData.invoiceNumber || '-';
+        showPopup(
+            isPaid ? `Thanh toán thành công. Mã hóa đơn: ${invoiceCode}` : `Đã lưu tạm đơn: ${invoiceCode}`,
+            { type: 'success' }
+        );
         if (isPaid) {
-            alert(`Thanh toán thành công. Mã đơn: ${data.orderId}`);
-            clearCart(true);
-            saveActiveInvoiceState();
-        } else {
-            // Created unpaid order: keep cart so cashier can confirm after transfer
-            alert(`Đã tạo đơn chờ thanh toán. Mã đơn: ${data.orderId}`);
+            openInvoiceModal(receiptData);
+            const shouldPrint = document.getElementById('printInvoiceToggle')?.checked !== false;
+            if (shouldPrint) {
+                setTimeout(() => window.print(), 150);
+            }
         }
+        clearCart(true);
+        saveActiveInvoiceState();
         return data;
     } catch (err) {
-        alert('Lỗi kết nối khi tạo đơn hàng.');
-        console.error(err);
+        showPopup('Lỗi kết nối khi tạo đơn hàng.', { type: 'error' });
     }
 }
 
-// ----- Transfer QR modal & payment helpers -----
 function showTransferQrModal(orderId, amount, token) {
-    console.log('showTransferQrModal called with', { orderId, amount, token });
     const modal = document.getElementById('transferQrModal');
     if (!modal) return;
     modal.classList.add('show');
@@ -417,19 +491,15 @@ function showTransferQrModal(orderId, amount, token) {
         if (tokenEl) tokenEl.textContent = displayToken + ' (mã tượng trưng)';
     }
 
-    // Build a compact human-friendly payload (not VietQR-standardized here)
     const bankCode = 'VCB';
     const account = '1021209511';
     const accountName = 'BIZFLOW CO';
-    const payload = `BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
 
     const payloadEl = document.getElementById('transferPayload');
     if (payloadEl) {
-        // Show VietQR human-readable summary
         payloadEl.textContent = `VietQR • ${bankCode} • ${account} • ${accountName} • ${formatPrice(amount)}`;
     }
 
-    // Bank logo mapping (add known logos here)
     const bankLogos = {
         VCB: 'https://img.vietqr.io/image/vietcombank-1021209511-compact.jpg'
     };
@@ -444,13 +514,10 @@ function showTransferQrModal(orderId, amount, token) {
         }
     }
 
-    // Generate VietQR image using VietQR.io Quick Link (preferred) and provide robust fallbacks
     const qrContainer = document.getElementById('qrCodeContainer');
 
-    // Build VietQR Quick Link URL
-    // Format: https://img.vietqr.io/image/<BANK_ID>-<ACCOUNT_NO>-<TEMPLATE>.png?amount=<AMOUNT>&addInfo=<DESCRIPTION>&accountName=<ACCOUNT_NAME>
-    const bankQuickId = 'VCB'; // bank identifier for VietQR quicklink (VCB for Vietcombank)
-    const template = 'compact'; // compact template includes logos and info
+    const bankQuickId = 'VCB';
+    const template = 'compact';
     const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
     const addInfoParam = `addInfo=${encodeURIComponent('Thanh toán đơn #' + orderId)}`;
     const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
@@ -467,28 +534,23 @@ function showTransferQrModal(orderId, amount, token) {
         img.style.borderRadius = '8px';
         img.src = qrImgUrl;
 
-        // Successful image load -> use it
         img.onload = () => {
             qrContainer.innerHTML = '';
             qrContainer.appendChild(img);
         };
 
-        // If quicklink image fails (network, API), fallback to client-side QR generation using the readable payload
         img.onerror = async () => {
             qrContainer.innerHTML = '';
             try {
-                // As a fallback, build a simple VietQR-like payload string (not formally signed) so banking apps may still recognize amount/account
                 const fallbackPayload = `VietQR|BANK:${bankCode}|ACC:${account}|NAME:${accountName}|AMOUNT:${formatPriceCompact(amount)}|ORDER:${orderId}|TOKEN:${displayToken}`;
                 if (window.QRCode) {
                     new QRCode(qrContainer, { text: fallbackPayload, width: 260, height: 260 });
                     const inner = qrContainer.querySelector('img,canvas');
                     if (inner) inner.style.borderRadius = '8px';
                 } else {
-                    // Last resort show token and short payload
                     qrContainer.textContent = `Mã: ${displayToken}`;
                 }
             } catch (e) {
-                console.warn('QR generation failed', e);
                 qrContainer.textContent = `Mã: ${displayToken}`;
             }
         };
@@ -496,7 +558,6 @@ function showTransferQrModal(orderId, amount, token) {
         qrContainer.appendChild(img);
     }
 
-    // Download QR handler (fetch the image blob from quicklink and force download)
     const downloadBtn = document.getElementById('downloadQrBtn');
     if (downloadBtn) {
         downloadBtn.onclick = async () => {
@@ -514,7 +575,6 @@ function showTransferQrModal(orderId, amount, token) {
                 URL.revokeObjectURL(url);
             } catch (e) {
                 alert('Không thể tải mã QR.');
-                console.error(e);
             }
         };
     }
@@ -528,7 +588,6 @@ function showTransferQrModal(orderId, amount, token) {
                 alert('Đã sao chép mã thanh toán');
             } catch (e) {
                 alert('Không thể sao chép mã.');
-                console.error(e);
             }
         };
     }
@@ -561,7 +620,6 @@ async function payOrder(orderId) {
         saveActiveInvoiceState();
     } catch (err) {
         alert('Lỗi kết nối khi xác nhận thanh toán.');
-        console.error(err);
     }
 }
 
@@ -587,6 +645,136 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelBtn) cancelBtn.addEventListener('click', hideTransferQrModal);
 });
 
+function setupInvoiceModal() {
+    const modal = document.getElementById('invoiceModal');
+    const closeBtn = document.getElementById('closeInvoiceModal');
+    const footerCloseBtn = document.getElementById('closeInvoiceBtn');
+    const printBtn = document.getElementById('printInvoiceBtn');
+    if (!modal) return;
+
+    const close = () => closeInvoiceModal();
+    closeBtn?.addEventListener('click', close);
+    footerCloseBtn?.addEventListener('click', close);
+    printBtn?.addEventListener('click', () => window.print());
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            close();
+        }
+    });
+}
+
+function openInvoiceModal(receiptData) {
+    const modal = document.getElementById('invoiceModal');
+    if (!modal || !receiptData) return;
+
+    const itemsEl = document.getElementById('invoiceItems');
+    if (itemsEl) {
+        itemsEl.innerHTML = receiptData.items.map(item => `
+            <div class="receipt-item">
+                <span class="name">${escapeHtml(item.name)}</span>
+                <span>${item.quantity}</span>
+                <span>${formatPrice(item.price)}</span>
+                <span>${formatPrice(item.total)}</span>
+            </div>
+        `).join('');
+    }
+
+    setText('invoiceCode', receiptData.invoiceNumber || '-');
+    setText('invoiceDate', formatDateTime(receiptData.createdAt));
+    setText('invoiceCashier', receiptData.cashier || '-');
+    setText('invoiceCustomer', receiptData.customerName || 'Khách lẻ');
+    setText('invoicePhone', receiptData.customerPhone || '-');
+    setText('invoiceMethod', mapPaymentMethod(receiptData.paymentMethod));
+    setText('invoiceSubtotal', formatPrice(receiptData.subtotal || 0));
+    setText('invoiceTotal', formatPrice(receiptData.total || 0));
+    setText('invoiceCashReceived', formatPrice(receiptData.cashReceived || 0));
+    setText('invoiceChange', formatPrice(receiptData.change || 0));
+
+    const noteWrap = document.getElementById('invoiceNoteWrap');
+    const noteValue = receiptData.note || '';
+    setText('invoiceNote', noteValue || '-');
+    if (noteWrap) {
+        noteWrap.style.display = noteValue ? 'grid' : 'none';
+    }
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeInvoiceModal() {
+    const modal = document.getElementById('invoiceModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value;
+    }
+}
+
+function buildReceiptData(orderResponse) {
+    const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
+    const total = Math.max(0, subtotal);
+    const cashReceived = parseInt(document.getElementById('cashReceivedInput')?.value, 10) || 0;
+    const change = currentPaymentMethod === 'CASH' ? Math.max(0, cashReceived - total) : 0;
+
+    let invoiceNumber = orderResponse?.invoiceNumber || '';
+    if (!invoiceNumber && orderResponse?.orderId) {
+        invoiceNumber = `HD-${orderResponse.orderId}`;
+    }
+    if (!invoiceNumber) {
+        invoiceNumber = '-';
+    }
+
+    return {
+        invoiceNumber,
+        createdAt: new Date(),
+        customerName: selectedCustomer?.name || 'Khách lẻ',
+        customerPhone: selectedCustomer?.phone || '-',
+        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nhân viên',
+        paymentMethod: currentPaymentMethod,
+        note: document.getElementById('paymentNote')?.value?.trim() || '',
+        subtotal,
+        total,
+        cashReceived,
+        change,
+        items: cart.map(item => ({
+            name: item.productName || '-',
+            quantity: item.quantity || 0,
+            price: item.productPrice || 0,
+            total: (item.productPrice || 0) * (item.quantity || 0)
+        }))
+    };
+}
+
+function formatDateTime(value) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function mapPaymentMethod(method) {
+    switch (method) {
+        case 'CASH':
+            return 'Tiền mặt';
+        case 'TRANSFER':
+            return 'Chuyển khoản';
+        case 'CARD':
+            return 'Thẻ';
+        default:
+            return method || '-';
+    }
+}
+
 function renderCart() {
     const cartContainer = document.getElementById('cartItems');
     const emptyState = document.getElementById('emptyState');
@@ -610,7 +798,7 @@ function renderCart() {
             <span>${idx + 1}</span>
             <span>${item.productCode || '-'}</span>
             <span class="cart-name">${item.productName}</span>
-            <span class="cart-qty">
+            <span class="cart-qty ${Number(item.stock) <= 0 ? 'is-out' : ''}">
                 <input type="number" class="qty-input" value="${item.quantity}" onchange="setQty(${idx}, this.value)">
             </span>
             <span>${item.unit || '-'}</span>
@@ -647,8 +835,20 @@ function removeFromCart(idx) {
 function selectCustomer(evt, customerId, customerName, customerPhone) {
     applyCustomerSelection(
         { id: customerId, name: customerName, phone: customerPhone },
-        { openDetail: true, highlightEvent: evt }
+        { openDetail: false, highlightEvent: evt }
     );
+}
+
+function openCustomerDetailFromButton(evt) {
+    evt?.preventDefault?.();
+    evt?.stopPropagation?.();
+    const target = evt?.currentTarget;
+    const customerId = Number(target?.dataset?.customerId);
+    if (!Number.isFinite(customerId) || customerId <= 0) {
+        showPopup('Không tìm thấy khách hàng.', { type: 'error' });
+        return;
+    }
+    openCustomerDetail(customerId);
 }
 
 function clearSelectedCustomer(options = {}) {
@@ -708,6 +908,52 @@ function formatPrice(price) {
     }).format(price).replace('₫', 'đ');
 }
 
+function showPopup(message, options = {}) {
+    const { title = 'Thông báo', type = 'info' } = options;
+    let modal = document.getElementById('appPopup');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'appPopup';
+        modal.className = 'app-popup';
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="app-popup-card" role="dialog" aria-modal="true">
+                <div class="app-popup-header">
+                    <h3 id="appPopupTitle"></h3>
+                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Đóng">×</button>
+                </div>
+                <div id="appPopupMessage" class="app-popup-message"></div>
+                <div class="app-popup-actions">
+                    <button type="button" class="primary-btn" id="appPopupOk">Đóng</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        const closePopup = () => {
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        };
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closePopup();
+            }
+        });
+        modal.querySelector('#appPopupClose')?.addEventListener('click', closePopup);
+        modal.querySelector('#appPopupOk')?.addEventListener('click', closePopup);
+    }
+
+    const titleEl = modal.querySelector('#appPopupTitle');
+    const messageEl = modal.querySelector('#appPopupMessage');
+    if (titleEl) titleEl.textContent = title;
+    if (messageEl) messageEl.textContent = message || '';
+
+    modal.classList.remove('type-info', 'type-success', 'type-error');
+    modal.classList.add(`type-${type}`);
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
 function formatPriceCompact(price) {
     return new Intl.NumberFormat('vi-VN', {
         minimumFractionDigits: 0
@@ -765,11 +1011,17 @@ function setTierByPoints(points) {
 }
 
 function setupEventListeners() {
-    document.getElementById('searchInput').addEventListener('input', (e) => {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.addEventListener('input', (e) => {
         topSearchTerm = e.target.value;
-        filterProducts();
+        renderToolbarSearchResults(e.target.value);
     });
-    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+    searchInput.addEventListener('focus', () => {
+        if (searchInput.value.trim()) {
+            renderToolbarSearchResults(searchInput.value);
+        }
+    });
+    searchInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             handleBarcodeSearch();
@@ -789,6 +1041,9 @@ function setupEventListeners() {
     document.getElementById('qtyInput').addEventListener('change', () => {
         const val = getCurrentQty();
         document.getElementById('qtyInput').value = val;
+        if (isToolbarSearchOpen()) {
+            renderToolbarSearchResults(document.getElementById('searchInput').value);
+        }
     });
 
     document.getElementById('cashReceivedInput')?.addEventListener('input', () => {
@@ -808,12 +1063,31 @@ function setupEventListeners() {
     clearCustomerBtn?.addEventListener('click', () => {
         clearSelectedCustomer();
     });
+    const customerList = document.getElementById('customerList');
+    customerList?.addEventListener('click', (e) => {
+        const row = e.target.closest('.customer-item');
+        if (!row) return;
+        const customerId = Number(row.dataset.customerId);
+        if (!Number.isFinite(customerId)) {
+            showPopup('Không tìm thấy khách hàng.', { type: 'error' });
+            return;
+        }
+        const customerName = row.dataset.customerName || '';
+        const customerPhone = row.dataset.customerPhone || '-';
+        selectCustomer(e, customerId, customerName, customerPhone);
+    });
     document.addEventListener('click', (e) => {
         const panel = document.querySelector('.customer-panel');
-        const customerList = document.getElementById('customerList');
         if (!panel || !customerList) return;
         if (!panel.contains(e.target)) {
             customerList.style.display = 'none';
+        }
+    });
+    document.addEventListener('click', (e) => {
+        const toolbar = document.querySelector('.toolbar-search');
+        if (!toolbar) return;
+        if (!toolbar.contains(e.target)) {
+            hideToolbarSearchResults();
         }
     });
     customerSearch?.addEventListener('click', () => {
@@ -821,7 +1095,6 @@ function setupEventListeners() {
             openCustomerDetail(selectedCustomer.id);
         }
     });
-
     customerSearch?.addEventListener('input', (e) => {
         customerSearchTerm = e.target.value || '';
         e.target.classList.remove('has-selection');
@@ -888,6 +1161,19 @@ function setupEventListeners() {
         if (confirm('Đăng xuất?')) {
             sessionStorage.clear();
             window.location.href = '/pages/login.html';
+        }
+    });
+
+    const toolbarList = document.getElementById('toolbarSearchList');
+    toolbarList?.addEventListener('click', (e) => {
+        const row = e.target.closest('.toolbar-search-row.item');
+        if (!row) return;
+        const productId = parseInt(row.dataset.productId, 10);
+        const productName = row.dataset.productName || '';
+        const productPrice = parseFloat(row.dataset.productPrice) || 0;
+        if (Number.isFinite(productId)) {
+            addToCart(productId, productName, productPrice);
+            clearToolbarSearch();
         }
     });
 }
@@ -1113,7 +1399,7 @@ function removeInvoice(invoiceId) {
 
 function saveDraftInvoice() {
     if (cart.length === 0) {
-        alert('Giỏ hàng trống, không thể lưu tạm.');
+        showPopup('Giỏ hàng trống, không thể lưu tạm.', { type: 'error' });
         return;
     }
     saveActiveInvoiceState();
@@ -1415,7 +1701,7 @@ async function createCustomerFromForm() {
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
-        alert('Vui lòng nhập tên khách hàng.');
+        showPopup('Vui lòng nhập tên khách hàng.', { type: 'error' });
         return;
     }
 
@@ -1430,11 +1716,11 @@ async function createCustomerFromForm() {
     }
 
     if (!phone) {
-        alert('Vui lòng nhập số điện thoại.');
+        showPopup('Vui lòng nhập số điện thoại.', { type: 'error' });
         return;
     }
     if (!/^\d{9,11}$/.test(phone)) {
-        alert('Số điện thoại phải là 9-11 chữ số.');
+        showPopup('Số điện thoại phải là 9-11 chữ số.', { type: 'error' });
         return;
     }
 
@@ -1442,12 +1728,12 @@ async function createCustomerFromForm() {
     const districtCode = districtInput?.dataset.code || '';
     const wardCode = wardInput?.dataset.code || '';
     if (!cityInput?.value || !districtInput?.value || !wardInput?.value || !address || !cityCode || !districtCode || !wardCode) {
-        alert('Vui lòng nhập đầy đủ địa chỉ.');
+        showPopup('Vui lòng nhập đầy đủ địa chỉ.', { type: 'error' });
         return;
     }
 
     if (!confirmed) {
-        alert('Vui lòng xác nhận thông tin khách hàng.');
+        showPopup('Vui lòng xác nhận thông tin khách hàng.', { type: 'error' });
         return;
     }
 
@@ -1468,7 +1754,7 @@ async function createCustomerFromForm() {
 
     if (!res.ok) {
         const message = await res.text();
-        alert(message || 'Không thể tạo khách hàng.');
+        showPopup(message || 'Không thể tạo khách hàng.', { type: 'error' });
         return;
     }
 
@@ -1486,8 +1772,7 @@ async function createCustomerFromForm() {
         searchInput.classList.add('has-selection');
     }
     } catch (err) {
-        console.error(err);
-        alert('Lỗi kết nối khi tạo khách hàng.');
+        showPopup('Lỗi kết nối khi tạo khách hàng.', { type: 'error' });
     }
 }
 
@@ -1502,7 +1787,6 @@ async function loadCities() {
         cityCache = data || [];
         renderDatalistOptions(cityList, cityCache);
     } catch (err) {
-        console.error('Load cities error:', err);
     }
 }
 
@@ -1519,7 +1803,6 @@ async function loadDistricts(cityCode) {
         renderDatalistOptions(districtList, districtCache);
         districtInput.disabled = false;
     } catch (err) {
-        console.error('Load districts error:', err);
     }
 }
 
@@ -1536,7 +1819,6 @@ async function loadWards(districtCode) {
         renderDatalistOptions(wardList, wardCache);
         wardInput.disabled = false;
     } catch (err) {
-        console.error('Load wards error:', err);
     }
 }
 
@@ -1618,20 +1900,12 @@ function filterDatalist(listId, items, query) {
 
 function filterProducts(searchTerm = '') {
     const explicitKeyword = normalizeKeyword(searchTerm);
-    const topKeyword = explicitKeyword || normalizeKeyword(topSearchTerm);
     const bottomKeyword = normalizeKeyword(bottomSearchTerm);
 
     if (bottomKeyword) {
         const filtered = applySort(filterProductList(products, bottomKeyword));
         setSuggestionMode('bottom');
         renderProducts(filtered, 'detailed');
-        return;
-    }
-
-    if (topKeyword) {
-        const filtered = applySort(filterProductList(products, topKeyword));
-        setSuggestionMode('top');
-        renderProducts(filtered, 'compact');
         return;
     }
 
@@ -1680,8 +1954,54 @@ function normalizeKeyword(value) {
     return stripDiacritics((value || '').toString().trim().toLowerCase());
 }
 
+function escapeHtml(value) {
+    return (value || '').replace(/[&<>"']/g, (char) => {
+        switch (char) {
+            case '&':
+                return '&amp;';
+            case '<':
+                return '&lt;';
+            case '>':
+                return '&gt;';
+            case '"':
+                return '&quot;';
+            case '\'':
+                return '&#39;';
+            default:
+                return char;
+        }
+    });
+}
+
 function escapeForSingleQuote(value) {
     return (value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function getEffectivePrice(product) {
+    const basePrice = Number(product?.price);
+    const direct = Number(
+        product?.promoPrice ??
+        product?.promotionPrice ??
+        product?.discountPrice ??
+        product?.salePrice ??
+        product?.discountedPrice
+    );
+    const percent = Number(
+        product?.discountPercent ??
+        product?.discountRate ??
+        product?.promoPercent ??
+        product?.salePercent
+    );
+
+    if (Number.isFinite(direct)) {
+        return direct;
+    }
+
+    if (Number.isFinite(basePrice) && Number.isFinite(percent) && percent > 0) {
+        return Math.max(0, basePrice * (1 - percent / 100));
+    }
+
+    return Number.isFinite(basePrice) ? basePrice : NaN;
 }
 
 function filterProductList(list, keyword) {
@@ -1713,28 +2033,18 @@ function handleBarcodeSearch() {
     );
     if (exactMatch) {
         addToCart(exactMatch.id, exactMatch.name, exactMatch.price || 0);
-        input.value = '';
-        const suggestionInput = document.getElementById('suggestionSearchInput');
-        if (suggestionInput) suggestionInput.value = '';
-        topSearchTerm = '';
-        bottomSearchTerm = '';
-        filterProducts();
+        clearToolbarSearch();
         return;
     }
 
     const nameMatch = products.find(p => normalizeKeyword(p.name) === keyword);
     if (nameMatch) {
         addToCart(nameMatch.id, nameMatch.name, nameMatch.price || 0);
-        input.value = '';
-        const suggestionInput = document.getElementById('suggestionSearchInput');
-        if (suggestionInput) suggestionInput.value = '';
-        topSearchTerm = '';
-        bottomSearchTerm = '';
-        filterProducts();
+        clearToolbarSearch();
         return;
     }
 
-    filterProducts(keyword);
+    renderToolbarSearchResults(input.value);
 }
 
 function getStockValue(product) {
@@ -1765,7 +2075,7 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
 
     if (viewMode === 'detailed') {
         grid.innerHTML = displayProducts.map(p => `
-            <div class="product-card detailed" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+            <div class="product-card detailed" onclick="openProductDetail(${p.id})">
                 <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
                 <div class="product-image">${PRODUCT_ICON}</div>
                 <div class="product-name">${p.name || 'Sản phẩm'}</div>
@@ -1823,13 +2133,16 @@ function openProductDetail(productId) {
     document.getElementById('detailProductSku').textContent = product.code || product.barcode || '-';
     document.getElementById('detailProductBarcode').textContent = product.barcode || '-';
     document.getElementById('detailProductUnit').textContent = product.unit || '-';
-    document.getElementById('detailProductPrice').textContent = formatPrice(product.price || 0);
+    document.getElementById('detailProductPrice').textContent = formatPrice(getEffectivePrice(product) || 0);
     document.getElementById('detailProductStock').textContent = getStockValue(product);
     document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
 
     const addBtn = document.getElementById('detailAddToCart');
     if (addBtn) {
-        addBtn.onclick = () => addToCart(product.id, product.name, product.price || 0);
+        addBtn.onclick = () => {
+            addToCart(product.id, product.name, product.price || 0);
+            closeProductDetail();
+        };
     }
 
     modal.classList.add('show');
@@ -1843,12 +2156,93 @@ function closeProductDetail() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
+function isToolbarSearchOpen() {
+    const panel = document.getElementById('toolbarSearchResults');
+    return panel?.classList.contains('show');
+}
+
+function showToolbarSearchResults() {
+    const panel = document.getElementById('toolbarSearchResults');
+    if (!panel) return;
+    panel.classList.add('show');
+    panel.setAttribute('aria-hidden', 'false');
+}
+
+function hideToolbarSearchResults() {
+    const panel = document.getElementById('toolbarSearchResults');
+    if (!panel) return;
+    panel.classList.remove('show');
+    panel.setAttribute('aria-hidden', 'true');
+}
+
+function clearToolbarSearch() {
+    const input = document.getElementById('searchInput');
+    if (input) {
+        input.value = '';
+    }
+    topSearchTerm = '';
+    hideToolbarSearchResults();
+}
+
+function renderToolbarSearchResults(rawKeyword) {
+    const keyword = normalizeKeyword(rawKeyword);
+    const panel = document.getElementById('toolbarSearchResults');
+    const list = document.getElementById('toolbarSearchList');
+    const empty = document.getElementById('toolbarSearchEmpty');
+    if (!panel || !list || !empty) return;
+
+    if (!keyword) {
+        list.innerHTML = '';
+        empty.style.display = 'none';
+        hideToolbarSearchResults();
+        return;
+    }
+
+    const matches = applySort(filterProductList(products, keyword));
+    const qty = getCurrentQty();
+    if (!matches || matches.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        showToolbarSearchResults();
+        return;
+    }
+
+    empty.style.display = 'none';
+    list.innerHTML = matches.map((p, idx) => {
+        const name = p.name || 'Sản phẩm';
+        const code = p.code || p.barcode || '-';
+        const sku = p.sku || p.skuCode || p.skuId || p.code || p.barcode || '-';
+        const unit = p.unit || '-';
+        const price = getEffectivePrice(p) || 0;
+        const total = price * qty;
+        return `
+            <button type="button" class="toolbar-search-row item"
+                data-product-id="${p.id}"
+                data-product-name="${escapeHtml(name)}"
+                data-product-price="${price}">
+                <span>${idx + 1}</span>
+                <span>${escapeHtml(code)}</span>
+                <span>${escapeHtml(sku)}</span>
+                <span class="toolbar-search-name">${escapeHtml(name)}</span>
+                <span>${qty}</span>
+                <span>${escapeHtml(unit)}</span>
+                <span>${formatPrice(price)}</span>
+                <span>${formatPrice(total)}</span>
+            </button>
+        `;
+    }).join('');
+    showToolbarSearchResults();
+}
+
 function openCustomerDetail(customerId) {
     const modal = document.getElementById('customerDetailModal');
     if (!modal) return;
 
     const customer = customers.find(c => c.id === customerId);
-    if (!customer) return;
+    if (!customer) {
+        showPopup('Không tìm thấy khách hàng.', { type: 'error' });
+        return;
+    }
 
     document.getElementById('detailCustomerName').textContent = (customer.name || '').toUpperCase();
     const nameCard = document.getElementById('detailCustomerNameCard');
@@ -1931,7 +2325,6 @@ async function loadEmployees() {
         employeesLoaded = true;
         renderEmployees();
     } catch (err) {
-        console.error('Error loading employees:', err);
         dropdown.innerHTML = '<div class="employee-empty">Lỗi tải danh sách nhân viên</div>';
     }
 }

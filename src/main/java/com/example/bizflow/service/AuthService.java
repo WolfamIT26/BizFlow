@@ -30,8 +30,6 @@ public class AuthService {
      * @throws RuntimeException nếu username không tồn tại hoặc password sai
      */
     public LoginResponse authenticate(LoginRequest request) {
-        System.out.println("Attempting to authenticate user: " + request.getUsername());
-
         // Hỗ trợ đăng nhập bằng username hoặc email
         User user = userRepository.findByUsername(request.getUsername())
                 .or(() -> userRepository.findByEmail(request.getUsername()))
@@ -42,23 +40,15 @@ public class AuthService {
             throw new RuntimeException("Tài khoản của bạn đã bị vô hiệu hóa");
         }
         
-        // Debug: log stored hash and basic info (do NOT log raw password)
-        System.out.println("Auth debug - user found: id=" + user.getId() + ", username=" + user.getUsername() + ", role=" + user.getRole());
-        System.out.println("Auth debug - stored hash: " + user.getPassword());
-
         // Kiểm tra password
         boolean match = passwordEncoder.matches(request.getPassword(), user.getPassword());
-        System.out.println("Auth debug - bcrypt matches result: " + match);
         if (!match) {
-            System.out.println("Password mismatch for user: " + request.getUsername());
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không chính xác");
         }
         
         // Tạo tokens
         String accessToken = jwtUtil.generateAccessToken(user);
         String refreshToken = jwtUtil.generateRefreshToken(user);
-        
-        System.out.println("User authenticated successfully: " + request.getUsername());
         
         // Trả về response
         return new LoginResponse(accessToken, refreshToken, user.getRole().name(), user.getId(), user.getUsername());

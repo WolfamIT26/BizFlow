@@ -1,5 +1,24 @@
 package com.example.bizflow.controller;
 
+import com.example.bizflow.dto.CreateOrderRequest;
+import com.example.bizflow.dto.CreateOrderResponse;
+import com.example.bizflow.dto.OrderItemRequest;
+import com.example.bizflow.entity.Customer;
+import com.example.bizflow.entity.Order;
+import com.example.bizflow.entity.OrderItem;
+import com.example.bizflow.entity.Payment;
+import com.example.bizflow.entity.Product;
+import com.example.bizflow.entity.User;
+import com.example.bizflow.repository.CustomerRepository;
+import com.example.bizflow.repository.OrderItemRepository;
+import com.example.bizflow.repository.OrderRepository;
+import com.example.bizflow.repository.PaymentRepository;
+import com.example.bizflow.repository.ProductRepository;
+import com.example.bizflow.repository.UserRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,23 +45,19 @@ public class OrderController {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
-    private final PointService pointService;
 
     public OrderController(OrderRepository orderRepository,
                            OrderItemRepository orderItemRepository,
                            PaymentRepository paymentRepository,
                            ProductRepository productRepository,
                            CustomerRepository customerRepository,
-                           UserRepository userRepository,
-                           PointService pointService) {
-
+                           UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
-        this.pointService = pointService;
     }
 
     // ================== TẠO ĐƠN + THANH TOÁN NGAY ==================
@@ -54,15 +69,21 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
         return ResponseEntity.badRequest().body("Order items are required");
     }
 
-    User user = request.getUserId() == null ? null :
-            userRepository.findById(request.getUserId()).orElse(null);
+        User user = null;
+        if (request.getUserId() != null) {
+            Long userId = request.getUserId();
+            user = userRepository.findById(userId).orElse(null);
+        }
 
-    Customer customer = request.getCustomerId() == null ? null :
-            customerRepository.findById(request.getCustomerId()).orElse(null);
+        Customer customer = null;
+        if (request.getCustomerId() != null && request.getCustomerId() > 0) {
+            Long customerId = request.getCustomerId();
+            customer = customerRepository.findById(customerId).orElse(null);
+        }
 
-    Order order = new Order();
-    order.setUser(user);
-    order.setCustomer(customer);
+        Order order = new Order();
+        order.setUser(user);
+        order.setCustomer(customer);
 
     BigDecimal total = BigDecimal.ZERO;
     List<OrderItem> items = new ArrayList<>();
@@ -92,37 +113,36 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
     }
     orderItemRepository.saveAll(items);
 
-    // ===== LUÔN TẠO PAYMENT NẾU ĐƠN ĐƯỢC THANH TOÁN =====
-    if (request.getPaymentMethod() != null) {
-
-        Payment payment = new Payment();
-        payment.setOrder(savedOrder);
-        payment.setMethod(request.getPaymentMethod()); // CASH / TRANSFER
-        payment.setAmount(total);
-        payment.setStatus("PAID");
-        payment.setPaidAt(java.time.LocalDateTime.now());
-        paymentRepository.save(payment);
-
-        // 🔥 LUÔN CỘNG ĐIỂM KHI PAYMENT = PAID
-        if (customer != null) {
-            pointService.addPoints(
-                    customer.getId(),
-                    total,
-                    "ORDER_" + savedOrder.getId()
-            );
+        boolean paid = Boolean.TRUE.equals(request.getPaid());
+        String paymentToken = null;
+        if (paid) {
+            Payment payment = new Payment();
+            payment.setOrder(savedOrder);
+            payment.setMethod(request.getPaymentMethod() == null ? "CASH" : request.getPaymentMethod());
+            payment.setAmount(total);
+            payment.setStatus("PAID");
+            payment.setPaidAt(java.time.LocalDateTime.now());
+            paymentRepository.save(payment);
+        } else if (request.getPaymentMethod() != null && "TRANSFER".equalsIgnoreCase(request.getPaymentMethod())) {
+            // create pending transfer payment with a token
+            Payment payment = new Payment();
+            payment.setOrder(savedOrder);
+            payment.setMethod("TRANSFER");
+            payment.setAmount(total);
+            payment.setStatus("PENDING");
+            paymentToken = java.util.UUID.randomUUID().toString();
+            payment.setToken(paymentToken);
+            paymentRepository.save(payment);
         }
-    }
 
-    return ResponseEntity.ok(
-            new CreateOrderResponse(
-                    savedOrder.getId(),
-                    total,
-                    items.size(),
-                    true,
-                    null
-            )
-    );
-}
+        return ResponseEntity.ok(new CreateOrderResponse(
+                savedOrder.getId(),
+                total,
+                orderItems.size(),
+                paid,
+                paymentToken
+        ));
+    }
 
     // ================== THANH TOÁN SAU ==================
     @PostMapping("/{orderId}/pay")
