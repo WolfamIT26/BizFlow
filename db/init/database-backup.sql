@@ -145,12 +145,23 @@ DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `created_at` datetime(6) DEFAULT NULL,
+  `invoice_number` varchar(30) DEFAULT NULL,
+  `status` varchar(30) DEFAULT NULL,
+  `is_return` bit(1) DEFAULT NULL,
+  `order_type` varchar(20) DEFAULT NULL,
+  `parent_order_id` bigint DEFAULT NULL,
+  `return_reason` varchar(255) DEFAULT NULL,
+  `return_note` varchar(255) DEFAULT NULL,
+  `refund_method` varchar(50) DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
   `total_amount` decimal(15,2) NOT NULL,
   `customer_id` bigint DEFAULT NULL,
   `user_id` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
+  KEY `FK_orders_parent` (`parent_order_id`),
   KEY `FKpxtb8awmi0dk6smoh2vp1litg` (`customer_id`),
   KEY `FK32ql8ubntj5uh44ph9659tiih` (`user_id`),
+  CONSTRAINT `FK_orders_parent` FOREIGN KEY (`parent_order_id`) REFERENCES `orders` (`id`),
   CONSTRAINT `FK32ql8ubntj5uh44ph9659tiih` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `FKpxtb8awmi0dk6smoh2vp1litg` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -158,10 +169,10 @@ CREATE TABLE `orders` (
 
 LOCK TABLES `orders` WRITE;
 /*!40000 ALTER TABLE `orders` DISABLE KEYS */;
-INSERT INTO `orders` VALUES (1,'2026-01-02 09:16:42.670400',550000.00,NULL,4);
-INSERT INTO `orders` VALUES (2,'2026-01-02 09:19:05.594577',320000.00,NULL,4);
-INSERT INTO `orders` VALUES (3,'2026-01-02 14:55:51.508733',2250000.00,1,4);
-INSERT INTO `orders` VALUES (4,'2026-01-02 14:56:25.545823',1500000.00,1,4);
+INSERT INTO `orders` VALUES (1,'2026-01-02 09:16:42.670400',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,550000.00,NULL,4);
+INSERT INTO `orders` VALUES (2,'2026-01-02 09:19:05.594577',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,320000.00,NULL,4);
+INSERT INTO `orders` VALUES (3,'2026-01-02 14:55:51.508733',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,2250000.00,1,4);
+INSERT INTO `orders` VALUES (4,'2026-01-02 14:56:25.545823',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1500000.00,1,4);
 /*!40000 ALTER TABLE `orders` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `payments`;
@@ -448,4 +459,3 @@ UNLOCK TABLES;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-

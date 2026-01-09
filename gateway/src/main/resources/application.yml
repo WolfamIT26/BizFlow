@@ -10,7 +10,7 @@ spring:
           predicates:
             - Path=/api/**
         - id: ai-service
-          uri: "http://ai_service:5000/"
+          uri: "http://bizflow-ai_service:5000/"
           predicates:
             - Path=/ai/**
 

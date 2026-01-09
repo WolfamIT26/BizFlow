@@ -17,6 +17,7 @@ public class OrderSummaryResponse {
     private String status;
     private String cashierName;
     private String salesName;
+    private String note;
 
     public OrderSummaryResponse() {
     }
@@ -33,7 +34,8 @@ public class OrderSummaryResponse {
                                 String invoiceNumber,
                                 String status,
                                 String cashierName,
-                                String salesName) {
+                                String salesName,
+                                String note) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -47,6 +49,7 @@ public class OrderSummaryResponse {
         this.status = status;
         this.cashierName = cashierName;
         this.salesName = salesName;
+        this.note = note;
     }
 
     public Long getId() {
@@ -151,5 +154,13 @@ public class OrderSummaryResponse {
 
     public void setSalesName(String salesName) {
         this.salesName = salesName;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }

@@ -21,6 +21,7 @@ let districtCache = [];
 let wardCache = [];
 let employeesLoaded = false;
 let employees = [];
+let exchangeDraft = null;
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -52,6 +53,7 @@ window.addEventListener('DOMContentLoaded', async () => {
         '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Đang tải...</div>';
 
     await Promise.all([loadProducts()]);
+    applyExchangeDraft();
 
     const customerSearchInput = document.getElementById('customerSearch');
     customerSearchInput?.addEventListener('focus', () => {
@@ -69,6 +71,59 @@ window.addEventListener('DOMContentLoaded', async () => {
         applyCustomerFilter();
     });
 });
+
+function applyExchangeDraft() {
+    const raw = sessionStorage.getItem('exchangeDraft');
+    if (!raw) return;
+    try {
+        exchangeDraft = JSON.parse(raw);
+    } catch (err) {
+        console.error('Invalid exchange draft', err);
+        sessionStorage.removeItem('exchangeDraft');
+        exchangeDraft = null;
+        return;
+    }
+    if (!exchangeDraft || !Array.isArray(exchangeDraft.items) || exchangeDraft.items.length === 0) {
+        return;
+    }
+
+    cart = exchangeDraft.items.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        productPrice: Number(item.price) || 0,
+        quantity: -Math.abs(Number(item.quantity) || 0),
+        productCode: item.productCode || '',
+        unit: item.unit || '',
+        stock: 1,
+        isReturnItem: true
+    })).filter(item => item.quantity !== 0);
+
+    if (exchangeDraft.customerId) {
+        selectedCustomer = {
+            id: exchangeDraft.customerId,
+            name: exchangeDraft.customerName || 'Khách hàng',
+            phone: exchangeDraft.customerPhone || '-'
+        };
+        const searchInput = document.getElementById('customerSearch');
+        if (searchInput) {
+            searchInput.value = selectedCustomer.name || selectedCustomer.phone || '';
+            searchInput.classList.add('has-selection');
+            searchInput.readOnly = true;
+        }
+        const addBtn = document.getElementById('addCustomerBtn');
+        if (addBtn) {
+            addBtn.style.display = 'none';
+        }
+        const clearBtn = document.getElementById('clearCustomerBtn');
+        if (clearBtn) {
+            clearBtn.style.display = 'inline-flex';
+        }
+    }
+
+    renderCart();
+    updateTotal();
+    sessionStorage.removeItem('exchangeDraft');
+}
 
 function resolveApiBase() {
     const configured = window.API_BASE_URL || window.API_BASE;
@@ -413,7 +468,7 @@ async function createOrder(isPaid) {
         showPopup('Giỏ hàng trống!', { type: 'error' });
         return;
     }
-    const outOfStock = cart.find(item => !Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0);
+    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0));
     if (outOfStock) {
         showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
@@ -427,6 +482,8 @@ async function createOrder(isPaid) {
         paid: isPaid,
         // Always send the chosen payment method so backend can create pending transfer payments with tokens
         paymentMethod: currentPaymentMethod,
+        orderType: exchangeDraft ? 'EXCHANGE' : null,
+        originalOrderId: exchangeDraft?.originalOrderId || null,
         items: cart.map(item => ({
             productId: item.productId,
             quantity: item.quantity
@@ -464,6 +521,10 @@ async function createOrder(isPaid) {
             }
         }
         clearCart(true);
+        if (exchangeDraft) {
+            sessionStorage.removeItem('exchangeDraft');
+            exchangeDraft = null;
+        }
         saveActiveInvoiceState();
         return data;
     } catch (err) {
@@ -811,23 +872,23 @@ function renderCart() {
         emptyState.style.display = 'none';
     }
     cartContainer.innerHTML = cart.map((item, idx) => `
-        <div class="cart-row">
+        <div class="cart-row ${item.isReturnItem ? 'return-item' : ''}">
             <span>${idx + 1}</span>
             <span>${item.productCode || '-'}</span>
             <span class="cart-name">${item.productName}</span>
             <span class="cart-qty ${Number(item.stock) <= 0 ? 'is-out' : ''}">
-                <input type="number" class="qty-input" value="${item.quantity}" onchange="setQty(${idx}, this.value)">
+                <input type="number" class="qty-input" value="${item.quantity}" ${item.isReturnItem ? 'disabled' : ''} onchange="setQty(${idx}, this.value)">
             </span>
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
+            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
         </div>
     `).join('');
 }
 
 function updateQty(idx, change) {
-    if (cart[idx]) {
+    if (cart[idx] && !cart[idx].isReturnItem) {
         cart[idx].quantity = Math.max(1, cart[idx].quantity + change);
         renderCart();
         updateTotal();
@@ -836,7 +897,7 @@ function updateQty(idx, change) {
 
 function setQty(idx, value) {
     const qty = parseInt(value, 10) || 1;
-    if (cart[idx]) {
+    if (cart[idx] && !cart[idx].isReturnItem) {
         cart[idx].quantity = Math.max(1, qty);
         renderCart();
         updateTotal();
@@ -844,6 +905,7 @@ function setQty(idx, value) {
 }
 
 function removeFromCart(idx) {
+    if (cart[idx]?.isReturnItem) return;
     cart.splice(idx, 1);
     renderCart();
     updateTotal();
@@ -1206,13 +1268,47 @@ function initInvoices() {
     applyInvoiceState(initial);
 }
 
+function getNextInvoiceNumber() {
+    let max = 0;
+    invoices.forEach(inv => {
+        const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+        if (match) {
+            max = Math.max(max, Number(match[1]));
+        }
+    });
+    return max + 1;
+}
+
+function getNextInvoiceNumberFromAll() {
+    let max = 0;
+    const collect = (list) => {
+        (list || []).forEach(inv => {
+            const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+            if (match) {
+                max = Math.max(max, Number(match[1]));
+            }
+        });
+    };
+    collect(invoices);
+    collect(savedInvoices);
+    return max + 1;
+}
+
 function createInvoiceState(name) {
     const id = `invoice-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+<<<<<<< HEAD
     const sequence = getNextInvoiceSequence();
     return {
         id,
         sequence,
         name: name || `H\u00f3a \u0111\u01a1n ${sequence}`,
+=======
+    const nextNumber = getNextInvoiceNumber();
+    invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
+    return {
+        id,
+        name: name || `Hóa đơn ${nextNumber}`,
+>>>>>>> b0ed2207297662131e066b02ee447226f315f225
         cart: [],
         selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
         paymentMethod: 'CASH',
@@ -1433,6 +1529,7 @@ function removeInvoice(invoiceId, options = {}) {
         applyInvoiceState(fresh);
         return;
     }
+    invoiceSequence = Math.max(invoiceSequence, getNextInvoiceNumber());
     if (wasActive) {
         activeInvoiceId = invoices[0].id;
         renderInvoiceTabs();
@@ -1452,6 +1549,7 @@ function saveDraftInvoice() {
     if (!invoice) return;
     const draft = {
         ...invoice,
+        name: `Hóa đơn ${getNextInvoiceNumberFromAll()}`,
         cart: cloneCart(invoice.cart),
         savedAt: new Date().toISOString()
     };
@@ -1510,12 +1608,38 @@ function openSavedInvoice(draftId) {
     if (index === -1) return;
     saveActiveInvoiceState();
     const draft = savedInvoices.splice(index, 1)[0];
-    invoices.push(draft);
-    activeInvoiceId = draft.id;
+    const emptyTarget = invoices.find(inv => isInvoiceEmpty(inv));
+    if (emptyTarget) {
+        emptyTarget.cart = cloneCart(draft.cart);
+        emptyTarget.selectedCustomer = draft.selectedCustomer ? { ...draft.selectedCustomer } : { id: 0, name: 'Khách lẻ', phone: '-' };
+        emptyTarget.paymentMethod = draft.paymentMethod || 'CASH';
+        emptyTarget.cashReceived = draft.cashReceived || '';
+        emptyTarget.paymentNote = draft.paymentNote || '';
+        emptyTarget.splitLine = !!draft.splitLine;
+        emptyTarget.topSearchTerm = draft.topSearchTerm || '';
+        emptyTarget.bottomSearchTerm = draft.bottomSearchTerm || '';
+        activeInvoiceId = emptyTarget.id;
+    } else {
+        const nextNumber = getNextInvoiceNumber();
+        draft.name = `Hóa đơn ${nextNumber}`;
+        invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
+        invoices.push(draft);
+        activeInvoiceId = draft.id;
+    }
     renderInvoiceTabs();
-    applyInvoiceState(draft);
+    applyInvoiceState(getActiveInvoice());
     renderSavedBills();
     toggleSavedBillsPanel(false);
+}
+
+function isInvoiceEmpty(invoice) {
+    if (!invoice) return false;
+    const hasItems = Array.isArray(invoice.cart) && invoice.cart.length > 0;
+    const hasCustomer = invoice.selectedCustomer && invoice.selectedCustomer.id > 0;
+    const hasNote = (invoice.paymentNote || '').trim().length > 0;
+    const hasCash = (invoice.cashReceived || '').toString().trim().length > 0;
+    const hasSearch = (invoice.topSearchTerm || '').trim().length > 0 || (invoice.bottomSearchTerm || '').trim().length > 0;
+    return !hasItems && !hasCustomer && !hasNote && !hasCash && !hasSearch;
 }
 
 function removeSavedInvoice(draftId) {
