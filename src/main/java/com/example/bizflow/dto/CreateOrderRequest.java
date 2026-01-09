@@ -8,6 +8,11 @@ public class CreateOrderRequest {
     private Boolean paid;
     private String paymentMethod;
     private Boolean returnOrder;
+    private String orderType;
+    private Long originalOrderId;
+    private String refundMethod;
+    private String returnReason;
+    private String returnNote;
     private List<OrderItemRequest> items;
 
     public CreateOrderRequest() {
@@ -51,6 +56,46 @@ public class CreateOrderRequest {
 
     public void setReturnOrder(Boolean returnOrder) {
         this.returnOrder = returnOrder;
+    }
+
+    public String getOrderType() {
+        return orderType;
+    }
+
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
+
+    public Long getOriginalOrderId() {
+        return originalOrderId;
+    }
+
+    public void setOriginalOrderId(Long originalOrderId) {
+        this.originalOrderId = originalOrderId;
+    }
+
+    public String getRefundMethod() {
+        return refundMethod;
+    }
+
+    public void setRefundMethod(String refundMethod) {
+        this.refundMethod = refundMethod;
+    }
+
+    public String getReturnReason() {
+        return returnReason;
+    }
+
+    public void setReturnReason(String returnReason) {
+        this.returnReason = returnReason;
+    }
+
+    public String getReturnNote() {
+        return returnNote;
+    }
+
+    public void setReturnNote(String returnNote) {
+        this.returnNote = returnNote;
     }
 
     public List<OrderItemRequest> getItems() {

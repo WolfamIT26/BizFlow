@@ -160,5 +160,13 @@
         const modal = ensureAppMenuModal();
         bindAppMenu(modal, appMenuBtn);
         bindLogout(logoutBtn);
+        document.querySelectorAll('.logo-mark').forEach((logo) => {
+            if (logo.dataset.boundAppShell) return;
+            logo.style.cursor = 'pointer';
+            logo.addEventListener('click', () => {
+                window.location.href = '/pages/employee-dashboard.html';
+            });
+            logo.dataset.boundAppShell = 'true';
+        });
     });
 })();

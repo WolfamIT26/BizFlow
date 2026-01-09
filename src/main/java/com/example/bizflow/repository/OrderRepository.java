@@ -26,4 +26,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @EntityGraph(attributePaths = {"items", "items.product", "user", "customer"})
     Optional<Order> findByInvoiceNumber(String invoiceNumber);
+
+    @Query("""
+        SELECT o FROM Order o
+        LEFT JOIN o.customer c
+        WHERE (:keyword IS NULL OR o.invoiceNumber LIKE %:keyword% OR c.phone LIKE %:keyword%)
+          AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
+          AND (:toDate IS NULL OR o.createdAt <= :toDate)
+        ORDER BY o.createdAt DESC
+    """)
+    List<Order> searchOrders(@Param("keyword") String keyword,
+                             @Param("fromDate") java.time.LocalDateTime fromDate,
+                             @Param("toDate") java.time.LocalDateTime toDate);
 }

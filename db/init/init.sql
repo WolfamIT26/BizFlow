@@ -179,12 +179,23 @@ DROP TABLE IF EXISTS `orders`;
 CREATE TABLE `orders` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `created_at` datetime(6) DEFAULT NULL,
+  `invoice_number` varchar(30) DEFAULT NULL,
+  `status` varchar(30) DEFAULT NULL,
+  `is_return` bit(1) DEFAULT NULL,
+  `order_type` varchar(20) DEFAULT NULL,
+  `parent_order_id` bigint DEFAULT NULL,
+  `return_reason` varchar(255) DEFAULT NULL,
+  `return_note` varchar(255) DEFAULT NULL,
+  `refund_method` varchar(50) DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
   `total_amount` decimal(15,2) NOT NULL,
   `customer_id` bigint DEFAULT NULL,
   `user_id` bigint DEFAULT NULL,
   PRIMARY KEY (`id`),
+  KEY `FK_orders_parent` (`parent_order_id`),
   KEY `FKpxtb8awmi0dk6smoh2vp1litg` (`customer_id`),
   KEY `FK32ql8ubntj5uh44ph9659tiih` (`user_id`),
+  CONSTRAINT `FK_orders_parent` FOREIGN KEY (`parent_order_id`) REFERENCES `orders` (`id`),
   CONSTRAINT `FK32ql8ubntj5uh44ph9659tiih` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `FKpxtb8awmi0dk6smoh2vp1litg` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

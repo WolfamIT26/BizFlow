@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,39 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> searchPaidOrders(String invoiceNumber,
+                                                       String customerPhone,
+                                                       LocalDateTime fromDate,
+                                                       LocalDateTime toDate) {
+        return orderRepository.searchOrders(
+                        normalizeOptional(invoiceNumber),
+                        fromDate,
+                        toDate
+                )
+                .stream()
+                .peek(this::ensureInvoiceNumber)
+                .filter(order -> "PAID".equalsIgnoreCase(order.getStatus()))
+                .map(this::mapToSummary)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderSummaryResponse> searchPaidOrdersByKeyword(String keyword,
+                                                                LocalDateTime fromDate,
+                                                                LocalDateTime toDate) {
+        return orderRepository.searchOrders(
+                        normalizeOptional(keyword),
+                        fromDate,
+                        toDate
+                )
+                .stream()
+                .peek(this::ensureInvoiceNumber)
+                .filter(order -> "PAID".equalsIgnoreCase(order.getStatus()))
+                .map(this::mapToSummary)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public Optional<OrderResponse> getOrderDetail(Long id) {
         return orderRepository.findByIdWithDetails(id)
                 .map(order -> {
@@ -75,6 +109,10 @@ public class OrderService {
     }
 
     public String generateInvoiceNumberForDate(LocalDate date, boolean isReturn) {
+        return generateInvoiceNumberForDate(date, isReturn ? "RETURN" : null);
+    }
+
+    public String generateInvoiceNumberForDate(LocalDate date, String orderType) {
         String yymmdd = date.format(DateTimeFormatter.ofPattern("yyMMdd"));
         String basePrefix = invoiceBranchPrefix + "-" + yymmdd;
         int nextSeq = 1;
@@ -87,8 +125,9 @@ public class OrderService {
             }
         }
         String number = String.format("%s%05d", basePrefix, nextSeq);
-        if (isReturn) {
-            number += "TH";
+        String suffix = resolveInvoiceSuffix(orderType);
+        if (suffix != null) {
+            number += suffix;
         }
         return number;
     }
@@ -115,7 +154,8 @@ public class OrderService {
                 order.getStatus(),
                 userName,
                 userName,
-                itemResponses
+                itemResponses,
+                order.getNote()
         );
     }
 
@@ -161,7 +201,8 @@ public class OrderService {
                 order.getInvoiceNumber(),
                 order.getStatus(),
                 userName,
-                userName
+                userName,
+                order.getNote()
         );
     }
 
@@ -174,7 +215,7 @@ public class OrderService {
         }
         int start = basePrefix.length();
         String trimmed = invoiceNumber;
-        if (trimmed.endsWith("TH")) {
+        if (trimmed.endsWith("TH") || trimmed.endsWith("ĐH")) {
             trimmed = trimmed.substring(0, trimmed.length() - 2);
         }
         if (trimmed.length() < start + 5) {
@@ -197,11 +238,37 @@ public class OrderService {
             return;
         }
         LocalDate date = order.getCreatedAt() != null ? order.getCreatedAt().toLocalDate() : LocalDate.now();
-        boolean isReturn = Boolean.TRUE.equals(order.getReturnOrder());
-        order.setInvoiceNumber(generateInvoiceNumberForDate(date, isReturn));
+        String orderType = order.getOrderType();
+        if (orderType == null && Boolean.TRUE.equals(order.getReturnOrder())) {
+            orderType = "RETURN";
+        }
+        order.setInvoiceNumber(generateInvoiceNumberForDate(date, orderType));
         if (order.getStatus() == null || order.getStatus().trim().isEmpty()) {
+            boolean isReturn = "RETURN".equalsIgnoreCase(orderType);
             order.setStatus(isReturn ? "RETURNED" : "PAID");
         }
         orderRepository.save(order);
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String resolveInvoiceSuffix(String orderType) {
+        if (orderType == null) {
+            return null;
+        }
+        switch (orderType.toUpperCase()) {
+            case "RETURN":
+                return "TH";
+            case "EXCHANGE":
+                return "ĐH";
+            default:
+                return null;
+        }
     }
 }

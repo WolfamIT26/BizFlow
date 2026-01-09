@@ -18,6 +18,7 @@ public class OrderResponse {
     private String cashierName;
     private String salesName;
     private List<OrderItemResponse> items;
+    private String note;
 
     public OrderResponse() {
     }
@@ -34,7 +35,8 @@ public class OrderResponse {
                          String status,
                          String cashierName,
                          String salesName,
-                         List<OrderItemResponse> items) {
+                         List<OrderItemResponse> items,
+                         String note) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -48,6 +50,7 @@ public class OrderResponse {
         this.cashierName = cashierName;
         this.salesName = salesName;
         this.items = items;
+        this.note = note;
     }
 
     public Long getId() {
@@ -152,5 +155,13 @@ public class OrderResponse {
 
     public void setItems(List<OrderItemResponse> items) {
         this.items = items;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }

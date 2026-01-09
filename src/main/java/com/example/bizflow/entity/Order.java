@@ -34,6 +34,25 @@ public class Order {
     @Column(name = "is_return")
     private Boolean returnOrder = false;
 
+    @Column(name = "order_type", length = 20)
+    private String orderType;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_order_id")
+    private Order parentOrder;
+
+    @Column(name = "return_reason", length = 255)
+    private String returnReason;
+
+    @Column(name = "return_note", length = 255)
+    private String returnNote;
+
+    @Column(name = "refund_method", length = 50)
+    private String refundMethod;
+
+    @Column(name = "note", length = 255)
+    private String note;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -97,6 +116,54 @@ public class Order {
 
     public void setReturnOrder(Boolean returnOrder) {
         this.returnOrder = returnOrder;
+    }
+
+    public String getOrderType() {
+        return orderType;
+    }
+
+    public void setOrderType(String orderType) {
+        this.orderType = orderType;
+    }
+
+    public Order getParentOrder() {
+        return parentOrder;
+    }
+
+    public void setParentOrder(Order parentOrder) {
+        this.parentOrder = parentOrder;
+    }
+
+    public String getReturnReason() {
+        return returnReason;
+    }
+
+    public void setReturnReason(String returnReason) {
+        this.returnReason = returnReason;
+    }
+
+    public String getReturnNote() {
+        return returnNote;
+    }
+
+    public void setReturnNote(String returnNote) {
+        this.returnNote = returnNote;
+    }
+
+    public String getRefundMethod() {
+        return refundMethod;
+    }
+
+    public void setRefundMethod(String refundMethod) {
+        this.refundMethod = refundMethod;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 
     public LocalDateTime getCreatedAt() {
