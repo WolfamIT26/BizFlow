@@ -836,9 +836,26 @@ function mapPaymentMethod(method) {
     }
 }
 
+
+function ensureEmptyStateBrand(target) {
+    const emptyState = target || document.getElementById('emptyState');
+    if (!emptyState || emptyState.querySelector('.empty-brand')) return;
+    const brand = document.createElement('div');
+    brand.className = 'empty-brand';
+    brand.innerHTML = `
+        <div class="empty-brand-badge">BF</div>
+        <div class="empty-brand-text">
+            <div class="empty-brand-title">BizFlow</div>
+            <div class="empty-brand-sub">Smart Retail POS</div>
+        </div>
+    `;
+    emptyState.prepend(brand);
+}
+
 function renderCart() {
     const cartContainer = document.getElementById('cartItems');
     const emptyState = document.getElementById('emptyState');
+    ensureEmptyStateBrand(emptyState);
     if (cart.length === 0) {
         if (cartContainer) {
             cartContainer.innerHTML = '';
@@ -865,7 +882,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
+            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
         </div>
     `).join('');
 }
@@ -888,6 +905,7 @@ function setQty(idx, value) {
 }
 
 function removeFromCart(idx) {
+    if (cart[idx]?.isReturnItem) return;
     cart.splice(idx, 1);
     renderCart();
     updateTotal();
@@ -1190,7 +1208,7 @@ function setupEventListeners() {
 
     const clearCartBtn = document.getElementById('clearCartBtn');
     clearCartBtn?.addEventListener('click', () => {
-        if (confirm('Xóa tất cả sản phẩm trong giỏ?')) {
+        if (confirm('X\u00f3a h\u00f3a \u0111\u01a1n n\u00e0y?')) {
             clearCart(false);
         }
     });
@@ -1219,7 +1237,7 @@ function setupEventListeners() {
 
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
-        if (confirm('Đăng xuất?')) {
+        if (confirm('X\u00f3a h\u00f3a \u0111\u01a1n n\u00e0y?')) {
             sessionStorage.clear();
             window.location.href = '/pages/login.html';
         }
@@ -1293,6 +1311,7 @@ function createInvoiceState(name) {
         bottomSearchTerm: ''
     };
 }
+
 
 function getActiveInvoice() {
     return invoices.find(inv => inv.id === activeInvoiceId) || null;
@@ -1372,8 +1391,8 @@ function renderInvoiceTabs() {
     `).join('');
     container.innerHTML = `
         ${tabs}
-        <button class="order-tab ghost" id="addInvoiceBtn" title="Thêm hóa đơn">+</button>
-        <button class="order-tab ghost" id="savedInvoiceBtn">HĐ lưu tạm</button>
+        <button class="order-tab ghost" id="addInvoiceBtn" title="Th\u00eam h\u00f3a \u0111\u01a1n">+</button>
+        <button class="order-tab ghost" id="savedInvoiceBtn">H\u0110 l\u01b0u t\u1ea1m</button>
     `;
 }
 
@@ -1398,7 +1417,7 @@ function setupInvoiceTabs() {
         if (closeBtn) {
             e.stopPropagation();
             const invoiceId = closeBtn.getAttribute('data-close');
-            if (invoiceId) {
+            if (invoiceId && confirm('X\u00f3a h\u00f3a \u0111\u01a1n n\u00e0y?')) {
                 removeInvoice(invoiceId);
             }
             return;
@@ -1462,14 +1481,17 @@ function switchInvoice(invoiceId) {
     }
 }
 
-function removeInvoice(invoiceId) {
+function removeInvoice(invoiceId, options = {}) {
+    const { resetSequence = true } = options;
     if (!invoiceId) return;
     const index = invoices.findIndex(inv => inv.id === invoiceId);
     if (index === -1) return;
     const wasActive = invoiceId === activeInvoiceId;
     invoices.splice(index, 1);
     if (invoices.length === 0) {
-        invoiceSequence = 1;
+        if (resetSequence) {
+            invoiceSequence = 1;
+        }
         const fresh = createInvoiceState();
         invoices.push(fresh);
         activeInvoiceId = fresh.id;
@@ -1502,7 +1524,7 @@ function saveDraftInvoice() {
         savedAt: new Date().toISOString()
     };
     savedInvoices.unshift(draft);
-    removeInvoice(invoice.id);
+    removeInvoice(invoice.id, { resetSequence: false });
     renderSavedBills();
     toggleSavedBillsPanel(false);
 }
