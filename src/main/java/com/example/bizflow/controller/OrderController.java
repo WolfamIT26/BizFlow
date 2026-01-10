@@ -34,7 +34,9 @@ import com.example.bizflow.dto.CreateOrderResponse;
 import com.example.bizflow.dto.OrderItemRequest;
 import com.example.bizflow.entity.*;
 import com.example.bizflow.repository.*;
+import com.example.bizflow.service.OrderService;
 import com.example.bizflow.service.PointService;
+
 
 @RestController
 @RequestMapping("/api/orders")
@@ -46,221 +48,115 @@ public class OrderController {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
+    private final OrderService orderService;
+    private final PointService pointService;
 
-    public OrderController(OrderRepository orderRepository,
-                           OrderItemRepository orderItemRepository,
-                           PaymentRepository paymentRepository,
-                           ProductRepository productRepository,
-                           CustomerRepository customerRepository,
-                           UserRepository userRepository) {
+    public OrderController(
+            OrderRepository orderRepository,
+            OrderItemRepository orderItemRepository,
+            PaymentRepository paymentRepository,
+            ProductRepository productRepository,
+            CustomerRepository customerRepository,
+            UserRepository userRepository,
+            OrderService orderService,
+            PointService pointService
+    ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
+        this.orderService = orderService;
+        this.pointService = pointService;
     }
 
-    // ================== TẠO ĐƠN + THANH TOÁN NGAY ==================
+    // ================== TẠO ĐƠN + THANH TOÁN ==================
     @PostMapping
-@Transactional
-public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
-    @GetMapping("/summary")
-    public ResponseEntity<List<OrderSummaryResponse>> getOrderSummaries() {
-        return ResponseEntity.ok(orderService.getAllOrderSummaries());
-    }
+    @Transactional
+    public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
 
-    @GetMapping("/returns/search")
-    public ResponseEntity<List<OrderSummaryResponse>> searchPaidOrders(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String fromDate,
-            @RequestParam(required = false) String toDate) {
-        java.time.LocalDateTime from = null;
-        java.time.LocalDateTime to = null;
-        if (fromDate != null && !fromDate.trim().isEmpty()) {
-            from = java.time.LocalDate.parse(fromDate.trim()).atStartOfDay();
-        }
-        if (toDate != null && !toDate.trim().isEmpty()) {
-            to = java.time.LocalDate.parse(toDate.trim()).atTime(23, 59, 59);
-        }
-        return ResponseEntity.ok(orderService.searchPaidOrdersByKeyword(keyword, from, to));
-    }
-
-    @GetMapping("/number/{invoiceNumber}")
-    public ResponseEntity<?> getOrderByInvoiceNumber(@PathVariable String invoiceNumber) {
-        return orderService.getOrderByInvoiceNumber(invoiceNumber)
-                .<ResponseEntity<?>>map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    if (request.getItems() == null || request.getItems().isEmpty()) {
-        return ResponseEntity.badRequest().body("Order items are required");
-    }
-
-        User user = null;
-        if (request.getUserId() != null) {
-            Long userId = request.getUserId();
-            user = userRepository.findById(userId).orElse(null);
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return ResponseEntity.badRequest().body("Order items are required");
         }
 
-        Customer customer = null;
-        if (request.getCustomerId() != null && request.getCustomerId() > 0) {
-            Long customerId = request.getCustomerId();
-            customer = customerRepository.findById(customerId).orElse(null);
-        }
+        User user = request.getUserId() == null ? null :
+                userRepository.findById(request.getUserId()).orElse(null);
 
-        Order order = new Order();
-        order.setUser(user);
-        order.setCustomer(customer);
-        String orderType = request.getOrderType();
-        boolean isReturn = Boolean.TRUE.equals(request.getReturnOrder())
-                || "RETURN".equalsIgnoreCase(orderType);
-        boolean isExchange = "EXCHANGE".equalsIgnoreCase(orderType);
-        if (isReturn && orderType == null) {
-            orderType = "RETURN";
-        }
-        if (isExchange && orderType == null) {
-            orderType = "EXCHANGE";
-        }
+        Customer customer = request.getCustomerId() == null ? null :
+                customerRepository.findById(request.getCustomerId()).orElse(null);
+
         boolean paid = Boolean.TRUE.equals(request.getPaid());
 
         Order order = new Order();
         order.setUser(user);
         order.setCustomer(customer);
-        order.setReturnOrder(isReturn);
-        order.setOrderType(orderType);
-        order.setStatus(isReturn ? "RETURNED" : (paid ? "PAID" : "UNPAID"));
-        order.setInvoiceNumber(orderService.generateInvoiceNumberForDate(LocalDate.now(), orderType));
-        if (request.getOriginalOrderId() != null) {
-            orderRepository.findById(request.getOriginalOrderId()).ifPresent(order::setParentOrder);
-        }
-        if (isReturn) {
-            order.setRefundMethod(request.getRefundMethod());
-            order.setReturnReason(request.getReturnReason());
-            order.setReturnNote(request.getReturnNote());
-        }
-        order.setNote(request.getReturnNote());
+        order.setStatus(paid ? "PAID" : "UNPAID");
+        order.setInvoiceNumber(
+                orderService.generateInvoiceNumberForDate(LocalDate.now(), "SALE")
+        );
 
         BigDecimal total = BigDecimal.ZERO;
-        List<OrderItem> orderItems = new ArrayList<>();
-        for (OrderItemRequest itemRequest : request.getItems()) {
-            if (itemRequest == null || itemRequest.getProductId() == null) {
-                return ResponseEntity.badRequest().body("Product id is required.");
+        List<OrderItem> items = new ArrayList<>();
+
+        for (OrderItemRequest req : request.getItems()) {
+
+            Product product = productRepository.findById(req.getProductId())
+                    .orElseThrow(() -> new RuntimeException("Product not found"));
+
+            int qty = req.getQuantity();
+            if (qty <= 0) {
+                return ResponseEntity.badRequest().body("Quantity must be > 0");
             }
 
-            int qty = itemRequest.getQuantity() == null ? 0 : itemRequest.getQuantity();
-            if (!isExchange && qty <= 0) {
-                return ResponseEntity.badRequest().body("Quantity must be greater than 0.");
-            }
-            if (isExchange && qty == 0) {
-                return ResponseEntity.badRequest().body("Quantity must not be 0.");
-            }
+            BigDecimal lineTotal = product.getPrice()
+                    .multiply(BigDecimal.valueOf(qty));
 
-            Long productId = itemRequest.getProductId();
-            Product product = productRepository.findById(productId).orElse(null);
-            if (product == null) {
-                return ResponseEntity.badRequest().body("Product not found: " + productId);
-            }
-
-            BigDecimal price = product.getPrice() == null ? BigDecimal.ZERO : product.getPrice();
-            BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
             total = total.add(lineTotal);
 
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setProduct(product);
-            orderItem.setQuantity(qty);
-            orderItem.setPrice(price);
-            orderItems.add(orderItem);
+            OrderItem item = new OrderItem();
+            item.setOrder(order);
+            item.setProduct(product);
+            item.setQuantity(qty);
+            item.setPrice(product.getPrice());
+            items.add(item);
         }
 
-    BigDecimal total = BigDecimal.ZERO;
-    List<OrderItem> items = new ArrayList<>();
+        order.setTotalAmount(total);
+        Order savedOrder = orderRepository.save(order);
 
-    for (OrderItemRequest req : request.getItems()) {
-        Product product = productRepository.findById(req.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+        items.forEach(i -> i.setOrder(savedOrder));
+        orderItemRepository.saveAll(items);
 
-        BigDecimal lineTotal = product.getPrice()
-                .multiply(BigDecimal.valueOf(req.getQuantity()));
-
-        total = total.add(lineTotal);
-
-        OrderItem item = new OrderItem();
-        item.setOrder(order);
-        item.setProduct(product);
-        item.setQuantity(req.getQuantity());
-        item.setPrice(product.getPrice());
-        items.add(item);
-    }
-
-    order.setTotalAmount(total);
-    Order savedOrder = orderRepository.save(order);
-
-    for (OrderItem item : items) {
-        item.setOrder(savedOrder);
-    }
-    orderItemRepository.saveAll(items);
-
-        boolean paid = Boolean.TRUE.equals(request.getPaid());
-        String paymentToken = null;
         if (paid) {
             Payment payment = new Payment();
             payment.setOrder(savedOrder);
-            payment.setMethod(request.getPaymentMethod() == null ? "CASH" : request.getPaymentMethod());
+            payment.setMethod(
+                    request.getPaymentMethod() == null ? "CASH" : request.getPaymentMethod()
+            );
             payment.setAmount(total);
             payment.setStatus("PAID");
             payment.setPaidAt(java.time.LocalDateTime.now());
             paymentRepository.save(payment);
-        } else if (request.getPaymentMethod() != null && "TRANSFER".equalsIgnoreCase(request.getPaymentMethod())) {
-            // create pending transfer payment with a token
-            Payment payment = new Payment();
-            payment.setOrder(savedOrder);
-            payment.setMethod("TRANSFER");
-            payment.setAmount(total);
-            payment.setStatus("PENDING");
-            paymentToken = java.util.UUID.randomUUID().toString();
-            payment.setToken(paymentToken);
-            paymentRepository.save(payment);
+
+            // ✅ CỘNG ĐIỂM KHÁCH HÀNG (KHÔNG PHỤ THUỘC PHƯƠNG THỨC)
+            if (customer != null) {
+                pointService.addPoints(
+                        customer.getId(),
+                        total,
+                        "ORDER_" + savedOrder.getId()
+                );
+            }
         }
 
-        return ResponseEntity.ok(new CreateOrderResponse(
-                savedOrder.getId(),
-                total,
-                orderItems.size(),
-                paid,
-                paymentToken
-        ));
-    }
-
-    // ================== THANH TOÁN SAU ==================
-    @PostMapping("/{orderId}/pay")
-    @Transactional
-    public ResponseEntity<?> payOrder(@PathVariable Long orderId,
-                                      @RequestBody Map<String, String> body) {
-
-        Order order = orderRepository.findById(orderId).orElse(null);
-        if (order == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Payment payment = new Payment();
-        payment.setOrder(order);
-        payment.setMethod(body.getOrDefault("method", "CASH"));
-        payment.setAmount(order.getTotalAmount());
-        payment.setStatus("PAID");
-        payment.setPaidAt(java.time.LocalDateTime.now());
-        paymentRepository.save(payment);
-
-        // ✅ CỘNG ĐIỂM – KHÔNG TRÙNG
-        if (order.getCustomer() != null) {
-            pointService.addPoints(
-                    order.getCustomer().getId(),
-                    order.getTotalAmount(),
-                    "ORDER_" + order.getId()
-            );
-        }
-
-        return ResponseEntity.ok("Payment recorded & points added");
+        return ResponseEntity.ok(
+                new CreateOrderResponse(
+                        savedOrder.getId(),
+                        total,
+                        items.size(),
+                        paid,
+                        null
+                )
+        );
     }
 }
