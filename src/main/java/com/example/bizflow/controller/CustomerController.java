@@ -59,7 +59,7 @@ public class CustomerController {
 
     @GetMapping("/{id}/orders")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
-    public ResponseEntity<List<OrderSummaryResponse>> getCustomerOrderHistory(@PathVariable @NonNull Long id) {
+    public ResponseEntity<Object> getCustomerOrderHistory(@PathVariable @NonNull Long id) {
         return ResponseEntity.ok(orderService.getCustomerOrderHistory(id));
     }
 }
