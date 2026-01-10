@@ -1587,7 +1587,17 @@
 .receipt-item .name {
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    display: grid;
+    gap: 2px;
+}
+
+.receipt-item .receipt-promo {
+    display: block;
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 2px;
+    white-space: normal;
 }
 
 .receipt-totals {
