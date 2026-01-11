@@ -14,7 +14,19 @@ function resolveApiBase() {
         return 'http://localhost:8080/api';
     }
 
+    if (['localhost', '127.0.0.1'].includes(window.location.hostname) && window.location.port !== '8080') {
+        return 'http://localhost:8080/api';
+    }
+
     return `${window.location.origin}/api`;
+}
+
+function checkAuth() {
+    const token = sessionStorage.getItem('accessToken');
+    const role = sessionStorage.getItem('role');
+    if (!token || role !== 'EMPLOYEE') {
+        window.location.href = '/pages/login.html';
+    }
 }
 
 function formatPrice(price) {
@@ -53,6 +65,11 @@ async function searchPaidOrders() {
             }
         });
         if (!res.ok) {
+            if (res.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
             alert('Không thể tải danh sách hóa đơn.');
             return;
         }
@@ -254,6 +271,11 @@ async function openOrderDetail(orderId) {
             }
         });
         if (!res.ok) {
+            if (res.status === 401) {
+                sessionStorage.clear();
+                window.location.href = '/pages/login.html';
+                return;
+            }
             alert('Không thể tải chi tiết hóa đơn.');
             return;
         }
@@ -550,6 +572,7 @@ function bindEvents() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
     bindEvents();
     applyPresetRange();
 });

@@ -3,6 +3,7 @@ package com.example.bizflow.controller;
 import com.example.bizflow.dto.CreateOrderRequest;
 import com.example.bizflow.dto.CreateOrderResponse;
 import com.example.bizflow.dto.OrderItemRequest;
+import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.entity.Customer;
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.entity.OrderItem;
@@ -15,6 +16,8 @@ import com.example.bizflow.repository.OrderRepository;
 import com.example.bizflow.repository.PaymentRepository;
 import com.example.bizflow.repository.ProductRepository;
 import com.example.bizflow.repository.UserRepository;
+import com.example.bizflow.service.OrderService;
+import com.example.bizflow.service.PointService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -24,17 +27,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
-
-import com.example.bizflow.dto.CreateOrderRequest;
-import com.example.bizflow.dto.CreateOrderResponse;
-import com.example.bizflow.dto.OrderItemRequest;
-import com.example.bizflow.entity.*;
-import com.example.bizflow.repository.*;
-import com.example.bizflow.service.PointService;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -46,25 +38,28 @@ public class OrderController {
     private final ProductRepository productRepository;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
+    private final PointService pointService;
+    private final OrderService orderService;
 
     public OrderController(OrderRepository orderRepository,
                            OrderItemRepository orderItemRepository,
                            PaymentRepository paymentRepository,
                            ProductRepository productRepository,
                            CustomerRepository customerRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           PointService pointService,
+                           OrderService orderService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.customerRepository = customerRepository;
         this.userRepository = userRepository;
+        this.pointService = pointService;
+        this.orderService = orderService;
     }
 
-    // ================== TẠO ĐƠN + THANH TOÁN NGAY ==================
-    @PostMapping
-@Transactional
-public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
+    // ================== GET ENDPOINTS ==================
     @GetMapping("/summary")
     public ResponseEntity<List<OrderSummaryResponse>> getOrderSummaries() {
         return ResponseEntity.ok(orderService.getAllOrderSummaries());
@@ -93,25 +88,32 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    if (request.getItems() == null || request.getItems().isEmpty()) {
-        return ResponseEntity.badRequest().body("Order items are required");
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getOrderDetail(@PathVariable Long id) {
+        return orderService.getOrderDetail(id)
+                .<ResponseEntity<?>>map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
+
+    // ================== TẠO ĐƠN + THANH TOÁN NGAY ==================
+    @PostMapping
+    @Transactional
+    @SuppressWarnings("null")
+    public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            return ResponseEntity.badRequest().body("Order items are required");
+        }
 
         User user = null;
         if (request.getUserId() != null) {
-            Long userId = request.getUserId();
-            user = userRepository.findById(userId).orElse(null);
+            user = userRepository.findById(request.getUserId()).orElse(null);
         }
 
         Customer customer = null;
         if (request.getCustomerId() != null && request.getCustomerId() > 0) {
-            Long customerId = request.getCustomerId();
-            customer = customerRepository.findById(customerId).orElse(null);
+            customer = customerRepository.findById(request.getCustomerId()).orElse(null);
         }
 
-        Order order = new Order();
-        order.setUser(user);
-        order.setCustomer(customer);
         String orderType = request.getOrderType();
         boolean isReturn = Boolean.TRUE.equals(request.getReturnOrder())
                 || "RETURN".equalsIgnoreCase(orderType);
@@ -130,7 +132,7 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
         order.setReturnOrder(isReturn);
         order.setOrderType(orderType);
         order.setStatus(isReturn ? "RETURNED" : (paid ? "PAID" : "UNPAID"));
-        order.setInvoiceNumber(orderService.generateInvoiceNumberForDate(LocalDate.now(), orderType));
+        order.setInvoiceNumber(orderService.generateInvoiceNumberForDate(LocalDate.now(), orderType, user));
         if (request.getOriginalOrderId() != null) {
             orderRepository.findById(request.getOriginalOrderId()).ifPresent(order::setParentOrder);
         }
@@ -156,10 +158,9 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
                 return ResponseEntity.badRequest().body("Quantity must not be 0.");
             }
 
-            Long productId = itemRequest.getProductId();
-            Product product = productRepository.findById(productId).orElse(null);
+            Product product = productRepository.findById(itemRequest.getProductId()).orElse(null);
             if (product == null) {
-                return ResponseEntity.badRequest().body("Product not found: " + productId);
+                return ResponseEntity.badRequest().body("Product not found: " + itemRequest.getProductId());
             }
 
             BigDecimal price = product.getPrice() == null ? BigDecimal.ZERO : product.getPrice();
@@ -174,35 +175,10 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
             orderItems.add(orderItem);
         }
 
-    BigDecimal total = BigDecimal.ZERO;
-    List<OrderItem> items = new ArrayList<>();
+        order.setTotalAmount(total);
+        Order savedOrder = orderRepository.save(order);
+        orderItemRepository.saveAll(orderItems);
 
-    for (OrderItemRequest req : request.getItems()) {
-        Product product = productRepository.findById(req.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found"));
-
-        BigDecimal lineTotal = product.getPrice()
-                .multiply(BigDecimal.valueOf(req.getQuantity()));
-
-        total = total.add(lineTotal);
-
-        OrderItem item = new OrderItem();
-        item.setOrder(order);
-        item.setProduct(product);
-        item.setQuantity(req.getQuantity());
-        item.setPrice(product.getPrice());
-        items.add(item);
-    }
-
-    order.setTotalAmount(total);
-    Order savedOrder = orderRepository.save(order);
-
-    for (OrderItem item : items) {
-        item.setOrder(savedOrder);
-    }
-    orderItemRepository.saveAll(items);
-
-        boolean paid = Boolean.TRUE.equals(request.getPaid());
         String paymentToken = null;
         if (paid) {
             Payment payment = new Payment();
@@ -229,13 +205,15 @@ public ResponseEntity<?> createOrder(@RequestBody CreateOrderRequest request) {
                 total,
                 orderItems.size(),
                 paid,
-                paymentToken
+                paymentToken,
+                savedOrder.getInvoiceNumber()
         ));
     }
 
     // ================== THANH TOÁN SAU ==================
     @PostMapping("/{orderId}/pay")
     @Transactional
+    @SuppressWarnings("null")
     public ResponseEntity<?> payOrder(@PathVariable Long orderId,
                                       @RequestBody Map<String, String> body) {
 

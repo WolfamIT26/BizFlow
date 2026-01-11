@@ -30,6 +30,69 @@ const PRODUCT_ICON = `
     </svg>
 `;
 
+const FALLBACK_PRODUCTS = [
+    {
+        id: 1,
+        name: 'Sữa tươi nguyên kem',
+        code: 'SGL330',
+        barcode: '8931234567012',
+        price: 15000,
+        unit: 'lon',
+        stock: 120,
+        description: 'Sữa tươi tiệt trùng 330ml'
+    },
+    {
+        id: 2,
+        name: 'Gạo thơm đóng gói',
+        code: 'CQ-DY160',
+        barcode: '8931234567029',
+        price: 18000,
+        unit: 'gói',
+        stock: 60,
+        description: 'Gạo thơm 1kg'
+    },
+    {
+        id: 3,
+        name: 'Cà phê hòa tan',
+        code: 'CC330',
+        barcode: '8931234567036',
+        price: 10000,
+        unit: 'lon',
+        stock: 200,
+        description: 'Cà phê sữa 330ml'
+    },
+    {
+        id: 4,
+        name: 'Nước ngọt có ga',
+        code: 'NGC240',
+        barcode: '8931234567043',
+        price: 12000,
+        unit: 'lon',
+        stock: 180,
+        description: 'Lon 240ml'
+    },
+    {
+        id: 5,
+        name: 'Bánh quy bơ',
+        code: 'BQB120',
+        barcode: '8931234567050',
+        price: 22000,
+        unit: 'hộp',
+        stock: 45,
+        description: 'Bánh quy bơ 120g'
+    },
+    {
+        id: 6,
+        name: 'Mì ly ăn liền',
+        code: 'MLY105',
+        barcode: '8931234567067',
+        price: 14000,
+        unit: 'ly',
+        stock: 90,
+        description: 'Mì ly 105g'
+    }
+];
+
 window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
@@ -132,6 +195,10 @@ function resolveApiBase() {
     }
 
     if (window.location.protocol === 'file:') {
+        return 'http://localhost:8080/api';
+    }
+
+    if (['localhost', '127.0.0.1'].includes(window.location.hostname) && window.location.port !== '8080') {
         return 'http://localhost:8080/api';
     }
 
@@ -294,10 +361,12 @@ async function loadProducts() {
             throw new Error('Failed to load products');
         }
 
-        products = await response.json();
+        const data = await response.json();
+        products = Array.isArray(data) && data.length > 0 ? data : FALLBACK_PRODUCTS;
         filterProducts();
     } catch (err) {
-        renderProducts([]);
+        products = FALLBACK_PRODUCTS;
+        filterProducts();
     }
 }
 
@@ -871,20 +940,42 @@ function renderCart() {
     if (emptyState) {
         emptyState.style.display = 'none';
     }
-    cartContainer.innerHTML = cart.map((item, idx) => `
-        <div class="cart-row ${item.isReturnItem ? 'return-item' : ''}">
+    cartContainer.innerHTML = cart.map((item, idx) => {
+        if (item.isReturnItem) {
+            return `
+            <div class="cart-row return-item">
+                <span>${idx + 1}</span>
+                <span>${item.productCode || '-'}</span>
+                <span class="cart-name">${item.productName}</span>
+                <span class="cart-qty">
+                    <input type="number" class="qty-input" value="${item.quantity}" disabled>
+                </span>
+                <span>${item.unit || '-'}</span>
+                <span>${formatPrice(item.productPrice)}</span>
+                <span>${formatPrice(item.productPrice * item.quantity)}</span>
+                <div class="cart-item-actions">
+                    <span class="cart-item-locked">Đổi</span>
+                    <button class="cart-item-remove" onclick="removeReturnItem(${idx})">×</button>
+                </div>
+            </div>
+        `;
+        }
+
+        return `
+        <div class="cart-row">
             <span>${idx + 1}</span>
             <span>${item.productCode || '-'}</span>
             <span class="cart-name">${item.productName}</span>
             <span class="cart-qty ${Number(item.stock) <= 0 ? 'is-out' : ''}">
-                <input type="number" class="qty-input" value="${item.quantity}" ${item.isReturnItem ? 'disabled' : ''} onchange="setQty(${idx}, this.value)">
+                <input type="number" class="qty-input" value="${item.quantity}" onchange="setQty(${idx}, this.value)">
             </span>
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function updateQty(idx, change) {
@@ -906,6 +997,13 @@ function setQty(idx, value) {
 
 function removeFromCart(idx) {
     if (cart[idx]?.isReturnItem) return;
+    cart.splice(idx, 1);
+    renderCart();
+    updateTotal();
+}
+
+function removeReturnItem(idx) {
+    if (!cart[idx]?.isReturnItem) return;
     cart.splice(idx, 1);
     renderCart();
     updateTotal();

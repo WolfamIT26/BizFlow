@@ -35,6 +35,7 @@ public class PointService {
     /**
      * 1.000 VNĐ = 1 điểm
      */
+    @SuppressWarnings("null")
     public void addPoints(Long customerId, BigDecimal totalAmount, String reason) {
 
         System.out.println("🔥 addPoints CALLED - customerId=" + customerId + ", reason=" + reason);
@@ -71,32 +72,51 @@ public class PointService {
         pointHistoryRepository.save(history);
 
         // ✅ update redis SAU – không ảnh hưởng transaction
-        redisTemplate.opsForValue().set(
-                redisKey(customerId),
-                customer.getTotalPoints(),
-                1,
-                TimeUnit.DAYS
-        );
+        Integer totalPoints = customer.getTotalPoints();
+        if (totalPoints != null) {
+            try {
+                redisTemplate.opsForValue().set(
+                        redisKey(customerId),
+                        totalPoints,
+                        1,
+                        TimeUnit.DAYS
+                );
+            } catch (Exception ex) {
+                System.out.println("⚠️ Redis unavailable, skip cache update: " + ex.getMessage());
+            }
+        }
 
         System.out.println("✅ Added " + earnedPoints + " points for customer " + customerId);
     }
 
+    @SuppressWarnings("null")
     public Integer getTotalPoints(Long customerId) {
         String key = redisKey(customerId);
 
-        Integer cached = redisTemplate.opsForValue().get(key);
-        if (cached != null) return cached;
+        try {
+            Integer cached = redisTemplate.opsForValue().get(key);
+            if (cached != null) return cached;
+        } catch (Exception ex) {
+            System.out.println("⚠️ Redis unavailable, skip cache read: " + ex.getMessage());
+        }
 
         Customer customer = customerRepository.findById(customerId).orElse(null);
         if (customer == null) return 0;
 
-        redisTemplate.opsForValue().set(
-                key,
-                customer.getTotalPoints(),
-                1,
-                TimeUnit.DAYS
-        );
+        Integer totalPoints = customer.getTotalPoints();
+        if (totalPoints != null) {
+            try {
+                redisTemplate.opsForValue().set(
+                        key,
+                        totalPoints,
+                        1,
+                        TimeUnit.DAYS
+                );
+            } catch (Exception ex) {
+                System.out.println("⚠️ Redis unavailable, skip cache update: " + ex.getMessage());
+            }
+        }
 
-        return customer.getTotalPoints();
+        return totalPoints != null ? totalPoints : 0;
     }
 }

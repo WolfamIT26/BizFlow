@@ -467,8 +467,8 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 16px;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-rows: minmax(320px, auto) minmax(220px, 1fr);
     gap: 16px;
     min-height: 0;
     height: 100%;
@@ -650,6 +650,9 @@
 .suggestion-panel {
     border-top: 1px solid var(--border);
     padding-top: 12px;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
 }
 
 .suggestion-header {
@@ -703,6 +706,10 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
 }
 
 .product-card {
@@ -828,7 +835,8 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-    height: clamp(360px, 48vh, 520px);
+    height: auto;
+    max-height: clamp(320px, 48vh, 520px);
     flex: 0 0 auto;
     align-items: stretch;
     justify-content: flex-start;
@@ -848,7 +856,7 @@
 
 .cart-row {
     display: grid;
-    grid-template-columns: 56px 150px 1.6fr 180px 100px 160px 170px 48px;
+    grid-template-columns: 40px 110px minmax(0, 1.6fr) 110px 70px 110px 120px 40px;
     gap: 14px;
     align-items: center;
     font-size: 15px;
@@ -859,11 +867,18 @@
     border-radius: 16px;
     box-shadow: 0 10px 18px rgba(20, 40, 90, 0.06);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    width: 100%;
+}
+
+.cart-row > * {
+    min-width: 0;
 }
 
 .cart-row.return-item {
     background: #fef5f5;
     border-color: #f2c9c9;
+    grid-template-columns: 40px 110px minmax(0, 1.6fr) 110px 70px 110px 120px 80px;
+    gap: 12px;
 }
 
 .cart-item-locked {
@@ -871,6 +886,13 @@
     color: #d97706;
     font-weight: 700;
     text-align: center;
+}
+
+.cart-item-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 .cart-row.header {
@@ -886,6 +908,8 @@
 .cart-name {
     font-weight: 600;
     color: #1f2430;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .cart-qty {

@@ -23,6 +23,10 @@ function resolveApiBase() {
         return 'http://localhost:8080/api';
     }
 
+    if (['localhost', '127.0.0.1'].includes(window.location.hostname) && window.location.port !== '8080') {
+        return 'http://localhost:8080/api';
+    }
+
     return `${window.location.origin}/api`;
 }
 

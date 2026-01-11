@@ -5,17 +5,21 @@ import com.example.bizflow.dto.OrderResponse;
 import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.entity.OrderItem;
+import com.example.bizflow.entity.User;
 import com.example.bizflow.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -113,8 +117,19 @@ public class OrderService {
     }
 
     public String generateInvoiceNumberForDate(LocalDate date, String orderType) {
-        String yymmdd = date.format(DateTimeFormatter.ofPattern("yyMMdd"));
-        String basePrefix = invoiceBranchPrefix + "-" + yymmdd;
+        return generateInvoiceNumberForDate(date, orderType, (String) null);
+    }
+
+    public String generateInvoiceNumberForDate(LocalDate date, String orderType, User user) {
+        return generateInvoiceNumberForDate(date, orderType, resolveBranchPrefix(user));
+    }
+
+    private String generateInvoiceNumberForDate(LocalDate date, String orderType, String branchPrefix) {
+        String prefix = (branchPrefix == null || branchPrefix.isBlank())
+                ? invoiceBranchPrefix
+                : branchPrefix.toUpperCase(Locale.ROOT);
+        String yymm = date.format(DateTimeFormatter.ofPattern("yyMM"));
+        String basePrefix = prefix + "-" + yymm;
         int nextSeq = 1;
         Optional<Order> latest = orderRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(basePrefix);
         if (latest.isPresent() && latest.get().getInvoiceNumber() != null) {
@@ -242,7 +257,7 @@ public class OrderService {
         if (orderType == null && Boolean.TRUE.equals(order.getReturnOrder())) {
             orderType = "RETURN";
         }
-        order.setInvoiceNumber(generateInvoiceNumberForDate(date, orderType));
+        order.setInvoiceNumber(generateInvoiceNumberForDate(date, orderType, order.getUser()));
         if (order.getStatus() == null || order.getStatus().trim().isEmpty()) {
             boolean isReturn = "RETURN".equalsIgnoreCase(orderType);
             order.setStatus(isReturn ? "RETURNED" : "PAID");
@@ -270,5 +285,49 @@ public class OrderService {
             default:
                 return null;
         }
+    }
+
+    private String resolveBranchPrefix(User user) {
+        if (user == null || user.getBranch() == null || user.getBranch().getName() == null) {
+            return invoiceBranchPrefix;
+        }
+        String name = user.getBranch().getName().trim();
+        if (name.isEmpty()) {
+            return invoiceBranchPrefix;
+        }
+
+        Set<String> stopwords = Set.of("CUA", "HANG", "CHI", "NHANH", "SHOP", "STORE", "CN", "CH");
+        String normalized = Normalizer.normalize(name, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^A-Za-z0-9\\s]", " ")
+                .toUpperCase(Locale.ROOT);
+        String[] parts = normalized.trim().split("\\s+");
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (part.isEmpty() || stopwords.contains(part)) {
+                continue;
+            }
+            sb.append(part.charAt(0));
+            if (sb.length() >= 2) {
+                break;
+            }
+        }
+
+        if (sb.length() == 0) {
+            String compact = normalized.replaceAll("\\s+", "");
+            if (compact.length() >= 2) {
+                return compact.substring(0, 2);
+            }
+            return compact.isEmpty() ? invoiceBranchPrefix : compact;
+        }
+
+        if (sb.length() == 1) {
+            String compact = normalized.replaceAll("\\s+", "");
+            if (compact.length() >= 2) {
+                sb.append(compact.charAt(1));
+            }
+        }
+
+        return sb.toString();
     }
 }
