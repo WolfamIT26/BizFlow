@@ -1,33 +1,18 @@
 package com.example.bizflow.service;
 
-import com.example.bizflow.entity.Customer;
-import com.example.bizflow.entity.PointHistory;
-import com.example.bizflow.repository.CustomerRepository;
-import com.example.bizflow.repository.PointHistoryRepository;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.concurrent.TimeUnit;
+
+import org.springframework.stereotype.Service;
 
 @Service
-@Transactional
 public class PointService {
 
-    private final CustomerRepository customerRepository;
-    private final PointHistoryRepository pointHistoryRepository;
-    private final RedisTemplate<String, Integer> redisTemplate;
-
-    public PointService(CustomerRepository customerRepository,
-                        PointHistoryRepository pointHistoryRepository,
-                        RedisTemplate<String, Integer> redisTemplate) {
-        this.customerRepository = customerRepository;
-        this.pointHistoryRepository = pointHistoryRepository;
-        this.redisTemplate = redisTemplate;
+    public static void addPoints(Long id, BigDecimal totalAmount, String string) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'addPoints'");
     }
 
+<<<<<<< HEAD
     private String redisKey(Long customerId) {
         return "customer:points:" + customerId;
     }
@@ -119,4 +104,6 @@ public class PointService {
 
         return totalPoints != null ? totalPoints : 0;
     }
+=======
+>>>>>>> 0e749eb7b88fec30ee558c76cbf18fee7af4255a
 }

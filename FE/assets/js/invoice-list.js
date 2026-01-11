@@ -1,5 +1,6 @@
 const API_BASE = resolveApiBase();
 let invoices = [];
+let promotionIndex = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -629,9 +630,9 @@ async function openInvoiceDetail(orderId) {
     modal.setAttribute('aria-hidden', 'false');
 
     try {
-        const response = await fetch(`${API_BASE}/orders/${orderId}`, {
-            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
-        });
+        const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
+        const promoPromise = loadPromotionIndex();
+        const response = await fetch(`${API_BASE}/orders/${orderId}`, { headers });
 
         if (!response.ok) {
             if (response.status === 401) {
@@ -643,13 +644,14 @@ async function openInvoiceDetail(orderId) {
         }
 
         const data = await response.json();
-        renderInvoiceDetail(data);
+        const promoMap = await promoPromise;
+        renderInvoiceDetail(data, promoMap);
     } catch (err) {
         itemsEl.innerHTML = '<div class="detail-row"><span>Không thể tải dữ liệu</span></div>';
     }
 }
 
-function renderInvoiceDetail(data) {
+function renderInvoiceDetail(data, promoMap) {
     if (!data) return;
     setText('detailInvoiceNumber', data.invoiceNumber || '-');
     setText('detailEmployee', data.salesName || data.userName || '-');
@@ -678,10 +680,14 @@ function renderInvoiceDetail(data) {
             : discountAmount;
         const lineTotal = Math.max(0, baseTotal - discountValue);
         const taxRate = Number(item.taxRate) || 0;
+        const promoInfo = promoMap?.get(item.productId);
+        const promoLine = promoInfo ? `<small class="detail-promo">KM: ${escapeHtml(promoInfo.label)}</small>` : '';
         return `
             <div class="detail-row">
                 <span class="detail-item-name">
-                    ${escapeHtml(item.productName || '-')}${item.productCode ? `<small>${escapeHtml(item.productCode)}</small>` : ''}
+                    ${escapeHtml(item.productName || '-')}
+                    ${promoLine}
+                    ${item.productCode ? `<small>${escapeHtml(item.productCode)}</small>` : ''}
                 </span>
                 <span>${escapeHtml(item.unit || '-')}</span>
                 <span>${quantity}</span>
@@ -691,6 +697,166 @@ function renderInvoiceDetail(data) {
             </div>
         `;
     }).join('');
+}
+
+async function loadPromotionIndex() {
+    if (promotionIndex) {
+        return promotionIndex;
+    }
+
+    const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
+
+    try {
+        const promoPromise = fetch(`${API_BASE}/promotions`, { headers })
+            .then(res => (res.ok ? res.json() : []));
+        const productPromise = fetch(`${API_BASE}/products`, { headers })
+            .then(res => (res.ok ? res.json() : []));
+
+        const [promoList, productList] = await Promise.all([promoPromise, productPromise]);
+        const activePromos = (promoList || []).filter(isPromotionActive);
+        promotionIndex = buildPromotionIndex(activePromos, productList || []);
+        return promotionIndex;
+    } catch (err) {
+        promotionIndex = new Map();
+        return promotionIndex;
+    }
+}
+
+function buildPromotionIndex(promos, productList) {
+    const productMap = new Map((productList || []).map((p) => [p.id, p]));
+    const targetMap = new Map();
+
+    (promos || []).forEach((promo) => {
+        const targetIds = new Set();
+        const targets = promo.targets || [];
+        const bundles = promo.bundleItems || [];
+
+        targets.forEach((target) => {
+            if (!target || target.targetId == null) return;
+            if (target.targetType === 'PRODUCT') {
+                targetIds.add(target.targetId);
+            }
+            if (target.targetType === 'CATEGORY') {
+                (productList || []).forEach((product) => {
+                    if (product.categoryId === target.targetId) {
+                        targetIds.add(product.id);
+                    }
+                });
+            }
+        });
+
+        bundles.forEach((item) => {
+            if (item?.productId != null) {
+                targetIds.add(item.productId);
+            }
+        });
+
+        targetIds.forEach((id) => {
+            if (!targetMap.has(id)) {
+                targetMap.set(id, []);
+            }
+            targetMap.get(id).push(promo);
+        });
+    });
+
+    const index = new Map();
+    targetMap.forEach((promoList, productId) => {
+        const product = productMap.get(productId);
+        if (!product) return;
+        const best = selectBestPromotion(product, promoList);
+        if (best?.promo) {
+            index.set(productId, {
+                promo: best.promo,
+                label: formatPromotionLabel(best.promo)
+            });
+        }
+    });
+
+    return index;
+}
+
+function selectBestPromotion(product, promos) {
+    const basePrice = Number(product?.price);
+    const candidates = (promos || []).map((promo) => {
+        const price = getPromoPrice(basePrice, promo);
+        return { promo, price };
+    });
+
+    const priced = candidates.filter((c) => Number.isFinite(c.price));
+    if (priced.length > 0) {
+        priced.sort((a, b) => a.price - b.price);
+        return { promo: priced[0].promo, price: priced[0].price };
+    }
+
+    return { promo: candidates[0]?.promo || null, price: NaN };
+}
+
+function getPromoPrice(basePrice, promo) {
+    if (!Number.isFinite(basePrice) || !promo) return NaN;
+    const value = Number(promo.discountValue);
+    switch (normalizeDiscountType(promo.discountType)) {
+        case 'PERCENT':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, basePrice * (1 - value / 100));
+        case 'FIXED':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, basePrice - value);
+        case 'BUNDLE':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, value);
+        case 'FREE_GIFT':
+            return basePrice;
+        default:
+            return NaN;
+    }
+}
+
+function normalizeDiscountType(value) {
+    if (!value) return value;
+    if (value === 'FIXED_AMOUNT') return 'FIXED';
+    if (value === 'FREE_GIFT') return 'BUNDLE';
+    return value;
+}
+
+function formatPromotionLabel(promo) {
+    if (!promo) return 'Khuyen mai';
+    const value = Number(promo.discountValue);
+    const type = normalizeDiscountType(promo.discountType);
+    if (type === 'PERCENT' && Number.isFinite(value)) {
+        return `Giam ${value}%`;
+    }
+    if (type === 'FIXED' && Number.isFinite(value)) {
+        return `Giam ${formatPrice(value)}`;
+    }
+    if (type === 'BUNDLE') {
+        return 'Combo';
+    }
+    if (type === 'FREE_GIFT') {
+        return 'Tang kem';
+    }
+    return promo.discountType || 'Khuyen mai';
+}
+
+function isPromotionActive(promo) {
+    if (!promo) return false;
+    if (promo.active === false) return false;
+    const now = new Date();
+    const start = parsePromotionDate(promo.startDate);
+    const end = parsePromotionDate(promo.endDate);
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
+}
+
+function parsePromotionDate(value) {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+        const [year, month, day, hour = 0, minute = 0, second = 0] = value;
+        const date = new Date(year, (month || 1) - 1, day || 1, hour, minute, second);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function setText(id, value) {

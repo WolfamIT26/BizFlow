@@ -1,18 +1,19 @@
 // Shared app menu + logout for POS pages.
 (() => {
     const APP_TILES = [
-        { key: 'pos', label: 'Bán hàng', icon: 'BH', color: 'app-blue', href: '/pages/employee-dashboard.html' },
-        { key: 'invoices', label: 'DS hóa đơn', icon: 'HD', color: 'app-pink', href: '/pages/invoice-list.html' },
-        { key: 'returns', label: 'Đổi trả hàng', icon: 'ĐR', color: 'app-orange', href: '/pages/return-orders.html' },
-        { key: 'print', label: 'Máy in - Mẫu in', icon: 'IN', color: 'app-orange', href: '/pages/print-templates.html' },
-        { key: 'daily-report', label: 'Báo cáo theo ngày', icon: 'BC', color: 'app-teal', href: '/pages/daily-report.html' },
-        { key: 'access-log', label: 'Nhật ký truy cập', icon: 'NK', color: 'app-gray', href: '/pages/access-log.html' },
-        { key: 'management', label: 'Trang quản lý', icon: 'QL', color: 'app-indigo', href: '/pages/management.html' },
-        { key: 'display', label: 'Thiết lập hiển thị', icon: 'TH', color: 'app-blue', href: '/pages/display-settings.html' },
-        { key: 'einvoice', label: 'HĐĐT từ MTT', icon: 'MT', color: 'app-pink', href: '/pages/einvoice-mtt.html' },
-        { key: 'guide', label: 'Hướng dẫn', icon: 'HD', color: 'app-purple', href: '/pages/guide.html' },
-        { key: 'feedback', label: 'Góp ý cải tiến', icon: 'GY', color: 'app-cyan', href: '/pages/feedback.html' },
-        { key: 'intro', label: 'Giới thiệu', icon: 'GT', color: 'app-orange', href: '/pages/introduction.html' }
+        { key: 'pos', label: 'Ban hang', icon: 'BH', color: 'app-blue', href: '/pages/employee-dashboard.html' },
+        { key: 'promotions', label: 'Khuyen mai', icon: 'KM', color: 'app-green', href: '/pages/promotions.html' },
+        { key: 'invoices', label: 'DS hoa don', icon: 'HD', color: 'app-pink', href: '/pages/invoice-list.html' },
+        { key: 'returns', label: 'Doi tra hang', icon: 'DR', color: 'app-orange', href: '/pages/return-orders.html' },
+        { key: 'print', label: 'May in - Mau in', icon: 'IN', color: 'app-orange', href: '/pages/print-templates.html' },
+        { key: 'daily-report', label: 'Bao cao theo ngay', icon: 'BC', color: 'app-teal', href: '/pages/daily-report.html' },
+        { key: 'access-log', label: 'Nhat ky truy cap', icon: 'NK', color: 'app-gray', href: '/pages/access-log.html' },
+        { key: 'management', label: 'Trang quan ly', icon: 'QL', color: 'app-indigo', href: '/pages/management.html' },
+        { key: 'display', label: 'Thiet lap hien thi', icon: 'TH', color: 'app-blue', href: '/pages/display-settings.html' },
+        { key: 'einvoice', label: 'HDDT tu MTT', icon: 'MT', color: 'app-pink', href: '/pages/einvoice-mtt.html' },
+        { key: 'guide', label: 'Huong dan', icon: 'HD', color: 'app-purple', href: '/pages/guide.html' },
+        { key: 'feedback', label: 'Gop y cai tien', icon: 'GY', color: 'app-cyan', href: '/pages/feedback.html' },
+        { key: 'intro', label: 'Gioi thieu', icon: 'GT', color: 'app-orange', href: '/pages/introduction.html' }
     ];
 
     function createIconButton(id, title, svg) {
@@ -170,3 +171,6 @@
         });
     });
 })();
+
+
+

@@ -22,6 +22,7 @@ let wardCache = [];
 let employeesLoaded = false;
 let employees = [];
 let exchangeDraft = null;
+let promotionIndex = null;
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -244,6 +245,8 @@ function resolveAppRoute(target) {
     switch (target) {
         case 'pos':
             return '/pages/employee-dashboard.html';
+        case 'promotions':
+            return '/pages/promotions.html';
         case 'orders':
             return '/pages/order-list.html';
         case 'invoices':
@@ -583,7 +586,7 @@ async function createOrder(isPaid) {
             { type: 'success' }
         );
         if (isPaid) {
-            openInvoiceModal(receiptData);
+            await openInvoiceModal(receiptData);
             const shouldPrint = document.getElementById('printInvoiceToggle')?.checked !== false;
             if (shouldPrint) {
                 setTimeout(() => window.print(), 150);
@@ -793,15 +796,19 @@ function setupInvoiceModal() {
     });
 }
 
-function openInvoiceModal(receiptData) {
+async function openInvoiceModal(receiptData) {
     const modal = document.getElementById('invoiceModal');
     if (!modal || !receiptData) return;
 
+    const promoMap = await loadPromotionIndex();
     const itemsEl = document.getElementById('invoiceItems');
     if (itemsEl) {
         itemsEl.innerHTML = receiptData.items.map(item => `
             <div class="receipt-item">
-                <span class="name">${escapeHtml(item.name)}</span>
+                <span class="name">
+                    ${escapeHtml(item.name)}
+                    ${renderReceiptPromo(item.productId, promoMap)}
+                </span>
                 <span>${item.quantity}</span>
                 <span>${formatPrice(item.price)}</span>
                 <span>${formatPrice(item.total)}</span>
@@ -829,6 +836,13 @@ function openInvoiceModal(receiptData) {
 
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
+}
+
+function renderReceiptPromo(productId, promoMap) {
+    if (!productId || !promoMap) return '';
+    const info = promoMap.get(productId);
+    if (!info) return '';
+    return `<small class="receipt-promo">KM: ${escapeHtml(info.label)}</small>`;
 }
 
 function closeInvoiceModal() {
@@ -872,6 +886,7 @@ function buildReceiptData(orderResponse) {
         cashReceived,
         change,
         items: cart.map(item => ({
+            productId: item.productId,
             name: item.productName || '-',
             quantity: item.quantity || 0,
             price: item.productPrice || 0,
@@ -903,6 +918,167 @@ function mapPaymentMethod(method) {
         default:
             return method || '-';
     }
+}
+
+async function loadPromotionIndex() {
+    if (promotionIndex) {
+        return promotionIndex;
+    }
+
+    const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
+
+    try {
+        const promoPromise = fetch(`${API_BASE}/promotions`, { headers })
+            .then(res => (res.ok ? res.json() : []));
+        const productPromise = (products && products.length > 0)
+            ? Promise.resolve(products)
+            : fetch(`${API_BASE}/products`, { headers }).then(res => (res.ok ? res.json() : []));
+
+        const [promoList, productList] = await Promise.all([promoPromise, productPromise]);
+        const activePromos = (promoList || []).filter(isPromotionActive);
+        promotionIndex = buildPromotionIndex(activePromos, productList || []);
+        return promotionIndex;
+    } catch (err) {
+        promotionIndex = new Map();
+        return promotionIndex;
+    }
+}
+
+function buildPromotionIndex(promos, productList) {
+    const productMap = new Map((productList || []).map((p) => [p.id, p]));
+    const targetMap = new Map();
+
+    (promos || []).forEach((promo) => {
+        const targetIds = new Set();
+        const targets = promo.targets || [];
+        const bundles = promo.bundleItems || [];
+
+        targets.forEach((target) => {
+            if (!target || target.targetId == null) return;
+            if (target.targetType === 'PRODUCT') {
+                targetIds.add(target.targetId);
+            }
+            if (target.targetType === 'CATEGORY') {
+                (productList || []).forEach((product) => {
+                    if (product.categoryId === target.targetId) {
+                        targetIds.add(product.id);
+                    }
+                });
+            }
+        });
+
+        bundles.forEach((item) => {
+            if (item?.productId != null) {
+                targetIds.add(item.productId);
+            }
+        });
+
+        targetIds.forEach((id) => {
+            if (!targetMap.has(id)) {
+                targetMap.set(id, []);
+            }
+            targetMap.get(id).push(promo);
+        });
+    });
+
+    const index = new Map();
+    targetMap.forEach((promoList, productId) => {
+        const product = productMap.get(productId);
+        if (!product) return;
+        const best = selectBestPromotion(product, promoList);
+        if (best?.promo) {
+            index.set(productId, {
+                promo: best.promo,
+                label: formatPromotionLabel(best.promo)
+            });
+        }
+    });
+
+    return index;
+}
+
+function selectBestPromotion(product, promos) {
+    const basePrice = Number(product?.price);
+    const candidates = (promos || []).map((promo) => {
+        const price = getPromoPrice(basePrice, promo);
+        return { promo, price };
+    });
+
+    const priced = candidates.filter((c) => Number.isFinite(c.price));
+    if (priced.length > 0) {
+        priced.sort((a, b) => a.price - b.price);
+        return { promo: priced[0].promo, price: priced[0].price };
+    }
+
+    return { promo: candidates[0]?.promo || null, price: NaN };
+}
+
+function getPromoPrice(basePrice, promo) {
+    if (!Number.isFinite(basePrice) || !promo) return NaN;
+    const value = Number(promo.discountValue);
+    switch (normalizeDiscountType(promo.discountType)) {
+        case 'PERCENT':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, basePrice * (1 - value / 100));
+        case 'FIXED':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, basePrice - value);
+        case 'BUNDLE':
+            if (!Number.isFinite(value)) return NaN;
+            return Math.max(0, value);
+        case 'FREE_GIFT':
+            return basePrice;
+        default:
+            return NaN;
+    }
+}
+
+function normalizeDiscountType(value) {
+    if (!value) return value;
+    if (value === 'FIXED_AMOUNT') return 'FIXED';
+    if (value === 'FREE_GIFT') return 'BUNDLE';
+    return value;
+}
+
+function formatPromotionLabel(promo) {
+    if (!promo) return 'Khuyen mai';
+    const value = Number(promo.discountValue);
+    const type = normalizeDiscountType(promo.discountType);
+    if (type === 'PERCENT' && Number.isFinite(value)) {
+        return `Giam ${value}%`;
+    }
+    if (type === 'FIXED' && Number.isFinite(value)) {
+        return `Giam ${formatPrice(value)}`;
+    }
+    if (type === 'BUNDLE') {
+        return 'Combo';
+    }
+    if (type === 'FREE_GIFT') {
+        return 'Tang kem';
+    }
+    return promo.discountType || 'Khuyen mai';
+}
+
+function isPromotionActive(promo) {
+    if (!promo) return false;
+    if (promo.active === false) return false;
+    const now = new Date();
+    const start = parsePromotionDate(promo.startDate);
+    const end = parsePromotionDate(promo.endDate);
+    if (start && now < start) return false;
+    if (end && now > end) return false;
+    return true;
+}
+
+function parsePromotionDate(value) {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+        const [year, month, day, hour = 0, minute = 0, second = 0] = value;
+        const date = new Date(year, (month || 1) - 1, day || 1, hour, minute, second);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
 }
 
 

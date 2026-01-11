@@ -318,6 +318,11 @@
     font-size: 10px;
 }
 
+.detail-item-name .detail-promo {
+    color: #6b7280;
+    font-size: 10px;
+}
+
 .detail-tax {
     text-align: right;
 }

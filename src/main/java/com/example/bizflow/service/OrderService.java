@@ -1,5 +1,11 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+
 package com.example.bizflow.service;
 
+<<<<<<< HEAD
 import com.example.bizflow.dto.OrderItemResponse;
 import com.example.bizflow.dto.OrderResponse;
 import com.example.bizflow.dto.OrderSummaryResponse;
@@ -21,26 +27,25 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+=======
+import java.time.LocalDate;
+
+import org.springframework.stereotype.Service;
+>>>>>>> 0e749eb7b88fec30ee558c76cbf18fee7af4255a
 
 @Service
 public class OrderService {
-    private final OrderRepository orderRepository;
-    private final String invoiceBranchPrefix;
 
-    public OrderService(OrderRepository orderRepository,
-                        @Value("${app.invoice.branch-prefix:TC}") String invoiceBranchPrefix) {
-        this.orderRepository = orderRepository;
-        this.invoiceBranchPrefix = invoiceBranchPrefix;
+    public String generateInvoiceNumberForDate(LocalDate now, String sale) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    @Transactional(readOnly = true)
-    public List<OrderResponse> getAllOrders() {
-        return orderRepository.findAllWithDetails()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public Object getCustomerOrderHistory(Long id) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getCustomerOrderHistory'");
     }
 
+<<<<<<< HEAD
     @Transactional(readOnly = true)
     public List<OrderSummaryResponse> getAllOrderSummaries() {
         return orderRepository.findAllByOrderByCreatedAtDesc()
@@ -330,4 +335,6 @@ public class OrderService {
 
         return sb.toString();
     }
+=======
+>>>>>>> 0e749eb7b88fec30ee558c76cbf18fee7af4255a
 }
