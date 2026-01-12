@@ -53,11 +53,4 @@ public class Customer {
         monthlyPoints += points;
     }
 
-    public Long getId() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    public Integer getTotalPoints() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
 }

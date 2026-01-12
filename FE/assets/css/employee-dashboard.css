@@ -749,6 +749,56 @@
     border-radius: 999px;
 }
 
+.product-price-tag.origin {
+    background: #eef1f8;
+    color: #6b7280;
+    text-decoration: line-through;
+}
+
+.product-price-tag.hidden {
+    display: none;
+}
+
+.promo-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #ff6b6b;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.4px;
+}
+
+.product-pricing {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+}
+
+.price-new {
+    font-weight: 700;
+    font-size: 12px;
+    color: #2f3644;
+}
+
+.price-old {
+    font-size: 11px;
+    color: #9aa3b6;
+    text-decoration: line-through;
+}
+
+.price-label {
+    font-size: 10px;
+    color: #2f66ff;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
 .product-name {
     font-weight: 600;
     font-size: 12px;
