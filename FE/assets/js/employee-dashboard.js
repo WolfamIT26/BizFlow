@@ -30,6 +30,9 @@ const PRODUCT_ICON = `
         <path d="M9 8V6a3 3 0 0 1 6 0v2" />
     </svg>
 `;
+const PRODUCT_IMAGE_LIST_URL = '/assets/data/product-image-files.json';
+const productImageMap = new Map();
+let productImageMapReady = false;
 
 window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
@@ -53,7 +56,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('productsGrid').innerHTML =
         '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Đang tải...</div>';
 
-    await Promise.all([loadProducts()]);
+    await Promise.all([loadProductImageMap(), loadProducts()]);
     applyExchangeDraft();
 
     const customerSearchInput = document.getElementById('customerSearch');
@@ -302,6 +305,53 @@ async function loadProducts() {
     } catch (err) {
         renderProducts([]);
     }
+}
+
+async function loadProductImageMap() {
+    if (productImageMapReady) return;
+    productImageMapReady = true;
+    try {
+        const response = await fetch(PRODUCT_IMAGE_LIST_URL, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error('Failed to load product images');
+        }
+        const files = await response.json();
+        if (!Array.isArray(files)) {
+            return;
+        }
+        files.forEach((filePath) => {
+            if (!filePath || typeof filePath !== 'string') return;
+            const filename = filePath.split('/').pop() || '';
+            const baseName = filename.replace(/\.[^.]+$/, '');
+            const key = normalizeProductKey(baseName);
+            if (!key || productImageMap.has(key)) return;
+            productImageMap.set(key, filePath);
+        });
+    } catch (err) {
+    }
+}
+
+function normalizeProductKey(value) {
+    return stripDiacritics((value || '').toString().trim().toLowerCase())
+        .replace(/[^a-z0-9]+/g, '');
+}
+
+function getProductImageSrc(product) {
+    if (!productImageMap || productImageMap.size === 0) return '';
+    const nameKey = normalizeProductKey(product?.name || '');
+    if (nameKey && productImageMap.has(nameKey)) {
+        return productImageMap.get(nameKey);
+    }
+    return '';
+}
+
+function buildProductImageMarkup(product) {
+    const imageSrc = getProductImageSrc(product);
+    if (!imageSrc) {
+        return PRODUCT_ICON;
+    }
+    const safeName = escapeHtml(product?.name || 'San pham');
+    return `<img src="${encodeURI(imageSrc)}" alt="${safeName}" loading="lazy" />`;
 }
 
 async function loadCustomers() {
@@ -2392,7 +2442,7 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
         grid.innerHTML = displayProducts.map(p => `
             <div class="product-card detailed" onclick="openProductDetail(${p.id})">
                 <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-                <div class="product-image">${PRODUCT_ICON}</div>
+                <div class="product-image">${buildProductImageMarkup(p)}</div>
                 <div class="product-name">${p.name || 'Sản phẩm'}</div>
                 <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
                 <div class="product-meta">
@@ -2408,7 +2458,7 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
     grid.innerHTML = displayProducts.map(p => `
         <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
             <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-            <div class="product-image">${PRODUCT_ICON}</div>
+            <div class="product-image">${buildProductImageMarkup(p)}</div>
             <div class="product-name">${p.name || 'Sản phẩm'}</div>
             <div class="product-sku">${p.code || 'SKU'}</div>
         </div>
@@ -2451,6 +2501,17 @@ function openProductDetail(productId) {
     document.getElementById('detailProductPrice').textContent = formatPrice(getEffectivePrice(product) || 0);
     document.getElementById('detailProductStock').textContent = getStockValue(product);
     document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
+
+    const detailImage = modal.querySelector('.detail-image');
+    if (detailImage) {
+        const imageSrc = getProductImageSrc(product);
+        if (imageSrc) {
+            const safeName = escapeHtml(product?.name || 'San pham');
+            detailImage.innerHTML = `<img src="${encodeURI(imageSrc)}" alt="${safeName}" />`;
+        } else {
+            detailImage.innerHTML = '<div class="detail-image-placeholder">Anh san pham</div>';
+        }
+    }
 
     const addBtn = document.getElementById('detailAddToCart');
     if (addBtn) {
