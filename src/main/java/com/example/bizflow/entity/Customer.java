@@ -53,4 +53,10 @@ public class Customer {
         monthlyPoints += points;
     }
 
+    @PrePersist
+    public void ensureDefaults() {
+        if (totalPoints == null) totalPoints = 0;
+        if (monthlyPoints == null) monthlyPoints = 0;
+        if (tier == null) tier = CustomerTier.DONG;
+    }
 }

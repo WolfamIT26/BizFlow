@@ -23,6 +23,14 @@ let employeesLoaded = false;
 let employees = [];
 let exchangeDraft = null;
 let promotionIndex = null;
+let activeInventoryProductId = null;
+const TIER_DISCOUNT_BY_100 = {
+    DONG: 10000,
+    BAC: 12000,
+    VANG: 15000,
+    BACH_KIM: 22000,
+    KIM_CUONG: 30000
+};
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -30,6 +38,10 @@ const PRODUCT_ICON = `
         <path d="M9 8V6a3 3 0 0 1 6 0v2" />
     </svg>
 `;
+const PRODUCT_IMAGE_LIST_URL = '/assets/data/product-image-files.json';
+const productImageMap = new Map();
+let productImageMapReady = false;
+const POINTS_EARN_RATE_VND = 1000;
 
 const FALLBACK_PRODUCTS = [
     {
@@ -98,7 +110,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
     await loadCurrentEmployee();
-    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    fixPaymentPanelText();
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedCustomerLabel = document.getElementById('selectedCustomer');
     if (selectedCustomerLabel) {
         selectedCustomerLabel.textContent = 'Khách lẻ';
@@ -106,6 +119,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupCustomerModal();
     setupProductDetailModal();
+    setupInventoryModal();
     setupCustomerDetailModal();
     setupEmployeeSelector();
     setupAppMenuModal();
@@ -116,7 +130,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('productsGrid').innerHTML =
         '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Đang tải...</div>';
 
-    await Promise.all([loadProducts()]);
+    await Promise.all([loadProductImageMap(), loadProducts()]);
     applyExchangeDraft();
 
     const customerSearchInput = document.getElementById('customerSearch');
@@ -135,6 +149,27 @@ window.addEventListener('DOMContentLoaded', async () => {
         applyCustomerFilter();
     });
 });
+
+function fixPaymentPanelText() {
+    const cashPanel = document.getElementById('cashPanel');
+    if (cashPanel) {
+        const rows = cashPanel.querySelectorAll('.summary-row');
+        const cashLabel = rows[0]?.querySelector('span');
+        const changeLabel = rows[1]?.querySelector('span');
+        if (cashLabel) cashLabel.textContent = 'Ti\u1ec1n kh\u00e1ch \u0111\u01b0a';
+        if (changeLabel) changeLabel.textContent = 'Tr\u1ea3 l\u1ea1i';
+    }
+
+    const noteLabel = document.querySelector('label[for=\"paymentNote\"]');
+    if (noteLabel) noteLabel.textContent = 'Ghi ch\u00fa thanh to\u00e1n';
+    const noteInput = document.getElementById('paymentNote');
+    if (noteInput) noteInput.placeholder = 'Nh\u1eadp ghi ch\u00fa...';
+
+    const saveBtn = document.getElementById('saveBillBtn');
+    if (saveBtn) saveBtn.textContent = 'L\u01b0u t\u1ea1m (F10)';
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) checkoutBtn.textContent = 'Thu ti\u1ec1n (F9)';
+}
 
 function applyExchangeDraft() {
     const raw = sessionStorage.getItem('exchangeDraft');
@@ -166,7 +201,10 @@ function applyExchangeDraft() {
         selectedCustomer = {
             id: exchangeDraft.customerId,
             name: exchangeDraft.customerName || 'Khách hàng',
-            phone: exchangeDraft.customerPhone || '-'
+            phone: exchangeDraft.customerPhone || '-',
+            totalPoints: 0,
+            monthlyPoints: 0,
+            tier: ''
         };
         const searchInput = document.getElementById('customerSearch');
         if (searchInput) {
@@ -366,11 +404,59 @@ async function loadProducts() {
 
         const data = await response.json();
         products = Array.isArray(data) && data.length > 0 ? data : FALLBACK_PRODUCTS;
+        await loadPromotionIndex();
         filterProducts();
     } catch (err) {
         products = FALLBACK_PRODUCTS;
         filterProducts();
     }
+}
+
+async function loadProductImageMap() {
+    if (productImageMapReady) return;
+    productImageMapReady = true;
+    try {
+        const response = await fetch(PRODUCT_IMAGE_LIST_URL, { cache: 'no-store' });
+        if (!response.ok) {
+            throw new Error('Failed to load product images');
+        }
+        const files = await response.json();
+        if (!Array.isArray(files)) {
+            return;
+        }
+        files.forEach((filePath) => {
+            if (!filePath || typeof filePath !== 'string') return;
+            const filename = filePath.split('/').pop() || '';
+            const baseName = filename.replace(/\.[^.]+$/, '');
+            const key = normalizeProductKey(baseName);
+            if (!key || productImageMap.has(key)) return;
+            productImageMap.set(key, filePath);
+        });
+    } catch (err) {
+    }
+}
+
+function normalizeProductKey(value) {
+    return stripDiacritics((value || '').toString().trim().toLowerCase())
+        .replace(/[^a-z0-9]+/g, '');
+}
+
+function getProductImageSrc(product) {
+    if (!productImageMap || productImageMap.size === 0) return '';
+    const nameKey = normalizeProductKey(product?.name || '');
+    if (nameKey && productImageMap.has(nameKey)) {
+        return productImageMap.get(nameKey);
+    }
+    return '';
+}
+
+function buildProductImageMarkup(product) {
+    const imageSrc = getProductImageSrc(product);
+    if (!imageSrc) {
+        return PRODUCT_ICON;
+    }
+    const safeName = escapeHtml(product?.name || 'Sản phẩm');
+    return `<img src="${encodeURI(imageSrc)}" alt="${safeName}" loading="lazy" />`;
 }
 
 async function loadCustomers() {
@@ -490,7 +576,8 @@ function addToCart(productId, productName, productPrice) {
     const splitLine = document.getElementById('splitLine')?.checked;
     const product = products.find(p => p.id === productId) || {};
     const stock = getStockValue(product);
-    const effectivePrice = getEffectivePrice(product);
+    const pricing = getProductPricing(product);
+    const effectivePrice = pricing.hasPromo ? pricing.promoPrice : pricing.basePrice;
     const resolvedPrice = Number.isFinite(effectivePrice) ? effectivePrice : (productPrice || 0);
 
     if (!splitLine) {
@@ -540,7 +627,7 @@ async function createOrder(isPaid) {
         showPopup('Giỏ hàng trống!', { type: 'error' });
         return;
     }
-    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0));
+    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) < Number(item.quantity)));
     if (outOfStock) {
         showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
@@ -554,6 +641,7 @@ async function createOrder(isPaid) {
         paid: isPaid,
         // Always send the chosen payment method so backend can create pending transfer payments with tokens
         paymentMethod: currentPaymentMethod,
+        usePoints: isPaid ? shouldUseMemberPoints() : false,
         orderType: exchangeDraft ? 'EXCHANGE' : null,
         originalOrderId: exchangeDraft?.originalOrderId || null,
         items: cart.map(item => ({
@@ -579,7 +667,7 @@ async function createOrder(isPaid) {
         }
 
         const data = await res.json();
-        const receiptData = buildReceiptData(data);
+        const receiptData = buildReceiptData(data, { usePoints: isPaid && shouldUseMemberPoints() });
         const invoiceCode = receiptData.invoiceNumber || '-';
         showPopup(
             isPaid ? `Thanh toán thành công. Mã hóa đơn: ${invoiceCode}` : `Đã lưu tạm đơn: ${invoiceCode}`,
@@ -587,10 +675,12 @@ async function createOrder(isPaid) {
         );
         if (isPaid) {
             await openInvoiceModal(receiptData);
-            const shouldPrint = document.getElementById('printInvoiceToggle')?.checked !== false;
+            const printToggle = document.getElementById('printInvoiceToggle');
+            const shouldPrint = !!printToggle && printToggle.checked === true;
             if (shouldPrint) {
-                setTimeout(() => window.print(), 150);
+                setTimeout(() => printInvoiceReceipt(), 150);
             }
+            applyLocalStockAfterSale();
         }
         clearCart(true);
         if (exchangeDraft) {
@@ -630,7 +720,7 @@ function showTransferQrModal(orderId, amount, token) {
 
     const payloadEl = document.getElementById('transferPayload');
     if (payloadEl) {
-        payloadEl.textContent = `VietQR • ${bankCode} • ${account} • ${accountName} • ${formatPrice(amount)}`;
+        payloadEl.textContent = `VietQR . ${bankCode} . ${account} . ${accountName} . ${formatPrice(amount)}`;
     }
 
     const bankLogos = {
@@ -681,10 +771,10 @@ function showTransferQrModal(orderId, amount, token) {
                     const inner = qrContainer.querySelector('img,canvas');
                     if (inner) inner.style.borderRadius = '8px';
                 } else {
-                    qrContainer.textContent = `Mã: ${displayToken}`;
+                    qrContainer.textContent = `Ma: ${displayToken}`;
                 }
             } catch (e) {
-                qrContainer.textContent = `Mã: ${displayToken}`;
+                qrContainer.textContent = `Ma: ${displayToken}`;
             }
         };
 
@@ -726,7 +816,7 @@ function showTransferQrModal(orderId, amount, token) {
     }
 }
 
-// Duplicate showTransferQrModal removed — using the enhanced implementation above.
+// Duplicate showTransferQrModal removed - using the enhanced implementation above.
 
 async function payOrder(orderId) {
     try {
@@ -747,7 +837,7 @@ async function payOrder(orderId) {
             alert(text || 'Không thể xác nhận thanh toán.');
             return;
         }
-        alert('✅ Thanh toán chuyển khoản được xác nhận.');
+        alert('Đã thanh toán chuyển khoản được xác nhận.');
         hideTransferQrModal();
         clearCart(true);
         saveActiveInvoiceState();
@@ -763,7 +853,7 @@ function hideTransferQrModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-// Duplicate payOrder removed — using the token-aware implementation above.
+// Duplicate payOrder removed - using the token-aware implementation above.
 
 // wire modal buttons
 document.addEventListener('DOMContentLoaded', () => {
@@ -788,7 +878,7 @@ function setupInvoiceModal() {
     const close = () => closeInvoiceModal();
     closeBtn?.addEventListener('click', close);
     footerCloseBtn?.addEventListener('click', close);
-    printBtn?.addEventListener('click', () => window.print());
+    printBtn?.addEventListener('click', () => printInvoiceReceipt());
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             close();
@@ -823,6 +913,8 @@ async function openInvoiceModal(receiptData) {
     setText('invoicePhone', receiptData.customerPhone || '-');
     setText('invoiceMethod', mapPaymentMethod(receiptData.paymentMethod));
     setText('invoiceSubtotal', formatPrice(receiptData.subtotal || 0));
+    setText('invoiceMemberDiscount', formatPrice(receiptData.memberDiscount || 0));
+    setText('invoicePointsUsed', formatCompactNumber(receiptData.pointsUsed || 0));
     setText('invoiceTotal', formatPrice(receiptData.total || 0));
     setText('invoiceCashReceived', formatPrice(receiptData.cashReceived || 0));
     setText('invoiceChange', formatPrice(receiptData.change || 0));
@@ -859,9 +951,12 @@ function setText(id, value) {
     }
 }
 
-function buildReceiptData(orderResponse) {
+function buildReceiptData(orderResponse, options = {}) {
+    const { usePoints = false } = options;
     const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-    const total = Math.max(0, subtotal);
+    const memberSummary = getMemberDiscountForTotal(subtotal);
+    const memberDiscount = usePoints ? memberSummary.discount : 0;
+    const total = Math.max(0, subtotal - memberDiscount);
     const cashReceived = parseInt(document.getElementById('cashReceivedInput')?.value, 10) || 0;
     const change = currentPaymentMethod === 'CASH' ? Math.max(0, cashReceived - total) : 0;
 
@@ -882,6 +977,8 @@ function buildReceiptData(orderResponse) {
         paymentMethod: currentPaymentMethod,
         note: document.getElementById('paymentNote')?.value?.trim() || '',
         subtotal,
+        memberDiscount,
+        pointsUsed: usePoints ? memberSummary.pointsUsed : 0,
         total,
         cashReceived,
         change,
@@ -1041,7 +1138,7 @@ function normalizeDiscountType(value) {
 }
 
 function formatPromotionLabel(promo) {
-    if (!promo) return 'Khuyen mai';
+    if (!promo) return 'Khuyến mãi';
     const value = Number(promo.discountValue);
     const type = normalizeDiscountType(promo.discountType);
     if (type === 'PERCENT' && Number.isFinite(value)) {
@@ -1056,7 +1153,7 @@ function formatPromotionLabel(promo) {
     if (type === 'FREE_GIFT') {
         return 'Tang kem';
     }
-    return promo.discountType || 'Khuyen mai';
+    return promo.discountType || 'Khuyến mãi';
 }
 
 function isPromotionActive(promo) {
@@ -1186,8 +1283,9 @@ function removeReturnItem(idx) {
 }
 
 function selectCustomer(evt, customerId, customerName, customerPhone) {
+    const fullCustomer = customers.find(c => c.id === customerId);
     applyCustomerSelection(
-        { id: customerId, name: customerName, phone: customerPhone },
+        fullCustomer || { id: customerId, name: customerName, phone: customerPhone },
         { openDetail: false, highlightEvent: evt }
     );
 }
@@ -1206,7 +1304,7 @@ function openCustomerDetailFromButton(evt) {
 
 function clearSelectedCustomer(options = {}) {
     const { showList = true } = options;
-    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedView = document.getElementById('selectedCustomer');
     if (selectedView) {
         selectedView.textContent = 'Khách lẻ';
@@ -1236,15 +1334,46 @@ function clearSelectedCustomer(options = {}) {
     if (showList) {
         applyCustomerFilter();
     }
+
+    updateTotal();
 }
 
 function updateTotal() {
-    const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-    const total = Math.max(0, subtotal);
+    const memberSummary = getMemberDiscountForTotal(getTotalAmount());
+    const toggle = document.getElementById('usePointsToggle');
+    const canUsePoints = memberSummary.points >= 100 && Boolean(TIER_DISCOUNT_BY_100[getEffectiveTier(selectedCustomer)]);
+    if (toggle) {
+        toggle.disabled = !canUsePoints;
+        if (!canUsePoints) {
+            toggle.checked = false;
+        }
+    }
+    const baseSubtotal = cart.reduce((sum, item) => {
+        const qty = item.quantity || 0;
+        if (qty <= 0) {
+            return sum + (item.productPrice * qty);
+        }
+        const product = products.find(p => p.id === item.productId) || {};
+        const basePrice = Number(product.price);
+        if (!Number.isFinite(basePrice)) {
+            return sum + (item.productPrice * qty);
+        }
+        return sum + (basePrice * qty);
+    }, 0);
+    const discountedSubtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
+    const promoValue = Math.max(0, baseSubtotal - discountedSubtotal);
+    const usePoints = shouldUseMemberPoints();
+    const memberDiscount = usePoints ? memberSummary.discount : 0;
+    const pointsUsed = usePoints ? memberSummary.pointsUsed : 0;
+    const total = Math.max(0, discountedSubtotal - memberDiscount);
 
-    document.getElementById('subtotal').textContent = formatPrice(subtotal);
+    document.getElementById('subtotal').textContent = formatPrice(baseSubtotal);
+    document.getElementById('promoAmount').textContent = formatPrice(promoValue);
     document.getElementById('totalAmount').textContent = formatPrice(total);
     document.getElementById('amountDue').textContent = formatPrice(total);
+    setText('memberPoints', formatCompactNumber(memberSummary.points));
+    setText('memberDiscountAmount', formatPrice(memberDiscount));
+    setText('memberPointsUsed', formatCompactNumber(pointsUsed));
     updateChangeDue(total);
     setDefaultTierByTotal(total);
 }
@@ -1258,7 +1387,85 @@ function formatPrice(price) {
         style: 'currency',
         currency: 'VND',
         minimumFractionDigits: 0
-    }).format(price).replace('₫', 'đ');
+    }).format(price).replace('â‚«', 'Ä‘');
+}
+
+function formatCompactNumber(value) {
+    return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+}
+
+function normalizeTier(value) {
+    return (value || '').toString().trim().toUpperCase();
+}
+
+function getTierByPoints(points) {
+    if (points >= 25000) return 'KIM_CUONG';
+    if (points >= 15000) return 'BACH_KIM';
+    if (points >= 9000) return 'VANG';
+    if (points >= 3000) return 'BAC';
+    if (points >= 1000) return 'DONG';
+    return '';
+}
+
+function getEffectiveTier(customer) {
+    const tier = normalizeTier(customer?.tier);
+    if (tier) return tier;
+    const points = getCustomerPoints(customer);
+    return getTierByPoints(points);
+}
+
+function formatTierLabel(tier) {
+    switch (normalizeTier(tier)) {
+        case 'KIM_CUONG':
+            return 'Diamond';
+        case 'BACH_KIM':
+            return 'Platinum';
+        case 'VANG':
+            return 'Gold';
+        case 'BAC':
+            return 'Silver';
+        case 'DONG':
+            return 'Bronze';
+        default:
+            return '-';
+    }
+}
+
+function getCustomerPoints(customer) {
+    const points =
+        customer?.totalPoints ??
+        customer?.total_points ??
+        customer?.monthlyPoints ??
+        customer?.monthly_points ??
+        customer?.points ??
+        0;
+    return Number.isFinite(Number(points)) ? Number(points) : 0;
+}
+
+function getMemberDiscountForTotal(total) {
+    const points = getCustomerPoints(selectedCustomer);
+    const tier = getEffectiveTier(selectedCustomer);
+    const rate = TIER_DISCOUNT_BY_100[tier] || 0;
+    if (!points || points < 100 || rate <= 0) {
+        return { points, pointsUsed: 0, discount: 0 };
+    }
+
+    const stepsByPoints = Math.floor(points / 100);
+    const stepsByTotal = total > 0 ? Math.floor(total / rate) : 0;
+    const stepsUsed = Math.max(0, Math.min(stepsByPoints, stepsByTotal));
+    const pointsUsed = stepsUsed * 100;
+    const discount = stepsUsed * rate;
+    return { points, pointsUsed, discount };
+}
+
+function shouldUseMemberPoints() {
+    const toggle = document.getElementById('usePointsToggle');
+    if (toggle && toggle.checked === false) {
+        return false;
+    }
+    const points = getCustomerPoints(selectedCustomer);
+    const tier = getEffectiveTier(selectedCustomer);
+    return points >= 100 && Boolean(TIER_DISCOUNT_BY_100[tier]);
 }
 
 function showPopup(message, options = {}) {
@@ -1313,6 +1520,68 @@ function formatPriceCompact(price) {
     }).format(price);
 }
 
+function printInvoiceReceipt() {
+    const receipt = document.getElementById('invoiceReceipt');
+    if (!receipt) {
+        window.print();
+        return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=480,height=700');
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+
+    const receiptHtml = receipt.outerHTML;
+    const content = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>In hoa don</title>
+    <style>
+        @page { size: 80mm 200mm; margin: 0; }
+        html, body { width: 80mm; margin: 0; }
+        body { font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; }
+        .print-sheet { width: 80mm; margin: 0; display: flex; justify-content: center; padding-top: 2mm; box-sizing: border-box; }
+        .invoice-receipt { width: 74mm; font-size: 10.5px; line-height: 1.15; color: #2f3644; display: grid; gap: 4px; }
+        .invoice-receipt div, .invoice-receipt span { margin: 0; padding: 0; }
+        .receipt-header { text-align: center; display: grid; gap: 1px; }
+        .receipt-brand { font-weight: 800; letter-spacing: 0.4px; }
+        .receipt-meta { font-size: 9px; color: #5b6274; display: grid; gap: 0; }
+        .receipt-divider { border-top: 1px dashed #c9ceda; margin: 1px 0; }
+        .receipt-items { display: grid; gap: 2px; }
+        .receipt-item { display: grid; grid-template-columns: 1.4fr 0.5fr 0.8fr 1fr; gap: 3px; }
+        .receipt-item.header { font-weight: 700; font-size: 9.5px; color: #2f3644; }
+        .receipt-item span:nth-child(2),
+        .receipt-item span:nth-child(3),
+        .receipt-item span:nth-child(4) { text-align: right; }
+        .receipt-totals { display: grid; gap: 1px; }
+        .receipt-totals div { display: flex; justify-content: space-between; }
+        .receipt-note { font-size: 9px; color: #4b5366; display: grid; gap: 0; }
+    </style>
+</head>
+<body>
+<div class="print-sheet">
+${receiptHtml}
+</div>
+<script>
+    window.onload = () => {
+        window.focus();
+        window.print();
+        setTimeout(() => window.close(), 200);
+    };
+</script>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+}
+
 function updateChangeDue(forcedTotal = null) {
     const changeLabel = document.getElementById('changeAmount');
     if (!changeLabel) return;
@@ -1364,6 +1633,10 @@ function setTierByPoints(points) {
 }
 
 function setupEventListeners() {
+    document.getElementById('inventoryBtn')?.addEventListener('click', () => {
+        openInventoryModal();
+    });
+
     const searchInput = document.getElementById('searchInput');
     searchInput.addEventListener('input', (e) => {
         topSearchTerm = e.target.value;
@@ -1401,6 +1674,10 @@ function setupEventListeners() {
 
     document.getElementById('cashReceivedInput')?.addEventListener('input', () => {
         updateChangeDue();
+    });
+
+    document.getElementById('usePointsToggle')?.addEventListener('change', () => {
+        updateTotal();
     });
 
     document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
@@ -1545,7 +1822,7 @@ function initInvoices() {
 function getNextInvoiceNumber() {
     let max = 0;
     invoices.forEach(inv => {
-        const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+        const match = String(inv.name || '').match(/H\u00f3a \u0111\u01a1n\s+(\d+)/i);
         if (match) {
             max = Math.max(max, Number(match[1]));
         }
@@ -1557,7 +1834,7 @@ function getNextInvoiceNumberFromAll() {
     let max = 0;
     const collect = (list) => {
         (list || []).forEach(inv => {
-            const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+            const match = String(inv.name || '').match(/H\u00f3a \u0111\u01a1n\s+(\d+)/i);
             if (match) {
                 max = Math.max(max, Number(match[1]));
             }
@@ -1574,7 +1851,7 @@ function createInvoiceState(name) {
     invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
     return {
         id,
-        name: name || `Hóa đơn ${nextNumber}`,
+        name: name || `H\u00f3a \u0111\u01a1n ${nextNumber}`,
         cart: [],
         selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
         paymentMethod: 'CASH',
@@ -1660,7 +1937,7 @@ function renderInvoiceTabs() {
     if (!container) return;
     const tabs = invoices.map(invoice => `
         <button class="order-tab ${invoice.id === activeInvoiceId ? 'active' : ''}" data-invoice-id="${invoice.id}">
-            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">×</span>
+            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">\u00d7</span>
         </button>
     `).join('');
     container.innerHTML = `
@@ -1793,7 +2070,7 @@ function saveDraftInvoice() {
     if (!invoice) return;
     const draft = {
         ...invoice,
-        name: `Hóa đơn ${getNextInvoiceNumberFromAll()}`,
+        name: `H\u00f3a \u0111\u01a1n ${getNextInvoiceNumberFromAll()}`,
         cart: cloneCart(invoice.cart),
         savedAt: new Date().toISOString()
     };
@@ -1865,7 +2142,7 @@ function openSavedInvoice(draftId) {
         activeInvoiceId = emptyTarget.id;
     } else {
         const nextNumber = getNextInvoiceNumber();
-        draft.name = `Hóa đơn ${nextNumber}`;
+        draft.name = `H\u00f3a \u0111\u01a1n ${nextNumber}`;
         invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
         invoices.push(draft);
         activeInvoiceId = draft.id;
@@ -1895,7 +2172,15 @@ function removeSavedInvoice(draftId) {
 
 function applyCustomerSelection(customer, options = {}) {
     const { openDetail = false, highlightEvent = null } = options;
-    selectedCustomer = { id: customer.id, name: customer.name, phone: customer.phone };
+    const effectiveTier = getEffectiveTier(customer);
+    selectedCustomer = {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        totalPoints: customer.totalPoints ?? customer.total_points ?? 0,
+        monthlyPoints: customer.monthlyPoints ?? customer.monthly_points ?? 0,
+        tier: effectiveTier || customer.tier || ''
+    };
 
     document.querySelectorAll('.customer-item').forEach(item => {
         item.classList.remove('active');
@@ -1929,6 +2214,8 @@ function applyCustomerSelection(customer, options = {}) {
     if (openDetail && customer.id) {
         openCustomerDetail(customer.id);
     }
+
+    updateTotal();
 }
 
 function setupCustomerModal() {
@@ -2043,6 +2330,35 @@ function setupProductDetailModal() {
             closeProductDetail();
         }
     });
+}
+
+function setupInventoryModal() {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+
+    const closeBtn = document.getElementById('closeInventoryModal');
+    const cancelBtn = document.getElementById('cancelInventoryBtn');
+    const saveBtn = document.getElementById('saveInventoryBtn');
+    const productSelect = document.getElementById('inventoryProductSelect');
+
+    closeBtn?.addEventListener('click', closeInventoryModal);
+    cancelBtn?.addEventListener('click', closeInventoryModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeInventoryModal();
+        }
+    });
+
+    productSelect?.addEventListener('change', () => {
+        const selected = parseInt(productSelect.value, 10);
+        if (!Number.isFinite(selected)) return;
+        activeInventoryProductId = selected;
+        updateInventoryStockDisplay(selected);
+        loadInventoryHistory(selected);
+    });
+
+    saveBtn?.addEventListener('click', submitInventoryReceipt);
 }
 
 function setupCustomerDetailModal() {
@@ -2417,6 +2733,85 @@ function getEffectivePrice(product) {
     return Number.isFinite(basePrice) ? basePrice : NaN;
 }
 
+function getProductPricing(product) {
+    const basePrice = Number(product?.price);
+    let promoPrice = NaN;
+    let promoLabel = '';
+
+    if (promotionIndex && product?.id != null) {
+        const promoInfo = promotionIndex.get(product.id);
+        if (promoInfo?.promo) {
+            promoPrice = getPromoPrice(basePrice, promoInfo.promo);
+            promoLabel = promoInfo.label || formatPromotionLabel(promoInfo.promo);
+        }
+    }
+
+    if (!Number.isFinite(promoPrice)) {
+        const directPromo = Number(
+            product?.promoPrice ??
+            product?.promotionPrice ??
+            product?.discountPrice ??
+            product?.salePrice ??
+            product?.discountedPrice
+        );
+        if (Number.isFinite(directPromo)) {
+            promoPrice = directPromo;
+        } else {
+            const percent = Number(
+                product?.discountPercent ??
+                product?.discountRate ??
+                product?.promoPercent ??
+                product?.salePercent
+            );
+            if (Number.isFinite(basePrice) && Number.isFinite(percent) && percent > 0) {
+                promoPrice = Math.max(0, basePrice * (1 - percent / 100));
+            }
+        }
+    }
+
+    const hasPromo = Number.isFinite(basePrice)
+        && Number.isFinite(promoPrice)
+        && promoPrice < basePrice;
+
+    return {
+        basePrice: Number.isFinite(basePrice) ? basePrice : NaN,
+        promoPrice,
+        hasPromo,
+        label: promoLabel
+    };
+}
+
+function buildProductPriceParts(product) {
+    const pricing = getProductPricing(product);
+    const basePrice = Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0;
+    const promoPrice = Number.isFinite(pricing.promoPrice) ? pricing.promoPrice : basePrice;
+    const hasPromo = pricing.hasPromo && promoPrice < basePrice;
+    const badge = hasPromo ? '<span class="promo-badge">KM</span>' : '';
+    const tagClass = hasPromo ? 'origin' : 'hidden';
+    const priceTag = formatPriceCompact(basePrice);
+    const label = hasPromo && pricing.label ? `<span class="price-label">${escapeHtml(pricing.label)}</span>` : '';
+    const priceBlock = hasPromo
+        ? `
+            <div class="product-pricing">
+                <span class="price-new">${formatPrice(promoPrice)}</span>
+                ${label}
+            </div>
+        `
+        : `
+            <div class="product-pricing">
+                <span class="price-new">${formatPrice(basePrice)}</span>
+            </div>
+        `;
+
+    return {
+        hasPromo,
+        badge,
+        tagClass,
+        priceTag,
+        priceBlock
+    };
+}
+
 function filterProductList(list, keyword) {
     return list.filter(p => {
         const matchCategory = currentCategory === 'all' || p.categoryId === parseInt(currentCategory, 10);
@@ -2471,48 +2866,65 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
     const grid = document.getElementById('productsGrid');
 
     if (!displayProducts || displayProducts.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Không có sản phẩm</div>';
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Kh\u00f4ng c\u00f3 s\u1ea3n ph\u1ea9m</div>';
         return;
     }
 
     if (viewMode === 'compact') {
-        grid.innerHTML = displayProducts.map(p => `
-            <div class="product-card compact" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
-                <div class="product-name">${p.name || 'Sản phẩm'}</div>
-                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
-                <div class="product-stock">Tồn: ${getStockValue(p)}</div>
-            </div>
-        `).join('');
+        grid.innerHTML = displayProducts.map(p => {
+            const priceParts = buildProductPriceParts(p);
+            return `
+                <div class="product-card compact" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                    ${priceParts.badge}
+                    <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                    <div class="product-image">${buildProductImageMarkup(p)}</div>
+                    <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                    <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                    <div class="product-stock">T\u1ed3n: ${getStockValue(p)}</div>
+                    ${priceParts.priceBlock}
+                </div>
+            `;
+        }).join('');
         return;
     }
 
     if (viewMode === 'detailed') {
-        grid.innerHTML = displayProducts.map(p => `
-            <div class="product-card detailed" onclick="openProductDetail(${p.id})">
-                <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-                <div class="product-image">${PRODUCT_ICON}</div>
-                <div class="product-name">${p.name || 'Sản phẩm'}</div>
-                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
-                <div class="product-meta">
-                    <span>${p.unit ? `ĐVT: ${p.unit}` : 'ĐVT: -'}</span>
-                    <span>Tồn: ${getStockValue(p)}</span>
+        grid.innerHTML = displayProducts.map(p => {
+            const priceParts = buildProductPriceParts(p);
+            return `
+                <div class="product-card detailed" onclick="openProductDetail(${p.id})">
+                    ${priceParts.badge}
+                    <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                    <div class="product-image">${buildProductImageMarkup(p)}</div>
+                    ${priceParts.priceBlock}
+                    <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                    <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                    <div class="product-meta">
+                        <span>${p.unit ? '\u0110VT: ' + p.unit : '\u0110VT: -'}</span>
+                        <span>T\u1ed3n: ${getStockValue(p)}</span>
+                    </div>
+                    <div class="product-description">${p.description || 'Ch\u01b0a c\u00f3 m\u00f4 t\u1ea3'}</div>
                 </div>
-                <div class="product-description">${p.description || 'Chưa có mô tả'}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         return;
     }
 
-    grid.innerHTML = displayProducts.map(p => `
-        <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
-            <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-            <div class="product-image">${PRODUCT_ICON}</div>
-            <div class="product-name">${p.name || 'Sản phẩm'}</div>
-            <div class="product-sku">${p.code || 'SKU'}</div>
-        </div>
-    `).join('');
+    grid.innerHTML = displayProducts.map(p => {
+        const priceParts = buildProductPriceParts(p);
+        return `
+            <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                ${priceParts.badge}
+                <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                <div class="product-image">${buildProductImageMarkup(p)}</div>
+                ${priceParts.priceBlock}
+                <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                <div class="product-sku">${p.code || 'SKU'}</div>
+                <div class="product-stock">T\u1ed3n: ${getStockValue(p)}</div>
+            </div>
+        `;
+    }).join('');
 }
-
 function setSuggestionMode(mode) {
     const title = document.getElementById('suggestionTitle');
     const controls = document.getElementById('suggestionControls');
@@ -2546,9 +2958,27 @@ function openProductDetail(productId) {
     document.getElementById('detailProductSku').textContent = product.code || product.barcode || '-';
     document.getElementById('detailProductBarcode').textContent = product.barcode || '-';
     document.getElementById('detailProductUnit').textContent = product.unit || '-';
-    document.getElementById('detailProductPrice').textContent = formatPrice(getEffectivePrice(product) || 0);
+    const pricing = getProductPricing(product);
+    const basePrice = Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0;
+    const promoPrice = pricing.hasPromo ? pricing.promoPrice : basePrice;
+    const promoLabel = pricing.hasPromo && pricing.label ? ` (${pricing.label})` : '';
+    const detailPrice = pricing.hasPromo
+        ? `${formatPrice(promoPrice)} (gốc ${formatPrice(basePrice)})${promoLabel}`
+        : formatPrice(basePrice);
+    document.getElementById('detailProductPrice').textContent = detailPrice;
     document.getElementById('detailProductStock').textContent = getStockValue(product);
     document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
+
+    const detailImage = modal.querySelector('.detail-image');
+    if (detailImage) {
+        const imageSrc = getProductImageSrc(product);
+        if (imageSrc) {
+            const safeName = escapeHtml(product?.name || 'Sản phẩm');
+            detailImage.innerHTML = `<img src="${encodeURI(imageSrc)}" alt="${safeName}" />`;
+        } else {
+            detailImage.innerHTML = '<div class="detail-image-placeholder">Anh san pham</div>';
+        }
+    }
 
     const addBtn = document.getElementById('detailAddToCart');
     if (addBtn) {
@@ -2556,6 +2986,11 @@ function openProductDetail(productId) {
             addToCart(product.id, product.name, product.price || 0);
             closeProductDetail();
         };
+    }
+
+    const inventoryBtn = document.getElementById('detailInventoryBtn');
+    if (inventoryBtn) {
+        inventoryBtn.onclick = () => openInventoryModal(product.id);
     }
 
     modal.classList.add('show');
@@ -2567,6 +3002,227 @@ function closeProductDetail() {
     if (!modal) return;
     modal.classList.remove('show');
     modal.setAttribute('aria-hidden', 'true');
+}
+
+function openInventoryModal(productId = null) {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+
+    const resolvedId = resolveInventoryProductId(productId);
+    populateInventoryProducts(resolvedId);
+    activeInventoryProductId = resolvedId;
+    updateInventoryStockDisplay(resolvedId);
+    loadInventoryHistory(resolvedId);
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeInventoryModal() {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function resolveInventoryProductId(productId) {
+    if (Number.isFinite(Number(productId))) {
+        return Number(productId);
+    }
+    const first = products && products.length > 0 ? products[0] : null;
+    return first?.id || null;
+}
+
+function populateInventoryProducts(selectedId) {
+    const select = document.getElementById('inventoryProductSelect');
+    if (!select) return;
+    const options = (products || []).map((product) => {
+        const label = `${product.name || 'San pham'} (${product.code || product.barcode || '-'})`;
+        return `<option value="${product.id}">${escapeHtml(label)}</option>`;
+    }).join('');
+    select.innerHTML = options;
+    if (selectedId && select.querySelector(`option[value="${selectedId}"]`)) {
+        select.value = String(selectedId);
+    }
+}
+
+function updateInventoryStockDisplay(productId) {
+    const stockEl = document.getElementById('inventoryCurrentStock');
+    if (!stockEl) return;
+    const product = products.find(p => p.id === productId);
+    stockEl.textContent = formatCompactNumber(getStockValue(product || {}));
+}
+
+async function loadInventoryHistory(productId) {
+    const list = document.getElementById('inventoryHistoryList');
+    const empty = document.getElementById('inventoryHistoryEmpty');
+    if (!list || !empty || !productId) return;
+
+    list.innerHTML = '';
+    empty.style.display = 'none';
+
+    try {
+        const res = await fetch(`${API_BASE}/inventory/history?productId=${productId}`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+        });
+        if (!res.ok) {
+            throw new Error('Failed to load inventory history');
+        }
+        const data = await res.json();
+        renderInventoryHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+    }
+}
+
+function renderInventoryHistory(items) {
+    const list = document.getElementById('inventoryHistoryList');
+    const empty = document.getElementById('inventoryHistoryEmpty');
+    if (!list || !empty) return;
+
+    if (!items || items.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+
+    empty.style.display = 'none';
+    list.innerHTML = items.map((item) => {
+        const qty = Number(item.quantity) || 0;
+        const label = formatInventoryType(item.type);
+        const when = item.createdAt ? ` - ${escapeHtml(item.createdAt)}` : '';
+        return `
+            <div class="summary-row">
+                <span>${escapeHtml(label)}${when}</span>
+                <strong>${formatCompactNumber(qty)}</strong>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatInventoryType(type) {
+    switch ((type || '').toUpperCase()) {
+        case 'IN':
+            return '\u004e\u0068\u1ead\u0070';
+        case 'SALE':
+            return '\u0042\u00e1\u006e';
+        case 'OUT':
+            return '\u0058\u0075\u1ea5\u0074';
+        case 'RETURN':
+            return '\u0054\u0072\u1ea3';
+        case 'ADJUST':
+            return '\u0110\u0069\u1ec1\u0075\u0020\u0063\u0068\u1ec9\u006e\u0068';
+        default:
+            return '\u004b\u0068\u00e1\u0063';
+    }
+}
+
+async function submitInventoryReceipt() {
+    const productId = activeInventoryProductId;
+    if (!productId) {
+        showPopup('Vui l\u00f2ng ch\u1ecdn s\u1ea3n ph\u1ea9m.', { type: 'error' });
+        return;
+    }
+    const qtyInput = document.getElementById('inventoryQtyInput');
+    const unitPriceInput = document.getElementById('inventoryUnitPriceInput');
+    const noteInput = document.getElementById('inventoryNoteInput');
+    const qty = parseInt(qtyInput?.value || '0', 10);
+    if (!Number.isFinite(qty) || qty <= 0) {
+        showPopup('Vui l\u00f2ng nh\u1eadp s\u1ed1 l\u01b0\u1ee3ng h\u1ee3p l\u1ec7.', { type: 'error' });
+        return;
+    }
+
+    const rawUnitPrice = Number(unitPriceInput?.value || '');
+    const unitPrice = Number.isFinite(rawUnitPrice) && rawUnitPrice > 0 ? rawUnitPrice : null;
+    const note = (noteInput?.value || '').trim();
+    const userId = parseInt(sessionStorage.getItem('userId'), 10) || null;
+
+    try {
+        const res = await fetch(`${API_BASE}/inventory/receipts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            },
+            body: JSON.stringify({
+                productId,
+                quantity: qty,
+                unitPrice,
+                note: note || null,
+                userId
+            })
+        });
+
+        if (!res.ok) {
+            const message = await res.text();
+            showPopup(message || 'Kh\u00f4ng th\u1ec3 nh\u1eadp kho.', { type: 'error' });
+            return;
+        }
+
+        const data = await res.json();
+        updateLocalProductStock(productId, data?.newStock);
+        loadInventoryHistory(productId);
+        if (qtyInput) qtyInput.value = '1';
+        if (unitPriceInput) unitPriceInput.value = '';
+        if (noteInput) noteInput.value = '';
+        showPopup('\u0110\u00e3 nh\u1eadp kho th\u00e0nh c\u00f4ng.', { type: 'success' });
+    } catch (err) {
+        showPopup('L\u1ed7i k\u1ebft n\u1ed1i khi nh\u1eadp kho.', { type: 'error' });
+    }
+}
+
+function updateLocalProductStock(productId, newStock) {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+        const stockValue = Number.isFinite(Number(newStock)) ? Number(newStock) : getStockValue(product);
+        product.stock = stockValue;
+    }
+    cart.forEach(item => {
+        if (item.productId === productId) {
+            item.stock = Number.isFinite(Number(newStock)) ? Number(newStock) : item.stock;
+        }
+    });
+    updateInventoryStockDisplay(productId);
+    filterProducts();
+    updateProductDetailStock(productId);
+}
+
+function applyLocalStockAfterSale() {
+    if (!cart || cart.length === 0) return;
+    const updates = new Map();
+    cart.forEach(item => {
+        if (!item || item.isReturnItem || !Number.isFinite(Number(item.productId))) return;
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return;
+        const current = getStockValue(product);
+        const qty = Math.max(0, Number(item.quantity) || 0);
+        const next = Math.max(0, current - qty);
+        updates.set(product.id, next);
+    });
+
+    if (updates.size === 0) return;
+    updates.forEach((stock, productId) => {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            product.stock = stock;
+        }
+    });
+    filterProducts();
+}
+
+function updateProductDetailStock(productId) {
+    const modal = document.getElementById('productDetailModal');
+    if (!modal || !modal.classList.contains('show')) return;
+    const detailName = document.getElementById('detailProductName')?.textContent || '';
+    const product = products.find(p => p.id === productId);
+    if (!product || (detailName && product.name && detailName !== product.name)) {
+        return;
+    }
+    const stockEl = document.getElementById('detailProductStock');
+    if (stockEl) {
+        stockEl.textContent = formatCompactNumber(getStockValue(product));
+    }
 }
 
 function isToolbarSearchOpen() {
@@ -2626,7 +3282,8 @@ function renderToolbarSearchResults(rawKeyword) {
         const code = p.code || p.barcode || '-';
         const sku = p.sku || p.skuCode || p.skuId || p.code || p.barcode || '-';
         const unit = p.unit || '-';
-        const price = getEffectivePrice(p) || 0;
+        const pricing = getProductPricing(p);
+        const price = pricing.hasPromo ? pricing.promoPrice : (Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0);
         const total = price * qty;
         return `
             <button type="button" class="toolbar-search-row item"
@@ -2665,6 +3322,14 @@ function openCustomerDetail(customerId) {
     document.getElementById('detailCustomerPhone').textContent = customer.phone || '-';
     document.getElementById('detailCustomerEmail').textContent = customer.email || '-';
     document.getElementById('detailCustomerAddress').textContent = customer.address || '-';
+    const detailPoints = getCustomerPoints(customer);
+    const detailTier = getEffectiveTier(customer);
+    const redeemRate = TIER_DISCOUNT_BY_100[detailTier] || 0;
+    setText('detailCustomerTier', formatTierLabel(detailTier));
+    setText('detailCustomerPoints', formatCompactNumber(detailPoints));
+    setText('detailCustomerPointsUsed', formatCompactNumber(Math.floor(detailPoints / 100) * 100));
+    setText('detailEarnPolicy', `${formatCompactNumber(POINTS_EARN_RATE_VND)}đ = 1 điểm`);
+    setText('detailRedeemPolicy', redeemRate ? `100 điểm = ${formatCompactNumber(redeemRate)}đ` : '-');
 
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
@@ -2788,3 +3453,13 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
     const row = evt?.target?.closest('.employee-item');
     if (row) row.classList.add('active');
 }
+
+
+
+
+
+
+
+
+
+

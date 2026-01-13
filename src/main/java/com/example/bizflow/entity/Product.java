@@ -42,6 +42,9 @@ public class Product {
     @Column(name = "status")
     private String status;
 
+    @Column(name = "stock")
+    private Integer stock;
+
     public Product(String code, String name, BigDecimal price) {
         this.code = code;
         this.name = name;
@@ -80,6 +83,21 @@ public class Product {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Integer getStock() {
+        return this.stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+    @PrePersist
+    void ensureDefaults() {
+        if (this.stock == null) {
+            this.stock = 20;
+        }
     }
 }
 

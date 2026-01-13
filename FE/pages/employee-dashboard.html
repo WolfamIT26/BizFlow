@@ -14,9 +14,9 @@
             </div>
             <span class="app-icon app-blue app-badge">BH</span>
             <div class="order-tabs" id="orderTabs">
-                <button class="order-tab active" data-invoice-id="default">Hóa don 1 <span class="tab-close">×</span></button>
-                <button class="order-tab ghost" id="addInvoiceBtn" title="Thêm hóa don">+</button>
-                <button class="order-tab ghost" id="savedInvoiceBtn">HÐ  lưu tạm </button>
+                <button class="order-tab active" data-invoice-id="default">H&#243;a &#273;&#417;n 1 <span class="tab-close">&times;</span></button>
+                <button class="order-tab ghost" id="addInvoiceBtn" title="Th&#234;m h&#243;a &#273;&#417;n">+</button>
+                <button class="order-tab ghost" id="savedInvoiceBtn">H&#272; l&#432;u t&#7841;m</button>
             </div>
         </div>
         <div class="header-actions">
@@ -27,7 +27,7 @@
                     <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
                 </svg>
             </button>
-            <button class="icon-btn" title="Ð?ng b?" aria-label="Ð?ng b?">
+            <button class="icon-btn" title="Đồng bộ" aria-label="Đồng bộ dữ liệu">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
                     <path d="M4 12a8 8 0 0 1 13.66-5.66" />
                     <path d="M18 4v4h-4" />
@@ -39,14 +39,14 @@
                 <span id="userInitial">E</span>
                 <span id="userNameDropdown">Nhân viên</span>
             </div>
-            <button id="logoutBtn" class="icon-btn" title="Ðang xu?t" aria-label="Ðang xu?t">
+            <button id="logoutBtn" class="icon-btn" title="Đăng xuất" aria-label="Đăng xuất">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
                     <path d="M10 6H5v12h5" />
                     <path d="M14 16l4-4-4-4" />
                     <path d="M18 12H9" />
                 </svg>
             </button>
-            <button id="appMenuBtn" class="icon-btn" title="?ng d?ng" aria-label="?ng d?ng">
+            <button id="appMenuBtn" class="icon-btn" title="Ứng dụng" aria-label="Ứng dụng">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
                     <circle cx="6" cy="6" r="1.5" />
                     <circle cx="12" cy="6" r="1.5" />
@@ -62,7 +62,7 @@
     <div class="saved-bills-panel" id="savedBillsPanel" aria-hidden="true">
         <div class="saved-bills-header">
             <span>Hóa đơn lưu tạm</span>
-            <button id="closeSavedBills" class="icon-btn mini" type="button" aria-label="Ðóng">×</button>
+            <button id="closeSavedBills" class="icon-btn mini" type="button" aria-label="Đóng">×</button>
         </div>
         <div class="saved-bills-list" id="savedBillsList"></div>
         <div class="saved-bills-empty" id="savedBillsEmpty">Chưa có hóa đơn lưu tạm</div>
@@ -79,8 +79,8 @@
                     <span>SKU</span>
                     <span>Tên sản phẩm</span>
                     <span>SL</span>
-                    <span>ÐVT</span>
-                    <span>Ðơn giá</span>
+                    <span>ĐVT</span>
+                    <span>Đơn giá</span>
                     <span>Thành tiền</span>
                 </div>
                 <div class="toolbar-search-list" id="toolbarSearchList"></div>
@@ -106,11 +106,11 @@
                     <path d="M5 20a7 7 0 0 1 14 0" />
                 </svg>
             </span>
-            <span id="selectedEmployeeName">Ðang tải...</span>
-            <span class="chip-caret">?</span>
+            <span id="selectedEmployeeName">Đang tải...</span>
+            <span class="chip-caret">&#9662;</span>
         </button>
         <div class="employee-dropdown" id="employeeList" style="display: none;">
-            <div class="employee-empty">Ðang tải...</div>
+            <div class="employee-empty">Đang tải...</div>
         </div>
                 <button class="toolbar-chip" type="button" onclick="window.location.href='/pages/promotions.html'">
             <span class="chip-icon">
@@ -121,7 +121,18 @@
                 </svg>
             </span>
             <span>Khuyến mãi</span>
-            <span class="chip-caret">?</span>
+            <span class="chip-caret">&#9662;</span>
+        </button>
+        <button class="toolbar-chip" type="button" id="inventoryBtn">
+            <span class="chip-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M4 7h16v10H4z" />
+                    <path d="M7 11h10" />
+                    <path d="M7 15h6" />
+                </svg>
+            </span>
+            <span>Tồn kho</span>
+            <span class="chip-caret">&#9662;</span>
         </button>
         <button class="toolbar-chip">
             <span class="chip-icon">
@@ -131,7 +142,7 @@
                 </svg>
             </span>
             <span>(Alt + B) Chọn bảng giá   </span>
-            <span class="chip-caret">?</span>
+            <span class="chip-caret">&#9662;</span>
         </button>
         <button class="toolbar-chip toolbar-store">
             <span class="chip-icon">
@@ -141,7 +152,7 @@
                 </svg>
             </span>
             <span>Tại cửa hàng     </span>
-            <span class="chip-caret">?</span>
+            <span class="chip-caret">&#9662;</span>
         </button>
     </section>
 
@@ -186,7 +197,7 @@
                                 <circle cx="11" cy="11" r="7" />
                                 <path d="M16.5 16.5L21 21" />
                             </svg>
-                            <input id="suggestionSearchInput" type="text" placeholder="(Shift + F3) Tìm ki?m">
+                            <input id="suggestionSearchInput" type="text" placeholder="(Shift + F3) T&#236;m ki&#7871;m">
                         </div>
                         <div class="suggestion-filter">
                             <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -231,7 +242,7 @@
                                 <path d="M16 8c1.5 0 2.5-1 2.5-2s-1-2-2.5-1-2 3-2 3 0.5 0 2 0Z" />
                             </svg>
                         </button>
-                        <button class="icon-btn small" title="Khác" aria-label="Khác">?</button>
+                        <button class="icon-btn small" title="Khác" aria-label="Khác">&#8942;</button>
                     </div>
                 </div>
                 <div class="customer-search-box">
@@ -249,7 +260,7 @@
                             <path d="M7 12h10" />
                         </svg>
                     </button>
-                    <button id="clearCustomerBtn" class="icon-btn mini" type="button" title="B? khách">×</button>
+                    <button id="clearCustomerBtn" class="icon-btn mini" type="button" title="B&#7887; kh&#225;ch">×</button>
                     <button id="addCustomerBtn" class="icon-btn mini" type="button" title="Thêm khách hàng">+</button>
                 </div>
                 <div class="customer-dropdown" id="customerList">
@@ -262,79 +273,82 @@
                         <input type="checkbox" id="printInvoiceToggle" checked>
                         <span class="slider"></span>
                     </label>
-                    <span>In hóa don</span>
+                    <span>In h&#243;a &#273;&#417;n</span>
                     <label class="checkbox">
                         <input type="checkbox">
-                        <span>Đặt hàng</span>
+                        <span>&#272;&#7863;t h&#224;ng</span>
                     </label>
                 </div>
 
                 <div class="cart-summary">
                     <div class="summary-row">
-                        <span>Tạm tính</span>
+                        <span>T&#7841;m t&#237;nh</span>
                         <span id="subtotal">0d</span>
                     </div>
                     <div class="summary-row total">
-                        <span>Tổng cộng</span>
+                        <span>T&#7893;ng c&#7897;ng</span>
                         <span id="totalAmount">0d</span>
                     </div>
                 </div>
 
                 <div class="payment-breakdown">
                     <div class="summary-row">
-                        <span>Khuyến mãi</span>
+                        <span>Khuy&#7871;n m&#227;i</span>
                         <span id="promoAmount">0d</span>
                     </div>
                     <div class="summary-row">
-                        <span>Thuế GTGT</span>
-                        <span id="taxAmount">0d</span>
+                        <span>&#272;i&#7875;m t&#237;ch l&#361;y</span>
+                        <span id="memberPoints">0</span>
                     </div>
                     <div class="summary-row">
-                        <span>Đặt cọc</span>
-                        <span id="depositAmount">0d</span>
+                        <span>Gi&#7843;m gi&#225; th&#224;nh vi&#234;n</span>
+                        <span id="memberDiscountAmount">0d</span>
                     </div>
                     <div class="summary-row">
-                        <span>Phí đổi trả</span>
-                        <span id="returnFeeAmount">0d</span>
+                        <label class="checkbox">
+                            <input type="checkbox" id="usePointsToggle" checked>
+                            <span>D&#249;ng &#273;i&#7875;m</span>
+                        </label>
+                        <span id="memberPointsUsed">0</span>
                     </div>
                     <div class="summary-row total">
-                        <span>Còn phải thu</span>
+                        <span>C&#242;n ph&#7843;i thu</span>
                         <span id="amountDue">0d</span>
                     </div>
                 </div>
 
                 <div class="payment-methods">
-                    <p class="section-title">Phương thức thanh toán</p>
+                    <p class="section-title">Ph&#432;&#417;ng th&#7913;c thanh to&#225;n</p>
                     <div class="payment-options">
                         <label class="payment-option">
                             <input type="radio" name="paymentMethod" value="CASH" checked>
-                            <span>Tiền mặt</span>
+                            <span>Ti&#7873;n m&#7863;t</span>
                         </label>
                         <label class="payment-option">
                             <input type="radio" name="paymentMethod" value="TRANSFER">
-                            <span>Chuyển khoản</span>
+                            <span>Chuy&#7875;n kho&#7843;n</span>
                         </label>
                         <label class="payment-option">
                             <input type="radio" name="paymentMethod" value="CARD">
-                            <span>Thanh toán thẻ</span>
+                            <span>Thanh to&#225;n th&#7867;</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="cash-panel" id="cashPanel">
                     <div class="summary-row">
-                        <span>Ti?n khách dua</span>
+                        <span>Ti&#7873;n kh&#225;ch &#273;&#432;a</span>
                         <input id="cashReceivedInput" type="number" min="0" placeholder="0">
                     </div>
                     <div class="summary-row total">
-                        <span>Tr? l?i</span>
+                        <span>Tr&#7843; l&#7841;i</span>
                         <span id="changeAmount">0d</span>
                     </div>
                 </div>
 
                 <div class="payment-note">
-                    <label for="paymentNote">Ghi chú thanh toán</label>
-                    <textarea id="paymentNote" rows="3" placeholder="Nh?p ghi chú..."></textarea>
+                    <label for="paymentNote">Ghi ch&#250; thanh to&#225;n</label>
+                    <textarea id="paymentNote" rows="3" placeholder="Nh&#7853;p ghi ch&#250;..."></textarea>
                 </div>
 
                 <div class="quick-cash">
@@ -344,8 +358,8 @@
                 </div>
 
                 <div class="cart-actions">
-                    <button id="saveBillBtn" class="ghost-btn">Luu t?m (F10)</button>
-                    <button id="checkoutBtn" class="primary-btn">Thu ti?n (F9)</button>
+                    <button id="saveBillBtn" class="ghost-btn">L&#432;u t&#7841;m (F10)</button>
+                    <button id="checkoutBtn" class="primary-btn">Thu ti&#7873;n (F9)</button>
                 </div>
             </div>
         </aside>
@@ -363,15 +377,15 @@
                     <div class="form-grid two-cols">
                         <label class="form-field">
                             <span>Mã khách hàng</span>
-                            <input type="text" placeholder="T? d?ng">
+                            <input type="text" placeholder="T&#7921; &#273;&#7897;ng">
                         </label>
                         <label class="form-field">
                             <span class="required-label">Khách hàng <span class="required-star">*</span></span>
                             <input id="customerNameInput" type="text" placeholder="Tên khách hàng" required>
                         </label>
                         <label class="form-field">
-                            <span class="required-label">S? di?n tho?i <span class="required-star">*</span></span>
-                            <input id="customerPhoneInput" type="tel" placeholder="S? di?n tho?i" required>
+                            <span class="required-label">Số điện thoại <span class="required-star">*</span></span>
+                            <input id="customerPhoneInput" type="tel" placeholder="Số điện thoại" required>
                         </label>
                         <label class="form-field">
                             <span>Email</span>
@@ -379,22 +393,22 @@
                         </label>
                         <label class="form-field">
                             <span>CCCD</span>
-                            <input type="text" placeholder="S? can cu?c công dân">
+                            <input type="text" placeholder="S&#7889; c&#259;n c&#432;&#7899;c c&#244;ng d&#226;n">
                         </label>
                         <label class="form-field">
                             <span>Ngày sinh</span>
                             <input type="date">
                         </label>
                         <div class="form-field inline-group">
-                            <span>Gi?i tính</span>
+                            <span>Giới tính</span>
                             <div class="radio-group">
                                 <label><input type="radio" name="gender"> Nam</label>
-                                <label><input type="radio" name="gender"> N?</label>
-                                <label><input type="radio" name="gender" checked> Không xác d?nh</label>
+                                <label><input type="radio" name="gender"> Nữ</label>
+                                <label><input type="radio" name="gender" checked> Không xác định</label>
                             </div>
                         </div>
                         <div class="form-field address-group">
-                            <span class="required-label">Ðịa chỉ <span class="required-star">*</span></span>
+                            <span class="required-label">Địa chỉ <span class="required-star">*</span></span>
                             <div class="address-grid">
                                 <input id="customerCityInput" type="text" list="customerCityList" placeholder="Tỉnh/Thành phố" required>
                                 <datalist id="customerCityList"></datalist>
@@ -459,7 +473,7 @@
                         </label>
                         <label class="form-field">
                             <span>Mã số thuế</span>
-                            <input type="text" placeholder="Mã s? thu?">
+                            <input type="text" placeholder="Mã số thuế">
                         </label>
                     </div>
                 </div>
@@ -483,7 +497,7 @@
                 <button id="closeInvoiceModal" class="icon-btn small" type="button" aria-label="Đóng">×</button>
             </div>
             <div class="invoice-receipt" id="invoiceReceipt">
-                <div class="receipt-header">
+                <div class="receipt-header">    
                     <div class="receipt-brand">BizFlow POS</div>
                     <div class="receipt-meta">
                         <div>Mã hóa đơn: <strong id="invoiceCode">-</strong></div>
@@ -509,6 +523,8 @@
                 <div class="receipt-divider"></div>
                 <div class="receipt-totals">
                     <div><span>Tạm tính</span><span id="invoiceSubtotal">0đ</span></div>
+                    <div><span>Giảm giá thành viên</span><span id="invoiceMemberDiscount">0đ</span></div>
+                    <div><span>Điểm đã dùng</span><span id="invoicePointsUsed">0</span></div>
                     <div><span>Tổng cộng</span><span id="invoiceTotal">0đ</span></div>
                     <div><span>Tiền khách đưa</span><span id="invoiceCashReceived">0đ</span></div>
                     <div><span>Trả lại</span><span id="invoiceChange">0đ</span></div>
@@ -549,7 +565,7 @@
                     <span id="detailProductBarcode" class="detail-value">-</span>
                 </div>
                 <div class="detail-row">
-                    <span class="detail-label">Ðon v?</span>
+                    <span class="detail-label">Đơn vị</span>
                     <span id="detailProductUnit" class="detail-value">-</span>
                 </div>
                 <div class="detail-row">
@@ -568,7 +584,50 @@
             </div>
             <div class="modal-actions">
                 <button type="button" class="ghost-btn" onclick="closeProductDetail()">Đóng</button>
+                <button type="button" class="ghost-btn" id="detailInventoryBtn">Nhập kho</button>
                 <button type="button" class="primary-btn" id="detailAddToCart">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="inventoryModal" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nhập kho</h3>
+                <button id="closeInventoryModal" class="icon-btn small" type="button" aria-label="Đóng">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid two-cols">
+                    <label class="form-field">
+                        <span>Sản phẩm</span>
+                        <select id="inventoryProductSelect"></select>
+                    </label>
+                    <label class="form-field">
+                        <span>Số lượng nhập</span>
+                        <input id="inventoryQtyInput" type="number" min="1" value="1">
+                    </label>
+                    <label class="form-field">
+                        <span>Giá nhập (tuỳ chọn)</span>
+                        <input id="inventoryUnitPriceInput" type="number" min="0" placeholder="0">
+                    </label>
+                    <label class="form-field">
+                        <span>Ghi chú</span>
+                        <input id="inventoryNoteInput" type="text" placeholder="...">
+                    </label>
+                </div>
+                <div class="summary-row">
+                    <span>Tồn hiện tại</span>
+                    <strong id="inventoryCurrentStock">0</strong>
+                </div>
+                <div class="modal-section">
+                    <div class="section-title">Lịch sử tồn kho</div>
+                    <div id="inventoryHistoryList"></div>
+                    <div id="inventoryHistoryEmpty" class="empty-text" style="display:none;">Chưa có lịch sử</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="ghost-btn" id="cancelInventoryBtn">Huỷ</button>
+                <button type="button" class="primary-btn" id="saveInventoryBtn">Nhập kho</button>
             </div>
         </div>
     </div>
@@ -577,7 +636,7 @@
         <div class="modal-content customer-detail">
             <div class="modal-header">
                 <h3>Khách hàng: <span id="detailCustomerName">-</span></h3>
-                <button class="icon-btn small" type="button" aria-label="Ðóng" onclick="closeCustomerDetail()">×</button>
+                <button class="icon-btn small" type="button" aria-label="Đóng" onclick="closeCustomerDetail()">×</button>
             </div>
             <div class="detail-tabs">
                 <button class="tab active">Tổng quan</button>
@@ -590,16 +649,16 @@
                     <div class="customer-card-header">
                         <div>
                             <div class="customer-name" id="detailCustomerNameCard">-</div>
-                            <div class="customer-tier">Hạng thẻ: MEMBER</div>
+                            <div class="customer-tier">Hạng thẻ: <span id="detailCustomerTier">-</span></div>
                         </div>
                         <button class="ghost-btn small">Đổi thẻ</button>
                     </div>
                     <div class="customer-metrics">
                         <div><span>Mã thẻ thành viên</span><strong>--</strong></div>
-                        <div><span>Chính sách tích điểm</span><strong>20.000 = 1 điểm</strong></div>
-                        <div><span>Chính sách đổi điểm</span><strong>1 điểm = 1.000</strong></div>
-                        <div><span>Điểm tích lũy</span><strong>0</strong></div>
-                        <div><span>Số dùng điểm</span><strong>0</strong></div>
+                        <div><span>Chính sách tích điểm</span><strong id="detailEarnPolicy">-</strong></div>
+                        <div><span>Chính sách đổi điểm</span><strong id="detailRedeemPolicy">-</strong></div>
+                        <div><span>Điểm tích lũy</span><strong id="detailCustomerPoints">0</strong></div>
+                        <div><span>Số dùng điểm</span><strong id="detailCustomerPointsUsed">0</strong></div>
                     </div>
                 </div>
                 <div class="customer-summary">
@@ -618,7 +677,7 @@
                         <h4>Công nợ</h4>
                         <div class="summary-row">
                             <span>Tổng dư nợ khách hàng</span>
-                            <strong>0</strong>
+                            <strong>0</strong>  
                         </div>
                         <div class="summary-row">
                             <span>Số lượng chứng từ</span>
@@ -628,7 +687,7 @@
                 </div>
                 <div class="customer-info-list">
                     <div class="info-row">
-                        <span>S? di?n tho?i</span>
+                        <span>Số điện thoại</span>
                         <strong id="detailCustomerPhone">-</strong>
                     </div>
                     <div class="info-row">
@@ -661,10 +720,10 @@
                 </button>
                 <button class="app-tile" data-app="invoices">
                     <span class="app-icon app-pink">HD</span>
-                    <span>DS hóa don</span>
+                    <span>DS hóa đơn</span>
                 </button>
                 <button class="app-tile" data-app="returns">
-                    <span class="app-icon app-orange">ÐR</span>
+                    <span class="app-icon app-orange">ĐR</span>
                     <span>Đổi trả hàng</span>
                 </button>
                 <button class="app-tile" data-app="print">
@@ -749,7 +808,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../assets/js/employee-dashboard.js"></script>
+    <script src="../assets/js/employee-dashboard.js?v=stock-1"></script>
     <script src="../assets/js/app-shell.js"></script>
 </body>
 </html>

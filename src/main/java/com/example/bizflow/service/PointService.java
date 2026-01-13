@@ -1,109 +1,53 @@
 package com.example.bizflow.service;
 
-import java.math.BigDecimal;
-
+import com.example.bizflow.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Service
 public class PointService {
+    private final CustomerRepository customerRepository;
 
-    public static void addPoints(Long id, BigDecimal totalAmount, String string) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'addPoints'");
+    public PointService(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
     }
 
-<<<<<<< HEAD
-    private String redisKey(Long customerId) {
-        return "customer:points:" + customerId;
-    }
-
-    /**
-     * 1.000 VNĐ = 1 điểm
-     */
-    @SuppressWarnings("null")
-    public void addPoints(Long customerId, BigDecimal totalAmount, String reason) {
-
-        System.out.println("🔥 addPoints CALLED - customerId=" + customerId + ", reason=" + reason);
-
-        if (customerId == null || totalAmount == null) return;
-
-        // ✅ chống cộng trùng
-        if (pointHistoryRepository.existsByCustomerIdAndReason(customerId, reason)) {
-            System.out.println("⚠️ Points already added, skip");
+    @Transactional
+    public void addPoints(Long customerId, BigDecimal totalAmount, String reference) {
+        if (customerId == null || totalAmount == null) {
             return;
         }
 
-        Customer customer = customerRepository
-                .findByIdForUpdate(customerId)
-                .orElse(null);
-
-        if (customer == null) return;
-
-        int earnedPoints = totalAmount
-                .divide(BigDecimal.valueOf(1000), RoundingMode.DOWN)
-                .intValue();
-
-        if (earnedPoints <= 0) return;
-
-        // ✅ cộng DB
-        customer.addPoints(earnedPoints);
-        customerRepository.save(customer);
-
-        // ✅ lưu lịch sử
-        PointHistory history = new PointHistory();
-        history.setCustomer(customer);
-        history.setPoints(earnedPoints);
-        history.setReason(reason);
-        pointHistoryRepository.save(history);
-
-        // ✅ update redis SAU – không ảnh hưởng transaction
-        Integer totalPoints = customer.getTotalPoints();
-        if (totalPoints != null) {
-            try {
-                redisTemplate.opsForValue().set(
-                        redisKey(customerId),
-                        totalPoints,
-                        1,
-                        TimeUnit.DAYS
-                );
-            } catch (Exception ex) {
-                System.out.println("⚠️ Redis unavailable, skip cache update: " + ex.getMessage());
-            }
+        int points = totalAmount.divide(BigDecimal.valueOf(1000), java.math.RoundingMode.DOWN).intValue();
+        if (points <= 0) {
+            return;
         }
 
-        System.out.println("✅ Added " + earnedPoints + " points for customer " + customerId);
+        customerRepository.findByIdForUpdate(customerId).ifPresent(customer -> {
+            customer.addPoints(points);
+            customerRepository.save(customer);
+        });
     }
 
-    @SuppressWarnings("null")
-    public Integer getTotalPoints(Long customerId) {
-        String key = redisKey(customerId);
-
-        try {
-            Integer cached = redisTemplate.opsForValue().get(key);
-            if (cached != null) return cached;
-        } catch (Exception ex) {
-            System.out.println("⚠️ Redis unavailable, skip cache read: " + ex.getMessage());
+    @Transactional
+    public int redeemPoints(Long customerId, int points) {
+        if (customerId == null || points <= 0) {
+            return 0;
         }
 
-        Customer customer = customerRepository.findById(customerId).orElse(null);
-        if (customer == null) return 0;
-
-        Integer totalPoints = customer.getTotalPoints();
-        if (totalPoints != null) {
-            try {
-                redisTemplate.opsForValue().set(
-                        key,
-                        totalPoints,
-                        1,
-                        TimeUnit.DAYS
-                );
-            } catch (Exception ex) {
-                System.out.println("⚠️ Redis unavailable, skip cache update: " + ex.getMessage());
+        return customerRepository.findByIdForUpdate(customerId).map(customer -> {
+            int current = customer.getTotalPoints() == null ? 0 : customer.getTotalPoints();
+            int redeem = Math.min(current, points);
+            if (redeem <= 0) {
+                return 0;
             }
-        }
-
-        return totalPoints != null ? totalPoints : 0;
+            customer.setTotalPoints(current - redeem);
+            Integer monthly = customer.getMonthlyPoints() == null ? 0 : customer.getMonthlyPoints();
+            customer.setMonthlyPoints(Math.max(0, monthly - redeem));
+            customerRepository.save(customer);
+            return redeem;
+        }).orElse(0);
     }
-=======
->>>>>>> 0e749eb7b88fec30ee558c76cbf18fee7af4255a
 }

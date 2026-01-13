@@ -1,6 +1,8 @@
 package com.example.bizflow.service;
 
 import com.example.bizflow.entity.Product;
+import com.example.bizflow.entity.InventoryStock;
+import com.example.bizflow.repository.InventoryStockRepository;
 import com.example.bizflow.repository.ProductRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +24,11 @@ public class DataInitializer implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 
     private final ProductRepository productRepository;
+    private final InventoryStockRepository inventoryStockRepository;
 
-    public DataInitializer(ProductRepository productRepository) {
+    public DataInitializer(ProductRepository productRepository, InventoryStockRepository inventoryStockRepository) {
         this.productRepository = productRepository;
+        this.inventoryStockRepository = inventoryStockRepository;
     }
 
     @Override
@@ -41,6 +45,12 @@ public class DataInitializer implements ApplicationRunner {
                     p.setStatus("active");
                     toEnable.add(p);
                 }
+                if (p.getStock() == null) {
+                    p.setStock(20);
+                    if (!toEnable.contains(p)) {
+                        toEnable.add(p);
+                    }
+                }
             }
             if (!toEnable.isEmpty()) {
                 productRepository.saveAll(toEnable);
@@ -48,6 +58,7 @@ public class DataInitializer implements ApplicationRunner {
             } else {
                 logger.info("No products needed active=true fixup.");
             }
+            seedInventoryStocksIfNeeded();
             return;
         }
 
@@ -76,8 +87,28 @@ public class DataInitializer implements ApplicationRunner {
         if (!products.isEmpty()) {
             productRepository.saveAll(products);
             logger.info("Seeded {} products.", products.size());
+            seedInventoryStocksIfNeeded();
         } else {
             logger.warn("No products found in resource data/products.csv to seed.");
+        }
+    }
+
+    private void seedInventoryStocksIfNeeded() {
+        if (inventoryStockRepository.count() > 0) {
+            return;
+        }
+        List<Product> all = productRepository.findAll();
+        List<InventoryStock> rows = new ArrayList<>();
+        for (Product product : all) {
+            if (product.getId() == null) continue;
+            InventoryStock stock = new InventoryStock();
+            stock.setProductId(product.getId());
+            stock.setStock(20);
+            rows.add(stock);
+        }
+        if (!rows.isEmpty()) {
+            inventoryStockRepository.saveAll(rows);
+            logger.info("Seeded {} inventory stock rows.", rows.size());
         }
     }
 }

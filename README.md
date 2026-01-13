@@ -614,3 +614,6 @@ MIT License - Tự do sử dụng cho mục đích học tập và thương mạ
 **Phiên bản hiện tại**: 1.0.0 (Login Feature Complete)
 
 ✨ **Chúc bạn sử dụng BizFlow vui vẻ!** ✨
+
+echo "# hotfix" >> README.md
+
