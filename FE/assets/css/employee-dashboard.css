@@ -1682,12 +1682,22 @@
 }
 
 @media print {
+    @page {
+        margin: 12mm;
+    }
+
+    html,
+    body {
+        height: 100%;
+        margin: 0;
+    }
+
     body {
         background: #ffffff;
     }
 
-    body * {
-        visibility: hidden;
+    body > *:not(#invoiceModal) {
+        display: none !important;
     }
 
     #invoiceModal,
@@ -1696,11 +1706,16 @@
     }
 
     #invoiceModal {
-        position: static;
+        position: fixed;
         inset: auto;
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
         padding: 0;
         background: transparent;
+        width: 100%;
+        height: 100%;
     }
 
     #invoiceModal .modal-content {
@@ -1709,6 +1724,14 @@
         border-radius: 0;
         box-shadow: none;
         padding: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    #invoiceModal .invoice-receipt {
+        margin: 0;
+        break-inside: avoid;
+        page-break-inside: avoid;
     }
 
     #invoiceModal .modal-header,

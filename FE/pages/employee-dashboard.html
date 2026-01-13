@@ -123,6 +123,17 @@
             <span>Khuyến mãi</span>
             <span class="chip-caret">&#9662;</span>
         </button>
+        <button class="toolbar-chip" type="button" id="inventoryBtn">
+            <span class="chip-icon">
+                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                    <path d="M4 7h16v10H4z" />
+                    <path d="M7 11h10" />
+                    <path d="M7 15h6" />
+                </svg>
+            </span>
+            <span>Tồn kho</span>
+            <span class="chip-caret">&#9662;</span>
+        </button>
         <button class="toolbar-chip">
             <span class="chip-icon">
                 <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -573,7 +584,50 @@
             </div>
             <div class="modal-actions">
                 <button type="button" class="ghost-btn" onclick="closeProductDetail()">Đóng</button>
+                <button type="button" class="ghost-btn" id="detailInventoryBtn">Nhập kho</button>
                 <button type="button" class="primary-btn" id="detailAddToCart">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="inventoryModal" aria-hidden="true">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nhập kho</h3>
+                <button id="closeInventoryModal" class="icon-btn small" type="button" aria-label="Đóng">x</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid two-cols">
+                    <label class="form-field">
+                        <span>Sản phẩm</span>
+                        <select id="inventoryProductSelect"></select>
+                    </label>
+                    <label class="form-field">
+                        <span>Số lượng nhập</span>
+                        <input id="inventoryQtyInput" type="number" min="1" value="1">
+                    </label>
+                    <label class="form-field">
+                        <span>Giá nhập (tuỳ chọn)</span>
+                        <input id="inventoryUnitPriceInput" type="number" min="0" placeholder="0">
+                    </label>
+                    <label class="form-field">
+                        <span>Ghi chú</span>
+                        <input id="inventoryNoteInput" type="text" placeholder="...">
+                    </label>
+                </div>
+                <div class="summary-row">
+                    <span>Tồn hiện tại</span>
+                    <strong id="inventoryCurrentStock">0</strong>
+                </div>
+                <div class="modal-section">
+                    <div class="section-title">Lịch sử tồn kho</div>
+                    <div id="inventoryHistoryList"></div>
+                    <div id="inventoryHistoryEmpty" class="empty-text" style="display:none;">Chưa có lịch sử</div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="ghost-btn" id="cancelInventoryBtn">Huỷ</button>
+                <button type="button" class="primary-btn" id="saveInventoryBtn">Nhập kho</button>
             </div>
         </div>
     </div>
@@ -754,7 +808,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../assets/js/employee-dashboard.js"></script>
+    <script src="../assets/js/employee-dashboard.js?v=stock-1"></script>
     <script src="../assets/js/app-shell.js"></script>
 </body>
 </html>

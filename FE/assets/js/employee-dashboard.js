@@ -23,6 +23,7 @@ let employeesLoaded = false;
 let employees = [];
 let exchangeDraft = null;
 let promotionIndex = null;
+let activeInventoryProductId = null;
 const TIER_DISCOUNT_BY_100 = {
     DONG: 10000,
     BAC: 12000,
@@ -55,6 +56,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
     setupCustomerModal();
     setupProductDetailModal();
+    setupInventoryModal();
     setupCustomerDetailModal();
     setupEmployeeSelector();
     setupAppMenuModal();
@@ -560,7 +562,7 @@ async function createOrder(isPaid) {
         showPopup('Giỏ hàng trống!', { type: 'error' });
         return;
     }
-    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0));
+    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) < Number(item.quantity)));
     if (outOfStock) {
         showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
@@ -608,10 +610,12 @@ async function createOrder(isPaid) {
         );
         if (isPaid) {
             await openInvoiceModal(receiptData);
-            const shouldPrint = document.getElementById('printInvoiceToggle')?.checked !== false;
+            const printToggle = document.getElementById('printInvoiceToggle');
+            const shouldPrint = !!printToggle && printToggle.checked === true;
             if (shouldPrint) {
-                setTimeout(() => window.print(), 150);
+                setTimeout(() => printInvoiceReceipt(), 150);
             }
+            applyLocalStockAfterSale();
         }
         clearCart(true);
         if (exchangeDraft) {
@@ -809,7 +813,7 @@ function setupInvoiceModal() {
     const close = () => closeInvoiceModal();
     closeBtn?.addEventListener('click', close);
     footerCloseBtn?.addEventListener('click', close);
-    printBtn?.addEventListener('click', () => window.print());
+    printBtn?.addEventListener('click', () => printInvoiceReceipt());
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             close();
@@ -1382,7 +1386,7 @@ function showPopup(message, options = {}) {
             <div class="app-popup-card" role="dialog" aria-modal="true">
                 <div class="app-popup-header">
                     <h3 id="appPopupTitle"></h3>
-                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Đóng">ï¿½</button>
+                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Đóng">×</button>
                 </div>
                 <div id="appPopupMessage" class="app-popup-message"></div>
                 <div class="app-popup-actions">
@@ -1420,6 +1424,68 @@ function formatPriceCompact(price) {
     return new Intl.NumberFormat('vi-VN', {
         minimumFractionDigits: 0
     }).format(price);
+}
+
+function printInvoiceReceipt() {
+    const receipt = document.getElementById('invoiceReceipt');
+    if (!receipt) {
+        window.print();
+        return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=480,height=700');
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+
+    const receiptHtml = receipt.outerHTML;
+    const content = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>In hoa don</title>
+    <style>
+        @page { size: 80mm 200mm; margin: 0; }
+        html, body { width: 80mm; margin: 0; }
+        body { font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; }
+        .print-sheet { width: 80mm; margin: 0; display: flex; justify-content: center; padding-top: 2mm; box-sizing: border-box; }
+        .invoice-receipt { width: 74mm; font-size: 10.5px; line-height: 1.15; color: #2f3644; display: grid; gap: 4px; }
+        .invoice-receipt div, .invoice-receipt span { margin: 0; padding: 0; }
+        .receipt-header { text-align: center; display: grid; gap: 1px; }
+        .receipt-brand { font-weight: 800; letter-spacing: 0.4px; }
+        .receipt-meta { font-size: 9px; color: #5b6274; display: grid; gap: 0; }
+        .receipt-divider { border-top: 1px dashed #c9ceda; margin: 1px 0; }
+        .receipt-items { display: grid; gap: 2px; }
+        .receipt-item { display: grid; grid-template-columns: 1.4fr 0.5fr 0.8fr 1fr; gap: 3px; }
+        .receipt-item.header { font-weight: 700; font-size: 9.5px; color: #2f3644; }
+        .receipt-item span:nth-child(2),
+        .receipt-item span:nth-child(3),
+        .receipt-item span:nth-child(4) { text-align: right; }
+        .receipt-totals { display: grid; gap: 1px; }
+        .receipt-totals div { display: flex; justify-content: space-between; }
+        .receipt-note { font-size: 9px; color: #4b5366; display: grid; gap: 0; }
+    </style>
+</head>
+<body>
+<div class="print-sheet">
+${receiptHtml}
+</div>
+<script>
+    window.onload = () => {
+        window.focus();
+        window.print();
+        setTimeout(() => window.close(), 200);
+    };
+</script>
+</body>
+</html>`;
+
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
 }
 
 function updateChangeDue(forcedTotal = null) {
@@ -1473,6 +1539,10 @@ function setTierByPoints(points) {
 }
 
 function setupEventListeners() {
+    document.getElementById('inventoryBtn')?.addEventListener('click', () => {
+        openInventoryModal();
+    });
+
     const searchInput = document.getElementById('searchInput');
     searchInput.addEventListener('input', (e) => {
         topSearchTerm = e.target.value;
@@ -2168,6 +2238,35 @@ function setupProductDetailModal() {
     });
 }
 
+function setupInventoryModal() {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+
+    const closeBtn = document.getElementById('closeInventoryModal');
+    const cancelBtn = document.getElementById('cancelInventoryBtn');
+    const saveBtn = document.getElementById('saveInventoryBtn');
+    const productSelect = document.getElementById('inventoryProductSelect');
+
+    closeBtn?.addEventListener('click', closeInventoryModal);
+    cancelBtn?.addEventListener('click', closeInventoryModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeInventoryModal();
+        }
+    });
+
+    productSelect?.addEventListener('change', () => {
+        const selected = parseInt(productSelect.value, 10);
+        if (!Number.isFinite(selected)) return;
+        activeInventoryProductId = selected;
+        updateInventoryStockDisplay(selected);
+        loadInventoryHistory(selected);
+    });
+
+    saveBtn?.addEventListener('click', submitInventoryReceipt);
+}
+
 function setupCustomerDetailModal() {
     const modal = document.getElementById('customerDetailModal');
     const selectedView = document.getElementById('selectedCustomer');
@@ -2727,6 +2826,7 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
                 ${priceParts.priceBlock}
                 <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
                 <div class="product-sku">${p.code || 'SKU'}</div>
+                <div class="product-stock">T\u1ed3n: ${getStockValue(p)}</div>
             </div>
         `;
     }).join('');
@@ -2794,6 +2894,11 @@ function openProductDetail(productId) {
         };
     }
 
+    const inventoryBtn = document.getElementById('detailInventoryBtn');
+    if (inventoryBtn) {
+        inventoryBtn.onclick = () => openInventoryModal(product.id);
+    }
+
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
 }
@@ -2803,6 +2908,227 @@ function closeProductDetail() {
     if (!modal) return;
     modal.classList.remove('show');
     modal.setAttribute('aria-hidden', 'true');
+}
+
+function openInventoryModal(productId = null) {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+
+    const resolvedId = resolveInventoryProductId(productId);
+    populateInventoryProducts(resolvedId);
+    activeInventoryProductId = resolvedId;
+    updateInventoryStockDisplay(resolvedId);
+    loadInventoryHistory(resolvedId);
+
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeInventoryModal() {
+    const modal = document.getElementById('inventoryModal');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
+function resolveInventoryProductId(productId) {
+    if (Number.isFinite(Number(productId))) {
+        return Number(productId);
+    }
+    const first = products && products.length > 0 ? products[0] : null;
+    return first?.id || null;
+}
+
+function populateInventoryProducts(selectedId) {
+    const select = document.getElementById('inventoryProductSelect');
+    if (!select) return;
+    const options = (products || []).map((product) => {
+        const label = `${product.name || 'San pham'} (${product.code || product.barcode || '-'})`;
+        return `<option value="${product.id}">${escapeHtml(label)}</option>`;
+    }).join('');
+    select.innerHTML = options;
+    if (selectedId && select.querySelector(`option[value="${selectedId}"]`)) {
+        select.value = String(selectedId);
+    }
+}
+
+function updateInventoryStockDisplay(productId) {
+    const stockEl = document.getElementById('inventoryCurrentStock');
+    if (!stockEl) return;
+    const product = products.find(p => p.id === productId);
+    stockEl.textContent = formatCompactNumber(getStockValue(product || {}));
+}
+
+async function loadInventoryHistory(productId) {
+    const list = document.getElementById('inventoryHistoryList');
+    const empty = document.getElementById('inventoryHistoryEmpty');
+    if (!list || !empty || !productId) return;
+
+    list.innerHTML = '';
+    empty.style.display = 'none';
+
+    try {
+        const res = await fetch(`${API_BASE}/inventory/history?productId=${productId}`, {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+        });
+        if (!res.ok) {
+            throw new Error('Failed to load inventory history');
+        }
+        const data = await res.json();
+        renderInventoryHistory(Array.isArray(data) ? data : []);
+    } catch (err) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+    }
+}
+
+function renderInventoryHistory(items) {
+    const list = document.getElementById('inventoryHistoryList');
+    const empty = document.getElementById('inventoryHistoryEmpty');
+    if (!list || !empty) return;
+
+    if (!items || items.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+
+    empty.style.display = 'none';
+    list.innerHTML = items.map((item) => {
+        const qty = Number(item.quantity) || 0;
+        const label = formatInventoryType(item.type);
+        const when = item.createdAt ? ` - ${escapeHtml(item.createdAt)}` : '';
+        return `
+            <div class="summary-row">
+                <span>${escapeHtml(label)}${when}</span>
+                <strong>${formatCompactNumber(qty)}</strong>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatInventoryType(type) {
+    switch ((type || '').toUpperCase()) {
+        case 'IN':
+            return '\u004e\u0068\u1ead\u0070';
+        case 'SALE':
+            return '\u0042\u00e1\u006e';
+        case 'OUT':
+            return '\u0058\u0075\u1ea5\u0074';
+        case 'RETURN':
+            return '\u0054\u0072\u1ea3';
+        case 'ADJUST':
+            return '\u0110\u0069\u1ec1\u0075\u0020\u0063\u0068\u1ec9\u006e\u0068';
+        default:
+            return '\u004b\u0068\u00e1\u0063';
+    }
+}
+
+async function submitInventoryReceipt() {
+    const productId = activeInventoryProductId;
+    if (!productId) {
+        showPopup('Vui l\u00f2ng ch\u1ecdn s\u1ea3n ph\u1ea9m.', { type: 'error' });
+        return;
+    }
+    const qtyInput = document.getElementById('inventoryQtyInput');
+    const unitPriceInput = document.getElementById('inventoryUnitPriceInput');
+    const noteInput = document.getElementById('inventoryNoteInput');
+    const qty = parseInt(qtyInput?.value || '0', 10);
+    if (!Number.isFinite(qty) || qty <= 0) {
+        showPopup('Vui l\u00f2ng nh\u1eadp s\u1ed1 l\u01b0\u1ee3ng h\u1ee3p l\u1ec7.', { type: 'error' });
+        return;
+    }
+
+    const rawUnitPrice = Number(unitPriceInput?.value || '');
+    const unitPrice = Number.isFinite(rawUnitPrice) && rawUnitPrice > 0 ? rawUnitPrice : null;
+    const note = (noteInput?.value || '').trim();
+    const userId = parseInt(sessionStorage.getItem('userId'), 10) || null;
+
+    try {
+        const res = await fetch(`${API_BASE}/inventory/receipts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+            },
+            body: JSON.stringify({
+                productId,
+                quantity: qty,
+                unitPrice,
+                note: note || null,
+                userId
+            })
+        });
+
+        if (!res.ok) {
+            const message = await res.text();
+            showPopup(message || 'Kh\u00f4ng th\u1ec3 nh\u1eadp kho.', { type: 'error' });
+            return;
+        }
+
+        const data = await res.json();
+        updateLocalProductStock(productId, data?.newStock);
+        loadInventoryHistory(productId);
+        if (qtyInput) qtyInput.value = '1';
+        if (unitPriceInput) unitPriceInput.value = '';
+        if (noteInput) noteInput.value = '';
+        showPopup('\u0110\u00e3 nh\u1eadp kho th\u00e0nh c\u00f4ng.', { type: 'success' });
+    } catch (err) {
+        showPopup('L\u1ed7i k\u1ebft n\u1ed1i khi nh\u1eadp kho.', { type: 'error' });
+    }
+}
+
+function updateLocalProductStock(productId, newStock) {
+    const product = products.find(p => p.id === productId);
+    if (product) {
+        const stockValue = Number.isFinite(Number(newStock)) ? Number(newStock) : getStockValue(product);
+        product.stock = stockValue;
+    }
+    cart.forEach(item => {
+        if (item.productId === productId) {
+            item.stock = Number.isFinite(Number(newStock)) ? Number(newStock) : item.stock;
+        }
+    });
+    updateInventoryStockDisplay(productId);
+    filterProducts();
+    updateProductDetailStock(productId);
+}
+
+function applyLocalStockAfterSale() {
+    if (!cart || cart.length === 0) return;
+    const updates = new Map();
+    cart.forEach(item => {
+        if (!item || item.isReturnItem || !Number.isFinite(Number(item.productId))) return;
+        const product = products.find(p => p.id === item.productId);
+        if (!product) return;
+        const current = getStockValue(product);
+        const qty = Math.max(0, Number(item.quantity) || 0);
+        const next = Math.max(0, current - qty);
+        updates.set(product.id, next);
+    });
+
+    if (updates.size === 0) return;
+    updates.forEach((stock, productId) => {
+        const product = products.find(p => p.id === productId);
+        if (product) {
+            product.stock = stock;
+        }
+    });
+    filterProducts();
+}
+
+function updateProductDetailStock(productId) {
+    const modal = document.getElementById('productDetailModal');
+    if (!modal || !modal.classList.contains('show')) return;
+    const detailName = document.getElementById('detailProductName')?.textContent || '';
+    const product = products.find(p => p.id === productId);
+    if (!product || (detailName && product.name && detailName !== product.name)) {
+        return;
+    }
+    const stockEl = document.getElementById('detailProductStock');
+    if (stockEl) {
+        stockEl.textContent = formatCompactNumber(getStockValue(product));
+    }
 }
 
 function isToolbarSearchOpen() {

@@ -279,6 +279,41 @@ INSERT INTO `products` VALUES (1,'Coca-Cola lon 330ml','CC330','8934567000010',1
 UNLOCK TABLES;
 
 --
+-- Table structure for table `inventory_stocks`
+--
+
+DROP TABLE IF EXISTS `inventory_stocks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `inventory_stocks` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `product_id` int NOT NULL,
+  `stock` int NOT NULL DEFAULT 20,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_inventory_product` (`product_id`),
+  CONSTRAINT `fk_inventory_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `inventory_stocks`
+--
+
+LOCK TABLES `inventory_stocks` WRITE;
+/*!40000 ALTER TABLE `inventory_stocks` DISABLE KEYS */;
+/*!40000 ALTER TABLE `inventory_stocks` ENABLE KEYS */;
+UNLOCK TABLES;
+
+-- Ensure stock column exists and defaults to 20 for all products
+ALTER TABLE `products` ADD COLUMN IF NOT EXISTS `stock` int NOT NULL DEFAULT 20;
+UPDATE `products` SET `stock` = 20 WHERE `stock` IS NULL;
+INSERT INTO `inventory_stocks` (`product_id`, `stock`)
+SELECT `product_id`, 20 FROM `products`
+WHERE `product_id` NOT IN (SELECT `product_id` FROM `inventory_stocks`);
+
+--
 -- Table structure for table `shelves`
 --
 

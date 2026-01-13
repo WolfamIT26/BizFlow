@@ -378,6 +378,32 @@ INSERT INTO `products` VALUES (149,'Bật lửa điện sạc USB','BL-USB','893
 INSERT INTO `products` VALUES (150,'Giấy quấn thuốc lá Zig-Zag','GQTL-ZZ','8934567001505',10,'gói',20000.00,13000.00,'active','Giấy cuộn thuốc lá','2025-12-29 17:08:00',NULL,NULL,'','');
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
+
+DROP TABLE IF EXISTS `inventory_stocks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `inventory_stocks` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `product_id` int NOT NULL,
+  `stock` int NOT NULL DEFAULT 20,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_inventory_product` (`product_id`),
+  CONSTRAINT `fk_inventory_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `inventory_stocks` WRITE;
+/*!40000 ALTER TABLE `inventory_stocks` DISABLE KEYS */;
+/*!40000 ALTER TABLE `inventory_stocks` ENABLE KEYS */;
+UNLOCK TABLES;
+-- Ensure stock column exists and defaults to 20 for all products
+ALTER TABLE `products` ADD COLUMN IF NOT EXISTS `stock` int NOT NULL DEFAULT 20;
+UPDATE `products` SET `stock` = 20 WHERE `stock` IS NULL;
+INSERT INTO `inventory_stocks` (`product_id`, `stock`)
+SELECT `product_id`, 20 FROM `products`
+WHERE `product_id` NOT IN (SELECT `product_id` FROM `inventory_stocks`);
 DROP TABLE IF EXISTS `shelves`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

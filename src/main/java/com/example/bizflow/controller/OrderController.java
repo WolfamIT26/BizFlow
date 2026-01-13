@@ -21,6 +21,7 @@ import com.example.bizflow.repository.ProductRepository;
 import com.example.bizflow.repository.PromotionRepository;
 import com.example.bizflow.repository.UserRepository;
 import com.example.bizflow.service.OrderService;
+import com.example.bizflow.service.InventoryService;
 import com.example.bizflow.service.PointService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,7 @@ public class OrderController {
     private final UserRepository userRepository;
     private final OrderService orderService;
     private final PointService pointService;
+    private final InventoryService inventoryService;
 
     public OrderController(
             OrderRepository orderRepository,
@@ -60,7 +62,8 @@ public class OrderController {
             CustomerRepository customerRepository,
             UserRepository userRepository,
             OrderService orderService,
-            PointService pointService
+            PointService pointService,
+            InventoryService inventoryService
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -71,6 +74,7 @@ public class OrderController {
         this.userRepository = userRepository;
         this.orderService = orderService;
         this.pointService = pointService;
+        this.inventoryService = inventoryService;
     }
 
     // ================== TẠO ĐƠN + THANH TOÁN ==================
@@ -122,6 +126,10 @@ public class OrderController {
             if (qty <= 0) {
                 return ResponseEntity.badRequest().body("Quantity must be > 0");
             }
+            int currentStock = inventoryService.getAvailableStock(product.getId());
+            if (paid && currentStock < qty) {
+                return ResponseEntity.badRequest().body("Insufficient stock for product: " + product.getName());
+            }
 
             BigDecimal unitPrice = resolvePromotionalPrice(product, activePromotions);
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(qty));
@@ -152,6 +160,8 @@ public class OrderController {
         orderItemRepository.saveAll(items);
 
         if (paid) {
+            inventoryService.applySale(savedOrder, items, userId);
+
             Payment payment = new Payment();
             payment.setOrder(savedOrder);
             payment.setMethod(
