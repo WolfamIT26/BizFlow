@@ -105,7 +105,7 @@ function applyExchangeDraft() {
     if (exchangeDraft.customerId) {
         selectedCustomer = {
             id: exchangeDraft.customerId,
-            name: exchangeDraft.customerName || 'Khách hàng',
+            name: exchangeDraft.customerName || 'Khï¿½ch hï¿½ng',
             phone: exchangeDraft.customerPhone || '-'
         };
         const searchInput = document.getElementById('customerSearch');
@@ -136,6 +136,10 @@ function resolveApiBase() {
     }
 
     if (window.location.protocol === 'file:') {
+        return 'http://localhost:8080/api';
+    }
+
+    if (window.location.hostname === 'localhost' && window.location.port === '3000') {
         return 'http://localhost:8080/api';
     }
 
@@ -236,7 +240,7 @@ function loadUserInfo() {
     const userInitial = (username ? username[0] : 'E').toUpperCase();
 
     document.getElementById('userInitial').textContent = userInitial;
-    document.getElementById('userNameDropdown').textContent = username || 'Nhân viên';
+    document.getElementById('userNameDropdown').textContent = username || 'Nhï¿½n viï¿½n';
 }
 
 async function loadCurrentEmployee() {
@@ -273,7 +277,7 @@ async function loadCurrentEmployee() {
 
         const userNameDropdown = document.getElementById('userNameDropdown');
         if (userNameDropdown) {
-            userNameDropdown.textContent = data.username || data.fullName || 'Nhân viên';
+            userNameDropdown.textContent = data.username || data.fullName || 'Nhï¿½n viï¿½n';
         }
 
         const userInitialEl = document.getElementById('userInitial');
@@ -301,6 +305,7 @@ async function loadProducts() {
         }
 
         products = await response.json();
+        await loadPromotionIndex();
         filterProducts();
     } catch (err) {
         renderProducts([]);
@@ -384,7 +389,7 @@ function renderCustomers(customers) {
     if (!list) return;
 
     if (!customers || customers.length === 0) {
-        const emptyMessage = customerSearchTerm ? 'Không tìm thấy khách hàng' : 'Chưa có khách hàng';
+        const emptyMessage = customerSearchTerm ? 'Không tìm thấy khách hàng' : 'Chua cï¿½ khï¿½ch hï¿½ng';
         list.innerHTML = `<div class="customer-empty">${emptyMessage}</div>`;
         return;
     }
@@ -401,7 +406,7 @@ function renderCustomers(customers) {
             <div class="customer-info">
                 <p class="customer-name">
                     <button type="button" class="customer-name-btn" data-customer-id="${customerId}" onclick="openCustomerDetailFromButton(event)">
-                        ${escapeHtml(c.name || 'Khách hàng')}
+                        ${escapeHtml(c.name || 'Khï¿½ch hï¿½ng')}
                     </button>
                 </p>
                 <p class="customer-phone">${escapeHtml(phone)}</p>
@@ -414,7 +419,7 @@ function renderCustomers(customers) {
         `;
     }).join('');
 
-    list.innerHTML = customersHtml || '<div class="customer-empty">Chưa có khách hàng</div>';
+    list.innerHTML = customersHtml || '<div class="customer-empty">Chua cï¿½ khï¿½ch hï¿½ng</div>';
 }
 
 function applyCustomerFilter() {
@@ -471,7 +476,8 @@ function addToCart(productId, productName, productPrice) {
     const splitLine = document.getElementById('splitLine')?.checked;
     const product = products.find(p => p.id === productId) || {};
     const stock = getStockValue(product);
-    const effectivePrice = getEffectivePrice(product);
+    const pricing = getProductPricing(product);
+    const effectivePrice = pricing.hasPromo ? pricing.promoPrice : pricing.basePrice;
     const resolvedPrice = Number.isFinite(effectivePrice) ? effectivePrice : (productPrice || 0);
 
     if (!splitLine) {
@@ -523,7 +529,7 @@ async function createOrder(isPaid) {
     }
     const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0));
     if (outOfStock) {
-        showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
+        showPopup('Cï¿½ s?n ph?m h?t hï¿½ng. Vui l?ng ki?m tra s? lu?ng t?n.', { type: 'error' });
         return;
     }
 
@@ -555,7 +561,7 @@ async function createOrder(isPaid) {
 
         if (!res.ok) {
             const message = await res.text();
-            showPopup(message || 'Không thể tạo đơn hàng.', { type: 'error' });
+            showPopup(message || 'Khï¿½ng th? t?o don hï¿½ng.', { type: 'error' });
             return;
         }
 
@@ -563,7 +569,7 @@ async function createOrder(isPaid) {
         const receiptData = buildReceiptData(data);
         const invoiceCode = receiptData.invoiceNumber || '-';
         showPopup(
-            isPaid ? `Thanh toán thành công. Mã hóa đơn: ${invoiceCode}` : `Đã lưu tạm đơn: ${invoiceCode}`,
+            isPaid ? `Thanh toï¿½n thï¿½nh cï¿½ng. Ma hï¿½a don: ${invoiceCode}` : `Da luu t?m don: ${invoiceCode}`,
             { type: 'success' }
         );
         if (isPaid) {
@@ -581,7 +587,7 @@ async function createOrder(isPaid) {
         saveActiveInvoiceState();
         return data;
     } catch (err) {
-        showPopup('Lỗi kết nối khi tạo đơn hàng.', { type: 'error' });
+        showPopup('L?i k?t n?i khi t?o don hï¿½ng.', { type: 'error' });
     }
 }
 
@@ -602,7 +608,7 @@ function showTransferQrModal(orderId, amount, token) {
     } else {
         displayToken = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
         const tokenEl = document.getElementById('transferPaymentToken');
-        if (tokenEl) tokenEl.textContent = displayToken + ' (mã tượng trưng)';
+        if (tokenEl) tokenEl.textContent = displayToken + ' (ma tu?ng trung)';
     }
 
     const bankCode = 'VCB';
@@ -611,7 +617,7 @@ function showTransferQrModal(orderId, amount, token) {
 
     const payloadEl = document.getElementById('transferPayload');
     if (payloadEl) {
-        payloadEl.textContent = `VietQR • ${bankCode} • ${account} • ${accountName} • ${formatPrice(amount)}`;
+        payloadEl.textContent = `VietQR . ${bankCode} . ${account} . ${accountName} . ${formatPrice(amount)}`;
     }
 
     const bankLogos = {
@@ -633,7 +639,7 @@ function showTransferQrModal(orderId, amount, token) {
     const bankQuickId = 'VCB';
     const template = 'compact';
     const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
-    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toán đơn #' + orderId)}`;
+    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toï¿½n don #' + orderId)}`;
     const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
     const qrQuicklinkBase = `https://img.vietqr.io/image/${bankQuickId}-${account}-${template}.png`;
     const qrImgUrl = qrQuicklinkBase + (amountParam || addInfoParam || accountNameParam ? `?${[amountParam, addInfoParam, accountNameParam].filter(Boolean).join('&')}` : '');
@@ -662,10 +668,10 @@ function showTransferQrModal(orderId, amount, token) {
                     const inner = qrContainer.querySelector('img,canvas');
                     if (inner) inner.style.borderRadius = '8px';
                 } else {
-                    qrContainer.textContent = `Mã: ${displayToken}`;
+                    qrContainer.textContent = `Ma: ${displayToken}`;
                 }
             } catch (e) {
-                qrContainer.textContent = `Mã: ${displayToken}`;
+                qrContainer.textContent = `Ma: ${displayToken}`;
             }
         };
 
@@ -688,7 +694,7 @@ function showTransferQrModal(orderId, amount, token) {
                 a.remove();
                 URL.revokeObjectURL(url);
             } catch (e) {
-                alert('Không thể tải mã QR.');
+                alert('Khï¿½ng th? t?i mï¿½ QR.');
             }
         };
     }
@@ -699,15 +705,15 @@ function showTransferQrModal(orderId, amount, token) {
         copyBtn.onclick = async () => {
             try {
                 await navigator.clipboard.writeText(displayToken);
-                alert('Đã sao chép mã thanh toán');
+                alert('Da sao chï¿½p ma thanh toï¿½n');
             } catch (e) {
-                alert('Không thể sao chép mã.');
+                alert('Khï¿½ng th? sao chï¿½p mï¿½.');
             }
         };
     }
 }
 
-// Duplicate showTransferQrModal removed — using the enhanced implementation above.
+// Duplicate showTransferQrModal removed - using the enhanced implementation above.
 
 async function payOrder(orderId) {
     try {
@@ -725,15 +731,15 @@ async function payOrder(orderId) {
         });
         if (!res.ok) {
             const text = await res.text();
-            alert(text || 'Không thể xác nhận thanh toán.');
+            alert(text || 'Khï¿½ng th? xï¿½c nh?n thanh toï¿½n.');
             return;
         }
-        alert('✅ Thanh toán chuyển khoản được xác nhận.');
+        alert('? Thanh toï¿½n chuy?n kho?n du?c xï¿½c nh?n.');
         hideTransferQrModal();
         clearCart(true);
         saveActiveInvoiceState();
     } catch (err) {
-        alert('Lỗi kết nối khi xác nhận thanh toán.');
+        alert('L?i k?t n?i khi xï¿½c nh?n thanh toï¿½n.');
     }
 }
 
@@ -744,7 +750,7 @@ function hideTransferQrModal() {
     modal.setAttribute('aria-hidden', 'true');
 }
 
-// Duplicate payOrder removed — using the token-aware implementation above.
+// Duplicate payOrder removed - using the token-aware implementation above.
 
 // wire modal buttons
 document.addEventListener('DOMContentLoaded', () => {
@@ -859,7 +865,7 @@ function buildReceiptData(orderResponse) {
         createdAt: new Date(),
         customerName: selectedCustomer?.name || 'Khách lẻ',
         customerPhone: selectedCustomer?.phone || '-',
-        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nhân viên',
+        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nhï¿½n viï¿½n',
         paymentMethod: currentPaymentMethod,
         note: document.getElementById('paymentNote')?.value?.trim() || '',
         subtotal,
@@ -891,11 +897,11 @@ function formatDateTime(value) {
 function mapPaymentMethod(method) {
     switch (method) {
         case 'CASH':
-            return 'Tiền mặt';
+            return 'Ti?n m?t';
         case 'TRANSFER':
-            return 'Chuyển khoản';
+            return 'Chuy?n kho?n';
         case 'CARD':
-            return 'Thẻ';
+            return 'Th?';
         default:
             return method || '-';
     }
@@ -1022,7 +1028,7 @@ function normalizeDiscountType(value) {
 }
 
 function formatPromotionLabel(promo) {
-    if (!promo) return 'Khuyen mai';
+    if (!promo) return 'Khuy?n mï¿½i';
     const value = Number(promo.discountValue);
     const type = normalizeDiscountType(promo.discountType);
     if (type === 'PERCENT' && Number.isFinite(value)) {
@@ -1037,7 +1043,7 @@ function formatPromotionLabel(promo) {
     if (type === 'FREE_GIFT') {
         return 'Tang kem';
     }
-    return promo.discountType || 'Khuyen mai';
+    return promo.discountType || 'Khuy?n mï¿½i';
 }
 
 function isPromotionActive(promo) {
@@ -1108,7 +1114,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
+            ${item.isReturnItem ? '<span class="cart-item-locked">D?i</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">ï¿½</button>`}
         </div>
     `).join('');
 }
@@ -1191,10 +1197,24 @@ function clearSelectedCustomer(options = {}) {
 }
 
 function updateTotal() {
-    const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-    const total = Math.max(0, subtotal);
+    const baseSubtotal = cart.reduce((sum, item) => {
+        const qty = item.quantity || 0;
+        if (qty <= 0) {
+            return sum + (item.productPrice * qty);
+        }
+        const product = products.find(p => p.id === item.productId) || {};
+        const basePrice = Number(product.price);
+        if (!Number.isFinite(basePrice)) {
+            return sum + (item.productPrice * qty);
+        }
+        return sum + (basePrice * qty);
+    }, 0);
+    const discountedSubtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
+    const promoValue = Math.max(0, baseSubtotal - discountedSubtotal);
+    const total = Math.max(0, discountedSubtotal);
 
-    document.getElementById('subtotal').textContent = formatPrice(subtotal);
+    document.getElementById('subtotal').textContent = formatPrice(baseSubtotal);
+    document.getElementById('promoAmount').textContent = formatPrice(promoValue);
     document.getElementById('totalAmount').textContent = formatPrice(total);
     document.getElementById('amountDue').textContent = formatPrice(total);
     updateChangeDue(total);
@@ -1210,11 +1230,11 @@ function formatPrice(price) {
         style: 'currency',
         currency: 'VND',
         minimumFractionDigits: 0
-    }).format(price).replace('₫', 'đ');
+    }).format(price).replace('â‚«', 'Ä‘');
 }
 
 function showPopup(message, options = {}) {
-    const { title = 'Thông báo', type = 'info' } = options;
+    const { title = 'Thï¿½ng bï¿½o', type = 'info' } = options;
     let modal = document.getElementById('appPopup');
     if (!modal) {
         modal = document.createElement('div');
@@ -1225,11 +1245,11 @@ function showPopup(message, options = {}) {
             <div class="app-popup-card" role="dialog" aria-modal="true">
                 <div class="app-popup-header">
                     <h3 id="appPopupTitle"></h3>
-                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Đóng">×</button>
+                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Dï¿½ng">ï¿½</button>
                 </div>
                 <div id="appPopupMessage" class="app-popup-message"></div>
                 <div class="app-popup-actions">
-                    <button type="button" class="primary-btn" id="appPopupOk">Đóng</button>
+                    <button type="button" class="primary-btn" id="appPopupOk">Dï¿½ng</button>
                 </div>
             </div>
         `;
@@ -1497,7 +1517,7 @@ function initInvoices() {
 function getNextInvoiceNumber() {
     let max = 0;
     invoices.forEach(inv => {
-        const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+        const match = String(inv.name || '').match(/Hï¿½a don\s+(\d+)/i);
         if (match) {
             max = Math.max(max, Number(match[1]));
         }
@@ -1509,7 +1529,7 @@ function getNextInvoiceNumberFromAll() {
     let max = 0;
     const collect = (list) => {
         (list || []).forEach(inv => {
-            const match = String(inv.name || '').match(/Hóa đơn\s+(\d+)/i);
+            const match = String(inv.name || '').match(/Hï¿½a don\s+(\d+)/i);
             if (match) {
                 max = Math.max(max, Number(match[1]));
             }
@@ -1526,7 +1546,7 @@ function createInvoiceState(name) {
     invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
     return {
         id,
-        name: name || `Hóa đơn ${nextNumber}`,
+        name: name || `Hï¿½a don ${nextNumber}`,
         cart: [],
         selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
         paymentMethod: 'CASH',
@@ -1612,7 +1632,7 @@ function renderInvoiceTabs() {
     if (!container) return;
     const tabs = invoices.map(invoice => `
         <button class="order-tab ${invoice.id === activeInvoiceId ? 'active' : ''}" data-invoice-id="${invoice.id}">
-            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">×</span>
+            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">ï¿½</span>
         </button>
     `).join('');
     container.innerHTML = `
@@ -1737,7 +1757,7 @@ function removeInvoice(invoiceId, options = {}) {
 
 function saveDraftInvoice() {
     if (cart.length === 0) {
-        showPopup('Giỏ hàng trống, không thể lưu tạm.', { type: 'error' });
+        showPopup('Gi? hï¿½ng tr?ng, khï¿½ng th? luu t?m.', { type: 'error' });
         return;
     }
     saveActiveInvoiceState();
@@ -1745,7 +1765,7 @@ function saveDraftInvoice() {
     if (!invoice) return;
     const draft = {
         ...invoice,
-        name: `Hóa đơn ${getNextInvoiceNumberFromAll()}`,
+        name: `Hï¿½a don ${getNextInvoiceNumberFromAll()}`,
         cart: cloneCart(invoice.cart),
         savedAt: new Date().toISOString()
     };
@@ -1775,7 +1795,7 @@ function renderSavedBills() {
                     <span>${customerName}</span>
                     <span>${formatPrice(total)}</span>
                 </button>
-                <button class="saved-bill-remove" data-remove-draft="${draft.id}">×</button>
+                <button class="saved-bill-remove" data-remove-draft="${draft.id}">ï¿½</button>
             </div>
         `;
     }).join('');
@@ -1817,7 +1837,7 @@ function openSavedInvoice(draftId) {
         activeInvoiceId = emptyTarget.id;
     } else {
         const nextNumber = getNextInvoiceNumber();
-        draft.name = `Hóa đơn ${nextNumber}`;
+        draft.name = `Hï¿½a don ${nextNumber}`;
         invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
         invoices.push(draft);
         activeInvoiceId = draft.id;
@@ -2066,7 +2086,7 @@ async function createCustomerFromForm() {
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
-        showPopup('Vui lòng nhập tên khách hàng.', { type: 'error' });
+        showPopup('Vui l?ng nh?p tï¿½n khï¿½ch hï¿½ng.', { type: 'error' });
         return;
     }
 
@@ -2081,11 +2101,11 @@ async function createCustomerFromForm() {
     }
 
     if (!phone) {
-        showPopup('Vui lòng nhập số điện thoại.', { type: 'error' });
+        showPopup('Vui l?ng nh?p s? di?n tho?i.', { type: 'error' });
         return;
     }
     if (!/^\d{9,11}$/.test(phone)) {
-        showPopup('Số điện thoại phải là 9-11 chữ số.', { type: 'error' });
+        showPopup('S? di?n tho?i ph?i lï¿½ 9-11 ch? s?.', { type: 'error' });
         return;
     }
 
@@ -2093,12 +2113,12 @@ async function createCustomerFromForm() {
     const districtCode = districtInput?.dataset.code || '';
     const wardCode = wardInput?.dataset.code || '';
     if (!cityInput?.value || !districtInput?.value || !wardInput?.value || !address || !cityCode || !districtCode || !wardCode) {
-        showPopup('Vui lòng nhập đầy đủ địa chỉ.', { type: 'error' });
+        showPopup('Vui l?ng nh?p d?y d? d?a ch?.', { type: 'error' });
         return;
     }
 
     if (!confirmed) {
-        showPopup('Vui lòng xác nhận thông tin khách hàng.', { type: 'error' });
+        showPopup('Vui l?ng xï¿½c nh?n thï¿½ng tin khï¿½ch hï¿½ng.', { type: 'error' });
         return;
     }
 
@@ -2119,7 +2139,7 @@ async function createCustomerFromForm() {
 
     if (!res.ok) {
         const message = await res.text();
-        showPopup(message || 'Không thể tạo khách hàng.', { type: 'error' });
+        showPopup(message || 'Khï¿½ng th? t?o khï¿½ch hï¿½ng.', { type: 'error' });
         return;
     }
 
@@ -2137,7 +2157,7 @@ async function createCustomerFromForm() {
         searchInput.classList.add('has-selection');
     }
     } catch (err) {
-        showPopup('Lỗi kết nối khi tạo khách hàng.', { type: 'error' });
+        showPopup('L?i k?t n?i khi t?o khï¿½ch hï¿½ng.', { type: 'error' });
     }
 }
 
@@ -2196,7 +2216,7 @@ function resetAddressInput(input) {
 
 function getAddressDisplayName(item) {
     const rawName = item?.name || '';
-    const cleaned = rawName.replace(/^(Tỉnh|Thành phố)\s+/i, '').trim();
+    const cleaned = rawName.replace(/^(T?nh|Thï¿½nh ph?)\s+/i, '').trim();
     return cleaned || rawName;
 }
 
@@ -2369,6 +2389,85 @@ function getEffectivePrice(product) {
     return Number.isFinite(basePrice) ? basePrice : NaN;
 }
 
+function getProductPricing(product) {
+    const basePrice = Number(product?.price);
+    let promoPrice = NaN;
+    let promoLabel = '';
+
+    if (promotionIndex && product?.id != null) {
+        const promoInfo = promotionIndex.get(product.id);
+        if (promoInfo?.promo) {
+            promoPrice = getPromoPrice(basePrice, promoInfo.promo);
+            promoLabel = promoInfo.label || formatPromotionLabel(promoInfo.promo);
+        }
+    }
+
+    if (!Number.isFinite(promoPrice)) {
+        const directPromo = Number(
+            product?.promoPrice ??
+            product?.promotionPrice ??
+            product?.discountPrice ??
+            product?.salePrice ??
+            product?.discountedPrice
+        );
+        if (Number.isFinite(directPromo)) {
+            promoPrice = directPromo;
+        } else {
+            const percent = Number(
+                product?.discountPercent ??
+                product?.discountRate ??
+                product?.promoPercent ??
+                product?.salePercent
+            );
+            if (Number.isFinite(basePrice) && Number.isFinite(percent) && percent > 0) {
+                promoPrice = Math.max(0, basePrice * (1 - percent / 100));
+            }
+        }
+    }
+
+    const hasPromo = Number.isFinite(basePrice)
+        && Number.isFinite(promoPrice)
+        && promoPrice < basePrice;
+
+    return {
+        basePrice: Number.isFinite(basePrice) ? basePrice : NaN,
+        promoPrice,
+        hasPromo,
+        label: promoLabel
+    };
+}
+
+function buildProductPriceParts(product) {
+    const pricing = getProductPricing(product);
+    const basePrice = Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0;
+    const promoPrice = Number.isFinite(pricing.promoPrice) ? pricing.promoPrice : basePrice;
+    const hasPromo = pricing.hasPromo && promoPrice < basePrice;
+    const badge = hasPromo ? '<span class="promo-badge">KM</span>' : '';
+    const tagClass = hasPromo ? 'origin' : 'hidden';
+    const priceTag = formatPriceCompact(basePrice);
+    const label = hasPromo && pricing.label ? `<span class="price-label">${escapeHtml(pricing.label)}</span>` : '';
+    const priceBlock = hasPromo
+        ? `
+            <div class="product-pricing">
+                <span class="price-new">${formatPrice(promoPrice)}</span>
+                ${label}
+            </div>
+        `
+        : `
+            <div class="product-pricing">
+                <span class="price-new">${formatPrice(basePrice)}</span>
+            </div>
+        `;
+
+    return {
+        hasPromo,
+        badge,
+        tagClass,
+        priceTag,
+        priceBlock
+    };
+}
+
 function filterProductList(list, keyword) {
     return list.filter(p => {
         const matchCategory = currentCategory === 'all' || p.categoryId === parseInt(currentCategory, 10);
@@ -2423,48 +2522,64 @@ function renderProducts(filteredProducts = null, viewMode = 'default') {
     const grid = document.getElementById('productsGrid');
 
     if (!displayProducts || displayProducts.length === 0) {
-        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Không có sản phẩm</div>';
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">Kh\u00f4ng c\u00f3 s\u1ea3n ph\u1ea9m</div>';
         return;
     }
 
     if (viewMode === 'compact') {
-        grid.innerHTML = displayProducts.map(p => `
-            <div class="product-card compact" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
-                <div class="product-name">${p.name || 'Sản phẩm'}</div>
-                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
-                <div class="product-stock">Tồn: ${getStockValue(p)}</div>
-            </div>
-        `).join('');
+        grid.innerHTML = displayProducts.map(p => {
+            const priceParts = buildProductPriceParts(p);
+            return `
+                <div class="product-card compact" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                    ${priceParts.badge}
+                    <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                    <div class="product-image">${buildProductImageMarkup(p)}</div>
+                    <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                    <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                    <div class="product-stock">T\u1ed3n: ${getStockValue(p)}</div>
+                    ${priceParts.priceBlock}
+                </div>
+            `;
+        }).join('');
         return;
     }
 
     if (viewMode === 'detailed') {
-        grid.innerHTML = displayProducts.map(p => `
-            <div class="product-card detailed" onclick="openProductDetail(${p.id})">
-                <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-                <div class="product-image">${buildProductImageMarkup(p)}</div>
-                <div class="product-name">${p.name || 'Sản phẩm'}</div>
-                <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
-                <div class="product-meta">
-                    <span>${p.unit ? `ĐVT: ${p.unit}` : 'ĐVT: -'}</span>
-                    <span>Tồn: ${getStockValue(p)}</span>
+        grid.innerHTML = displayProducts.map(p => {
+            const priceParts = buildProductPriceParts(p);
+            return `
+                <div class="product-card detailed" onclick="openProductDetail(${p.id})">
+                    ${priceParts.badge}
+                    <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                    <div class="product-image">${buildProductImageMarkup(p)}</div>
+                    ${priceParts.priceBlock}
+                    <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                    <div class="product-sku">${p.code || p.barcode || 'SKU'}</div>
+                    <div class="product-meta">
+                        <span>${p.unit ? '\u0110VT: ' + p.unit : '\u0110VT: -'}</span>
+                        <span>T\u1ed3n: ${getStockValue(p)}</span>
+                    </div>
+                    <div class="product-description">${p.description || 'Ch\u01b0a c\u00f3 m\u00f4 t\u1ea3'}</div>
                 </div>
-                <div class="product-description">${p.description || 'Chưa có mô tả'}</div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
         return;
     }
 
-    grid.innerHTML = displayProducts.map(p => `
-        <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
-            <div class="product-price-tag">${formatPriceCompact(p.price || 0)}</div>
-            <div class="product-image">${buildProductImageMarkup(p)}</div>
-            <div class="product-name">${p.name || 'Sản phẩm'}</div>
-            <div class="product-sku">${p.code || 'SKU'}</div>
-        </div>
-    `).join('');
+    grid.innerHTML = displayProducts.map(p => {
+        const priceParts = buildProductPriceParts(p);
+        return `
+            <div class="product-card" onclick="addToCart(${p.id}, '${p.name}', ${p.price || 0})">
+                ${priceParts.badge}
+                <div class="product-price-tag ${priceParts.tagClass}">${priceParts.priceTag}</div>
+                <div class="product-image">${buildProductImageMarkup(p)}</div>
+                ${priceParts.priceBlock}
+                <div class="product-name">${p.name || 'S\u1ea3n ph\u1ea9m'}</div>
+                <div class="product-sku">${p.code || 'SKU'}</div>
+            </div>
+        `;
+    }).join('');
 }
-
 function setSuggestionMode(mode) {
     const title = document.getElementById('suggestionTitle');
     const controls = document.getElementById('suggestionControls');
@@ -2473,18 +2588,18 @@ function setSuggestionMode(mode) {
 
     if (mode === 'bottom') {
         controls.style.display = 'flex';
-        title.textContent = 'TƯ VẤN BÁN HÀNG';
+        title.textContent = 'TU V?N Bï¿½N Hï¿½NG';
         return;
     }
 
     if (mode === 'top') {
         controls.style.display = 'none';
-        title.textContent = 'KẾT QUẢ TÌM KIẾM';
+        title.textContent = 'K?T QU? T`M KI?M';
         return;
     }
 
     controls.style.display = 'flex';
-    title.textContent = 'SẢN PHẨM BÁN CHẠY';
+    title.textContent = 'S?N PH?M Bï¿½N CH?Y';
 }
 
 function openProductDetail(productId) {
@@ -2494,13 +2609,20 @@ function openProductDetail(productId) {
     const modal = document.getElementById('productDetailModal');
     if (!modal) return;
 
-    document.getElementById('detailProductName').textContent = product.name || 'Sản phẩm';
+    document.getElementById('detailProductName').textContent = product.name || 'S?n ph?m';
     document.getElementById('detailProductSku').textContent = product.code || product.barcode || '-';
     document.getElementById('detailProductBarcode').textContent = product.barcode || '-';
     document.getElementById('detailProductUnit').textContent = product.unit || '-';
-    document.getElementById('detailProductPrice').textContent = formatPrice(getEffectivePrice(product) || 0);
+    const pricing = getProductPricing(product);
+    const basePrice = Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0;
+    const promoPrice = pricing.hasPromo ? pricing.promoPrice : basePrice;
+    const promoLabel = pricing.hasPromo && pricing.label ? ` (${pricing.label})` : '';
+    const detailPrice = pricing.hasPromo
+        ? `${formatPrice(promoPrice)} (goc ${formatPrice(basePrice)})${promoLabel}`
+        : formatPrice(basePrice);
+    document.getElementById('detailProductPrice').textContent = detailPrice;
     document.getElementById('detailProductStock').textContent = getStockValue(product);
-    document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
+    document.getElementById('detailProductDescription').textContent = product.description || 'Chua cï¿½ mï¿½ t?';
 
     const detailImage = modal.querySelector('.detail-image');
     if (detailImage) {
@@ -2585,11 +2707,12 @@ function renderToolbarSearchResults(rawKeyword) {
 
     empty.style.display = 'none';
     list.innerHTML = matches.map((p, idx) => {
-        const name = p.name || 'Sản phẩm';
+        const name = p.name || 'S?n ph?m';
         const code = p.code || p.barcode || '-';
         const sku = p.sku || p.skuCode || p.skuId || p.code || p.barcode || '-';
         const unit = p.unit || '-';
-        const price = getEffectivePrice(p) || 0;
+        const pricing = getProductPricing(p);
+        const price = pricing.hasPromo ? pricing.promoPrice : (Number.isFinite(pricing.basePrice) ? pricing.basePrice : 0);
         const total = price * qty;
         return `
             <button type="button" class="toolbar-search-row item"
@@ -2701,7 +2824,7 @@ async function loadEmployees() {
         employeesLoaded = true;
         renderEmployees();
     } catch (err) {
-        dropdown.innerHTML = '<div class="employee-empty">Lỗi tải danh sách nhân viên</div>';
+        dropdown.innerHTML = '<div class="employee-empty">L?i t?i danh sï¿½ch nhï¿½n viï¿½n</div>';
     }
 }
 
@@ -2710,12 +2833,12 @@ function renderEmployees() {
     if (!dropdown) return;
 
     if (!employees || employees.length === 0) {
-        dropdown.innerHTML = '<div class="employee-empty">Chưa có nhân viên</div>';
+        dropdown.innerHTML = '<div class="employee-empty">Chua cï¿½ nhï¿½n viï¿½n</div>';
         return;
     }
 
     const employeesHtml = employees.map(emp => {
-        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nhân viên') : 'Nhân viên';
+        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nhï¿½n viï¿½n') : 'Nhï¿½n viï¿½n';
         return `
         <div class="employee-item" data-employee-id="${emp.id}" onclick="selectEmployee(event, ${emp.id}, '${emp.username.replace(/'/g, "\\'")}', '${(emp.fullName || emp.username).replace(/'/g, "\\'")}')">
             <div class="employee-info">
@@ -2726,7 +2849,7 @@ function renderEmployees() {
         `;
     }).join('');
 
-    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chưa có nhân viên</div>';
+    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chua cï¿½ nhï¿½n viï¿½n</div>';
 }
 
 function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
@@ -2751,3 +2874,13 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
     const row = evt?.target?.closest('.employee-item');
     if (row) row.classList.add('active');
 }
+
+
+
+
+
+
+
+
+
+

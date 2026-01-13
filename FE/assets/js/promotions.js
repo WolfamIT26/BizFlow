@@ -217,6 +217,20 @@ function getDiscountLabel(promo) {
     return promo.discountType || '-';
 }
 
+function formatBundleItems(promo) {
+    if (!promo || !Array.isArray(promo.bundleItems) || promo.bundleItems.length === 0) {
+        return '';
+    }
+
+    return promo.bundleItems.map((item) => {
+        if (!item) return '';
+        const product = products.find(p => p.id === item.productId) || {};
+        const name = product.name || product.code || product.barcode || `SP ${item.productId}`;
+        const qty = Number(item.quantity) || 1;
+        return `${name} x${qty}`;
+    }).filter(Boolean).join(', ');
+}
+
 function applyFilters() {
     const grid = document.getElementById('promoGrid');
     const empty = document.getElementById('promoEmpty');
@@ -269,6 +283,7 @@ function renderPromoGrid(list) {
         const promoCode = promo.code || '-';
         const promoType = promo.discountType || '-';
         const promoDates = formatPromoDates(promo.startDate, promo.endDate);
+        const bundleLine = formatBundleItems(promo);
 
         return `
             <div class="promo-card">
@@ -288,6 +303,7 @@ function renderPromoGrid(list) {
                     <span>Ma <strong>${escapeHtml(promoCode)}</strong></span>
                     <span>Loai <strong>${escapeHtml(promoType)}</strong></span>
                     <span>Thoi gian <strong>${escapeHtml(promoDates)}</strong></span>
+                    ${bundleLine ? `<span>Combo <strong>${escapeHtml(bundleLine)}</strong></span>` : ''}
                 </div>
             </div>
         `;
