@@ -23,6 +23,13 @@ let employeesLoaded = false;
 let employees = [];
 let exchangeDraft = null;
 let promotionIndex = null;
+const TIER_DISCOUNT_BY_100 = {
+    DONG: 10000,
+    BAC: 12000,
+    VANG: 15000,
+    BACH_KIM: 22000,
+    KIM_CUONG: 30000
+};
 
 const PRODUCT_ICON = `
     <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
@@ -33,12 +40,14 @@ const PRODUCT_ICON = `
 const PRODUCT_IMAGE_LIST_URL = '/assets/data/product-image-files.json';
 const productImageMap = new Map();
 let productImageMapReady = false;
+const POINTS_EARN_RATE_VND = 1000;
 
 window.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     loadUserInfo();
     await loadCurrentEmployee();
-    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    fixPaymentPanelText();
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedCustomerLabel = document.getElementById('selectedCustomer');
     if (selectedCustomerLabel) {
         selectedCustomerLabel.textContent = 'Khách lẻ';
@@ -76,6 +85,27 @@ window.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
+function fixPaymentPanelText() {
+    const cashPanel = document.getElementById('cashPanel');
+    if (cashPanel) {
+        const rows = cashPanel.querySelectorAll('.summary-row');
+        const cashLabel = rows[0]?.querySelector('span');
+        const changeLabel = rows[1]?.querySelector('span');
+        if (cashLabel) cashLabel.textContent = 'Ti\u1ec1n kh\u00e1ch \u0111\u01b0a';
+        if (changeLabel) changeLabel.textContent = 'Tr\u1ea3 l\u1ea1i';
+    }
+
+    const noteLabel = document.querySelector('label[for=\"paymentNote\"]');
+    if (noteLabel) noteLabel.textContent = 'Ghi ch\u00fa thanh to\u00e1n';
+    const noteInput = document.getElementById('paymentNote');
+    if (noteInput) noteInput.placeholder = 'Nh\u1eadp ghi ch\u00fa...';
+
+    const saveBtn = document.getElementById('saveBillBtn');
+    if (saveBtn) saveBtn.textContent = 'L\u01b0u t\u1ea1m (F10)';
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) checkoutBtn.textContent = 'Thu ti\u1ec1n (F9)';
+}
+
 function applyExchangeDraft() {
     const raw = sessionStorage.getItem('exchangeDraft');
     if (!raw) return;
@@ -105,8 +135,11 @@ function applyExchangeDraft() {
     if (exchangeDraft.customerId) {
         selectedCustomer = {
             id: exchangeDraft.customerId,
-            name: exchangeDraft.customerName || 'Khï¿½ch hï¿½ng',
-            phone: exchangeDraft.customerPhone || '-'
+            name: exchangeDraft.customerName || 'Khách hàng',
+            phone: exchangeDraft.customerPhone || '-',
+            totalPoints: 0,
+            monthlyPoints: 0,
+            tier: ''
         };
         const searchInput = document.getElementById('customerSearch');
         if (searchInput) {
@@ -240,7 +273,7 @@ function loadUserInfo() {
     const userInitial = (username ? username[0] : 'E').toUpperCase();
 
     document.getElementById('userInitial').textContent = userInitial;
-    document.getElementById('userNameDropdown').textContent = username || 'Nhï¿½n viï¿½n';
+    document.getElementById('userNameDropdown').textContent = username || 'Nhân viên';
 }
 
 async function loadCurrentEmployee() {
@@ -277,7 +310,7 @@ async function loadCurrentEmployee() {
 
         const userNameDropdown = document.getElementById('userNameDropdown');
         if (userNameDropdown) {
-            userNameDropdown.textContent = data.username || data.fullName || 'Nhï¿½n viï¿½n';
+            userNameDropdown.textContent = data.username || data.fullName || 'Nhân viên';
         }
 
         const userInitialEl = document.getElementById('userInitial');
@@ -355,7 +388,7 @@ function buildProductImageMarkup(product) {
     if (!imageSrc) {
         return PRODUCT_ICON;
     }
-    const safeName = escapeHtml(product?.name || 'San pham');
+    const safeName = escapeHtml(product?.name || 'Sản phẩm');
     return `<img src="${encodeURI(imageSrc)}" alt="${safeName}" loading="lazy" />`;
 }
 
@@ -389,7 +422,7 @@ function renderCustomers(customers) {
     if (!list) return;
 
     if (!customers || customers.length === 0) {
-        const emptyMessage = customerSearchTerm ? 'Không tìm thấy khách hàng' : 'Chua cï¿½ khï¿½ch hï¿½ng';
+        const emptyMessage = customerSearchTerm ? 'Không tìm thấy khách hàng' : 'Chưa có khách hàng';
         list.innerHTML = `<div class="customer-empty">${emptyMessage}</div>`;
         return;
     }
@@ -406,7 +439,7 @@ function renderCustomers(customers) {
             <div class="customer-info">
                 <p class="customer-name">
                     <button type="button" class="customer-name-btn" data-customer-id="${customerId}" onclick="openCustomerDetailFromButton(event)">
-                        ${escapeHtml(c.name || 'Khï¿½ch hï¿½ng')}
+                        ${escapeHtml(c.name || 'Khách hàng')}
                     </button>
                 </p>
                 <p class="customer-phone">${escapeHtml(phone)}</p>
@@ -419,7 +452,7 @@ function renderCustomers(customers) {
         `;
     }).join('');
 
-    list.innerHTML = customersHtml || '<div class="customer-empty">Chua cï¿½ khï¿½ch hï¿½ng</div>';
+    list.innerHTML = customersHtml || '<div class="customer-empty">Chưa có khách hàng</div>';
 }
 
 function applyCustomerFilter() {
@@ -529,7 +562,7 @@ async function createOrder(isPaid) {
     }
     const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) <= 0));
     if (outOfStock) {
-        showPopup('Cï¿½ s?n ph?m h?t hï¿½ng. Vui l?ng ki?m tra s? lu?ng t?n.', { type: 'error' });
+        showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
     }
 
@@ -541,6 +574,7 @@ async function createOrder(isPaid) {
         paid: isPaid,
         // Always send the chosen payment method so backend can create pending transfer payments with tokens
         paymentMethod: currentPaymentMethod,
+        usePoints: isPaid ? shouldUseMemberPoints() : false,
         orderType: exchangeDraft ? 'EXCHANGE' : null,
         originalOrderId: exchangeDraft?.originalOrderId || null,
         items: cart.map(item => ({
@@ -561,15 +595,15 @@ async function createOrder(isPaid) {
 
         if (!res.ok) {
             const message = await res.text();
-            showPopup(message || 'Khï¿½ng th? t?o don hï¿½ng.', { type: 'error' });
+            showPopup(message || 'Không thể tạo đơn hàng.', { type: 'error' });
             return;
         }
 
         const data = await res.json();
-        const receiptData = buildReceiptData(data);
+        const receiptData = buildReceiptData(data, { usePoints: isPaid && shouldUseMemberPoints() });
         const invoiceCode = receiptData.invoiceNumber || '-';
         showPopup(
-            isPaid ? `Thanh toï¿½n thï¿½nh cï¿½ng. Ma hï¿½a don: ${invoiceCode}` : `Da luu t?m don: ${invoiceCode}`,
+            isPaid ? `Thanh toán thành công. Mã hóa đơn: ${invoiceCode}` : `Đã lưu tạm đơn: ${invoiceCode}`,
             { type: 'success' }
         );
         if (isPaid) {
@@ -587,7 +621,7 @@ async function createOrder(isPaid) {
         saveActiveInvoiceState();
         return data;
     } catch (err) {
-        showPopup('L?i k?t n?i khi t?o don hï¿½ng.', { type: 'error' });
+        showPopup('Lỗi kết nối khi tạo đơn hàng.', { type: 'error' });
     }
 }
 
@@ -608,7 +642,7 @@ function showTransferQrModal(orderId, amount, token) {
     } else {
         displayToken = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
         const tokenEl = document.getElementById('transferPaymentToken');
-        if (tokenEl) tokenEl.textContent = displayToken + ' (ma tu?ng trung)';
+        if (tokenEl) tokenEl.textContent = displayToken + ' (mã tượng trưng)';
     }
 
     const bankCode = 'VCB';
@@ -639,7 +673,7 @@ function showTransferQrModal(orderId, amount, token) {
     const bankQuickId = 'VCB';
     const template = 'compact';
     const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
-    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toï¿½n don #' + orderId)}`;
+    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toán đơn #' + orderId)}`;
     const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
     const qrQuicklinkBase = `https://img.vietqr.io/image/${bankQuickId}-${account}-${template}.png`;
     const qrImgUrl = qrQuicklinkBase + (amountParam || addInfoParam || accountNameParam ? `?${[amountParam, addInfoParam, accountNameParam].filter(Boolean).join('&')}` : '');
@@ -694,7 +728,7 @@ function showTransferQrModal(orderId, amount, token) {
                 a.remove();
                 URL.revokeObjectURL(url);
             } catch (e) {
-                alert('Khï¿½ng th? t?i mï¿½ QR.');
+                alert('Không thể tải mã QR.');
             }
         };
     }
@@ -705,9 +739,9 @@ function showTransferQrModal(orderId, amount, token) {
         copyBtn.onclick = async () => {
             try {
                 await navigator.clipboard.writeText(displayToken);
-                alert('Da sao chï¿½p ma thanh toï¿½n');
+                alert('Đã sao chép mã thanh toán');
             } catch (e) {
-                alert('Khï¿½ng th? sao chï¿½p mï¿½.');
+                alert('Không thể sao chép mã.');
             }
         };
     }
@@ -731,15 +765,15 @@ async function payOrder(orderId) {
         });
         if (!res.ok) {
             const text = await res.text();
-            alert(text || 'Khï¿½ng th? xï¿½c nh?n thanh toï¿½n.');
+            alert(text || 'Không thể xác nhận thanh toán.');
             return;
         }
-        alert('? Thanh toï¿½n chuy?n kho?n du?c xï¿½c nh?n.');
+        alert('Đã thanh toán chuyển khoản được xác nhận.');
         hideTransferQrModal();
         clearCart(true);
         saveActiveInvoiceState();
     } catch (err) {
-        alert('L?i k?t n?i khi xï¿½c nh?n thanh toï¿½n.');
+        alert('Lỗi kết nối khi xác nhận thanh toán.');
     }
 }
 
@@ -810,6 +844,8 @@ async function openInvoiceModal(receiptData) {
     setText('invoicePhone', receiptData.customerPhone || '-');
     setText('invoiceMethod', mapPaymentMethod(receiptData.paymentMethod));
     setText('invoiceSubtotal', formatPrice(receiptData.subtotal || 0));
+    setText('invoiceMemberDiscount', formatPrice(receiptData.memberDiscount || 0));
+    setText('invoicePointsUsed', formatCompactNumber(receiptData.pointsUsed || 0));
     setText('invoiceTotal', formatPrice(receiptData.total || 0));
     setText('invoiceCashReceived', formatPrice(receiptData.cashReceived || 0));
     setText('invoiceChange', formatPrice(receiptData.change || 0));
@@ -846,9 +882,12 @@ function setText(id, value) {
     }
 }
 
-function buildReceiptData(orderResponse) {
+function buildReceiptData(orderResponse, options = {}) {
+    const { usePoints = false } = options;
     const subtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-    const total = Math.max(0, subtotal);
+    const memberSummary = getMemberDiscountForTotal(subtotal);
+    const memberDiscount = usePoints ? memberSummary.discount : 0;
+    const total = Math.max(0, subtotal - memberDiscount);
     const cashReceived = parseInt(document.getElementById('cashReceivedInput')?.value, 10) || 0;
     const change = currentPaymentMethod === 'CASH' ? Math.max(0, cashReceived - total) : 0;
 
@@ -865,10 +904,12 @@ function buildReceiptData(orderResponse) {
         createdAt: new Date(),
         customerName: selectedCustomer?.name || 'Khách lẻ',
         customerPhone: selectedCustomer?.phone || '-',
-        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nhï¿½n viï¿½n',
+        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nhân viên',
         paymentMethod: currentPaymentMethod,
         note: document.getElementById('paymentNote')?.value?.trim() || '',
         subtotal,
+        memberDiscount,
+        pointsUsed: usePoints ? memberSummary.pointsUsed : 0,
         total,
         cashReceived,
         change,
@@ -897,11 +938,11 @@ function formatDateTime(value) {
 function mapPaymentMethod(method) {
     switch (method) {
         case 'CASH':
-            return 'Ti?n m?t';
+            return 'Tiền mặt';
         case 'TRANSFER':
-            return 'Chuy?n kho?n';
+            return 'Chuyển khoản';
         case 'CARD':
-            return 'Th?';
+            return 'Thẻ';
         default:
             return method || '-';
     }
@@ -1028,7 +1069,7 @@ function normalizeDiscountType(value) {
 }
 
 function formatPromotionLabel(promo) {
-    if (!promo) return 'Khuy?n mï¿½i';
+    if (!promo) return 'Khuyến mãi';
     const value = Number(promo.discountValue);
     const type = normalizeDiscountType(promo.discountType);
     if (type === 'PERCENT' && Number.isFinite(value)) {
@@ -1043,7 +1084,7 @@ function formatPromotionLabel(promo) {
     if (type === 'FREE_GIFT') {
         return 'Tang kem';
     }
-    return promo.discountType || 'Khuy?n mï¿½i';
+    return promo.discountType || 'Khuyến mãi';
 }
 
 function isPromotionActive(promo) {
@@ -1114,7 +1155,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            ${item.isReturnItem ? '<span class="cart-item-locked">D?i</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">ï¿½</button>`}
+            ${item.isReturnItem ? '<span class="cart-item-locked">Đổi</span>' : `<button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>`}
         </div>
     `).join('');
 }
@@ -1144,8 +1185,9 @@ function removeFromCart(idx) {
 }
 
 function selectCustomer(evt, customerId, customerName, customerPhone) {
+    const fullCustomer = customers.find(c => c.id === customerId);
     applyCustomerSelection(
-        { id: customerId, name: customerName, phone: customerPhone },
+        fullCustomer || { id: customerId, name: customerName, phone: customerPhone },
         { openDetail: false, highlightEvent: evt }
     );
 }
@@ -1164,7 +1206,7 @@ function openCustomerDetailFromButton(evt) {
 
 function clearSelectedCustomer(options = {}) {
     const { showList = true } = options;
-    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-' };
+    selectedCustomer = { id: 0, name: 'Khách lẻ', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedView = document.getElementById('selectedCustomer');
     if (selectedView) {
         selectedView.textContent = 'Khách lẻ';
@@ -1194,9 +1236,20 @@ function clearSelectedCustomer(options = {}) {
     if (showList) {
         applyCustomerFilter();
     }
+
+    updateTotal();
 }
 
 function updateTotal() {
+    const memberSummary = getMemberDiscountForTotal(getTotalAmount());
+    const toggle = document.getElementById('usePointsToggle');
+    const canUsePoints = memberSummary.points >= 100 && Boolean(TIER_DISCOUNT_BY_100[getEffectiveTier(selectedCustomer)]);
+    if (toggle) {
+        toggle.disabled = !canUsePoints;
+        if (!canUsePoints) {
+            toggle.checked = false;
+        }
+    }
     const baseSubtotal = cart.reduce((sum, item) => {
         const qty = item.quantity || 0;
         if (qty <= 0) {
@@ -1211,12 +1264,18 @@ function updateTotal() {
     }, 0);
     const discountedSubtotal = cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
     const promoValue = Math.max(0, baseSubtotal - discountedSubtotal);
-    const total = Math.max(0, discountedSubtotal);
+    const usePoints = shouldUseMemberPoints();
+    const memberDiscount = usePoints ? memberSummary.discount : 0;
+    const pointsUsed = usePoints ? memberSummary.pointsUsed : 0;
+    const total = Math.max(0, discountedSubtotal - memberDiscount);
 
     document.getElementById('subtotal').textContent = formatPrice(baseSubtotal);
     document.getElementById('promoAmount').textContent = formatPrice(promoValue);
     document.getElementById('totalAmount').textContent = formatPrice(total);
     document.getElementById('amountDue').textContent = formatPrice(total);
+    setText('memberPoints', formatCompactNumber(memberSummary.points));
+    setText('memberDiscountAmount', formatPrice(memberDiscount));
+    setText('memberPointsUsed', formatCompactNumber(pointsUsed));
     updateChangeDue(total);
     setDefaultTierByTotal(total);
 }
@@ -1233,8 +1292,86 @@ function formatPrice(price) {
     }).format(price).replace('â‚«', 'Ä‘');
 }
 
+function formatCompactNumber(value) {
+    return new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
+}
+
+function normalizeTier(value) {
+    return (value || '').toString().trim().toUpperCase();
+}
+
+function getTierByPoints(points) {
+    if (points >= 25000) return 'KIM_CUONG';
+    if (points >= 15000) return 'BACH_KIM';
+    if (points >= 9000) return 'VANG';
+    if (points >= 3000) return 'BAC';
+    if (points >= 1000) return 'DONG';
+    return '';
+}
+
+function getEffectiveTier(customer) {
+    const tier = normalizeTier(customer?.tier);
+    if (tier) return tier;
+    const points = getCustomerPoints(customer);
+    return getTierByPoints(points);
+}
+
+function formatTierLabel(tier) {
+    switch (normalizeTier(tier)) {
+        case 'KIM_CUONG':
+            return 'Diamond';
+        case 'BACH_KIM':
+            return 'Platinum';
+        case 'VANG':
+            return 'Gold';
+        case 'BAC':
+            return 'Silver';
+        case 'DONG':
+            return 'Bronze';
+        default:
+            return '-';
+    }
+}
+
+function getCustomerPoints(customer) {
+    const points =
+        customer?.totalPoints ??
+        customer?.total_points ??
+        customer?.monthlyPoints ??
+        customer?.monthly_points ??
+        customer?.points ??
+        0;
+    return Number.isFinite(Number(points)) ? Number(points) : 0;
+}
+
+function getMemberDiscountForTotal(total) {
+    const points = getCustomerPoints(selectedCustomer);
+    const tier = getEffectiveTier(selectedCustomer);
+    const rate = TIER_DISCOUNT_BY_100[tier] || 0;
+    if (!points || points < 100 || rate <= 0) {
+        return { points, pointsUsed: 0, discount: 0 };
+    }
+
+    const stepsByPoints = Math.floor(points / 100);
+    const stepsByTotal = total > 0 ? Math.floor(total / rate) : 0;
+    const stepsUsed = Math.max(0, Math.min(stepsByPoints, stepsByTotal));
+    const pointsUsed = stepsUsed * 100;
+    const discount = stepsUsed * rate;
+    return { points, pointsUsed, discount };
+}
+
+function shouldUseMemberPoints() {
+    const toggle = document.getElementById('usePointsToggle');
+    if (toggle && toggle.checked === false) {
+        return false;
+    }
+    const points = getCustomerPoints(selectedCustomer);
+    const tier = getEffectiveTier(selectedCustomer);
+    return points >= 100 && Boolean(TIER_DISCOUNT_BY_100[tier]);
+}
+
 function showPopup(message, options = {}) {
-    const { title = 'Thï¿½ng bï¿½o', type = 'info' } = options;
+    const { title = 'Thông báo', type = 'info' } = options;
     let modal = document.getElementById('appPopup');
     if (!modal) {
         modal = document.createElement('div');
@@ -1245,11 +1382,11 @@ function showPopup(message, options = {}) {
             <div class="app-popup-card" role="dialog" aria-modal="true">
                 <div class="app-popup-header">
                     <h3 id="appPopupTitle"></h3>
-                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Dï¿½ng">ï¿½</button>
+                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="Đóng">ï¿½</button>
                 </div>
                 <div id="appPopupMessage" class="app-popup-message"></div>
                 <div class="app-popup-actions">
-                    <button type="button" class="primary-btn" id="appPopupOk">Dï¿½ng</button>
+                    <button type="button" class="primary-btn" id="appPopupOk">Đóng</button>
                 </div>
             </div>
         `;
@@ -1373,6 +1510,10 @@ function setupEventListeners() {
 
     document.getElementById('cashReceivedInput')?.addEventListener('input', () => {
         updateChangeDue();
+    });
+
+    document.getElementById('usePointsToggle')?.addEventListener('change', () => {
+        updateTotal();
     });
 
     document.querySelectorAll('input[name="paymentMethod"]').forEach(input => {
@@ -1517,7 +1658,7 @@ function initInvoices() {
 function getNextInvoiceNumber() {
     let max = 0;
     invoices.forEach(inv => {
-        const match = String(inv.name || '').match(/Hï¿½a don\s+(\d+)/i);
+        const match = String(inv.name || '').match(/H\u00f3a \u0111\u01a1n\s+(\d+)/i);
         if (match) {
             max = Math.max(max, Number(match[1]));
         }
@@ -1529,7 +1670,7 @@ function getNextInvoiceNumberFromAll() {
     let max = 0;
     const collect = (list) => {
         (list || []).forEach(inv => {
-            const match = String(inv.name || '').match(/Hï¿½a don\s+(\d+)/i);
+            const match = String(inv.name || '').match(/H\u00f3a \u0111\u01a1n\s+(\d+)/i);
             if (match) {
                 max = Math.max(max, Number(match[1]));
             }
@@ -1546,7 +1687,7 @@ function createInvoiceState(name) {
     invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
     return {
         id,
-        name: name || `Hï¿½a don ${nextNumber}`,
+        name: name || `H\u00f3a \u0111\u01a1n ${nextNumber}`,
         cart: [],
         selectedCustomer: { id: 0, name: 'Khách lẻ', phone: '-' },
         paymentMethod: 'CASH',
@@ -1632,7 +1773,7 @@ function renderInvoiceTabs() {
     if (!container) return;
     const tabs = invoices.map(invoice => `
         <button class="order-tab ${invoice.id === activeInvoiceId ? 'active' : ''}" data-invoice-id="${invoice.id}">
-            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">ï¿½</span>
+            ${invoice.name} <span class="tab-close" data-close="${invoice.id}">\u00d7</span>
         </button>
     `).join('');
     container.innerHTML = `
@@ -1757,7 +1898,7 @@ function removeInvoice(invoiceId, options = {}) {
 
 function saveDraftInvoice() {
     if (cart.length === 0) {
-        showPopup('Gi? hï¿½ng tr?ng, khï¿½ng th? luu t?m.', { type: 'error' });
+        showPopup('Giỏ hàng trống, không thể lưu tạm.', { type: 'error' });
         return;
     }
     saveActiveInvoiceState();
@@ -1765,7 +1906,7 @@ function saveDraftInvoice() {
     if (!invoice) return;
     const draft = {
         ...invoice,
-        name: `Hï¿½a don ${getNextInvoiceNumberFromAll()}`,
+        name: `H\u00f3a \u0111\u01a1n ${getNextInvoiceNumberFromAll()}`,
         cart: cloneCart(invoice.cart),
         savedAt: new Date().toISOString()
     };
@@ -1795,7 +1936,7 @@ function renderSavedBills() {
                     <span>${customerName}</span>
                     <span>${formatPrice(total)}</span>
                 </button>
-                <button class="saved-bill-remove" data-remove-draft="${draft.id}">ï¿½</button>
+                <button class="saved-bill-remove" data-remove-draft="${draft.id}">×</button>
             </div>
         `;
     }).join('');
@@ -1837,7 +1978,7 @@ function openSavedInvoice(draftId) {
         activeInvoiceId = emptyTarget.id;
     } else {
         const nextNumber = getNextInvoiceNumber();
-        draft.name = `Hï¿½a don ${nextNumber}`;
+        draft.name = `H\u00f3a \u0111\u01a1n ${nextNumber}`;
         invoiceSequence = Math.max(invoiceSequence, nextNumber + 1);
         invoices.push(draft);
         activeInvoiceId = draft.id;
@@ -1867,7 +2008,15 @@ function removeSavedInvoice(draftId) {
 
 function applyCustomerSelection(customer, options = {}) {
     const { openDetail = false, highlightEvent = null } = options;
-    selectedCustomer = { id: customer.id, name: customer.name, phone: customer.phone };
+    const effectiveTier = getEffectiveTier(customer);
+    selectedCustomer = {
+        id: customer.id,
+        name: customer.name,
+        phone: customer.phone,
+        totalPoints: customer.totalPoints ?? customer.total_points ?? 0,
+        monthlyPoints: customer.monthlyPoints ?? customer.monthly_points ?? 0,
+        tier: effectiveTier || customer.tier || ''
+    };
 
     document.querySelectorAll('.customer-item').forEach(item => {
         item.classList.remove('active');
@@ -1901,6 +2050,8 @@ function applyCustomerSelection(customer, options = {}) {
     if (openDetail && customer.id) {
         openCustomerDetail(customer.id);
     }
+
+    updateTotal();
 }
 
 function setupCustomerModal() {
@@ -2086,7 +2237,7 @@ async function createCustomerFromForm() {
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
-        showPopup('Vui l?ng nh?p tï¿½n khï¿½ch hï¿½ng.', { type: 'error' });
+        showPopup('Vui lòng nhập tên khách hàng.', { type: 'error' });
         return;
     }
 
@@ -2101,11 +2252,11 @@ async function createCustomerFromForm() {
     }
 
     if (!phone) {
-        showPopup('Vui l?ng nh?p s? di?n tho?i.', { type: 'error' });
+        showPopup('Vui lòng nhập số điện thoại.', { type: 'error' });
         return;
     }
     if (!/^\d{9,11}$/.test(phone)) {
-        showPopup('S? di?n tho?i ph?i lï¿½ 9-11 ch? s?.', { type: 'error' });
+        showPopup('Số điện thoại phải là 9-11 chữ số.', { type: 'error' });
         return;
     }
 
@@ -2113,12 +2264,12 @@ async function createCustomerFromForm() {
     const districtCode = districtInput?.dataset.code || '';
     const wardCode = wardInput?.dataset.code || '';
     if (!cityInput?.value || !districtInput?.value || !wardInput?.value || !address || !cityCode || !districtCode || !wardCode) {
-        showPopup('Vui l?ng nh?p d?y d? d?a ch?.', { type: 'error' });
+        showPopup('Vui lòng nhập đầy đủ địa chỉ.', { type: 'error' });
         return;
     }
 
     if (!confirmed) {
-        showPopup('Vui l?ng xï¿½c nh?n thï¿½ng tin khï¿½ch hï¿½ng.', { type: 'error' });
+        showPopup('Vui lòng xác nhận thông tin khách hàng.', { type: 'error' });
         return;
     }
 
@@ -2139,7 +2290,7 @@ async function createCustomerFromForm() {
 
     if (!res.ok) {
         const message = await res.text();
-        showPopup(message || 'Khï¿½ng th? t?o khï¿½ch hï¿½ng.', { type: 'error' });
+        showPopup(message || 'Không thể tạo khách hàng.', { type: 'error' });
         return;
     }
 
@@ -2157,7 +2308,7 @@ async function createCustomerFromForm() {
         searchInput.classList.add('has-selection');
     }
     } catch (err) {
-        showPopup('L?i k?t n?i khi t?o khï¿½ch hï¿½ng.', { type: 'error' });
+        showPopup('Lỗi kết nối khi tạo khách hàng.', { type: 'error' });
     }
 }
 
@@ -2216,7 +2367,7 @@ function resetAddressInput(input) {
 
 function getAddressDisplayName(item) {
     const rawName = item?.name || '';
-    const cleaned = rawName.replace(/^(T?nh|Thï¿½nh ph?)\s+/i, '').trim();
+    const cleaned = rawName.replace(/^(Tỉnh|Thành phố)\s+/i, '').trim();
     return cleaned || rawName;
 }
 
@@ -2588,18 +2739,18 @@ function setSuggestionMode(mode) {
 
     if (mode === 'bottom') {
         controls.style.display = 'flex';
-        title.textContent = 'TU V?N Bï¿½N Hï¿½NG';
+        title.textContent = 'TƯ VẤN BÁN HÀNG';
         return;
     }
 
     if (mode === 'top') {
         controls.style.display = 'none';
-        title.textContent = 'K?T QU? T`M KI?M';
+        title.textContent = 'KẾT QUẢ TÌM KIẾM';
         return;
     }
 
     controls.style.display = 'flex';
-    title.textContent = 'S?N PH?M Bï¿½N CH?Y';
+    title.textContent = 'SẢN PHẨM BÁN CHẠY';
 }
 
 function openProductDetail(productId) {
@@ -2609,7 +2760,7 @@ function openProductDetail(productId) {
     const modal = document.getElementById('productDetailModal');
     if (!modal) return;
 
-    document.getElementById('detailProductName').textContent = product.name || 'S?n ph?m';
+    document.getElementById('detailProductName').textContent = product.name || 'Sản phẩm';
     document.getElementById('detailProductSku').textContent = product.code || product.barcode || '-';
     document.getElementById('detailProductBarcode').textContent = product.barcode || '-';
     document.getElementById('detailProductUnit').textContent = product.unit || '-';
@@ -2618,17 +2769,17 @@ function openProductDetail(productId) {
     const promoPrice = pricing.hasPromo ? pricing.promoPrice : basePrice;
     const promoLabel = pricing.hasPromo && pricing.label ? ` (${pricing.label})` : '';
     const detailPrice = pricing.hasPromo
-        ? `${formatPrice(promoPrice)} (goc ${formatPrice(basePrice)})${promoLabel}`
+        ? `${formatPrice(promoPrice)} (gốc ${formatPrice(basePrice)})${promoLabel}`
         : formatPrice(basePrice);
     document.getElementById('detailProductPrice').textContent = detailPrice;
     document.getElementById('detailProductStock').textContent = getStockValue(product);
-    document.getElementById('detailProductDescription').textContent = product.description || 'Chua cï¿½ mï¿½ t?';
+    document.getElementById('detailProductDescription').textContent = product.description || 'Chưa có mô tả';
 
     const detailImage = modal.querySelector('.detail-image');
     if (detailImage) {
         const imageSrc = getProductImageSrc(product);
         if (imageSrc) {
-            const safeName = escapeHtml(product?.name || 'San pham');
+            const safeName = escapeHtml(product?.name || 'Sản phẩm');
             detailImage.innerHTML = `<img src="${encodeURI(imageSrc)}" alt="${safeName}" />`;
         } else {
             detailImage.innerHTML = '<div class="detail-image-placeholder">Anh san pham</div>';
@@ -2707,7 +2858,7 @@ function renderToolbarSearchResults(rawKeyword) {
 
     empty.style.display = 'none';
     list.innerHTML = matches.map((p, idx) => {
-        const name = p.name || 'S?n ph?m';
+        const name = p.name || 'Sản phẩm';
         const code = p.code || p.barcode || '-';
         const sku = p.sku || p.skuCode || p.skuId || p.code || p.barcode || '-';
         const unit = p.unit || '-';
@@ -2751,6 +2902,14 @@ function openCustomerDetail(customerId) {
     document.getElementById('detailCustomerPhone').textContent = customer.phone || '-';
     document.getElementById('detailCustomerEmail').textContent = customer.email || '-';
     document.getElementById('detailCustomerAddress').textContent = customer.address || '-';
+    const detailPoints = getCustomerPoints(customer);
+    const detailTier = getEffectiveTier(customer);
+    const redeemRate = TIER_DISCOUNT_BY_100[detailTier] || 0;
+    setText('detailCustomerTier', formatTierLabel(detailTier));
+    setText('detailCustomerPoints', formatCompactNumber(detailPoints));
+    setText('detailCustomerPointsUsed', formatCompactNumber(Math.floor(detailPoints / 100) * 100));
+    setText('detailEarnPolicy', `${formatCompactNumber(POINTS_EARN_RATE_VND)}đ = 1 điểm`);
+    setText('detailRedeemPolicy', redeemRate ? `100 điểm = ${formatCompactNumber(redeemRate)}đ` : '-');
 
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
@@ -2824,7 +2983,7 @@ async function loadEmployees() {
         employeesLoaded = true;
         renderEmployees();
     } catch (err) {
-        dropdown.innerHTML = '<div class="employee-empty">L?i t?i danh sï¿½ch nhï¿½n viï¿½n</div>';
+        dropdown.innerHTML = '<div class="employee-empty">Lỗi tải danh sách nhân viên</div>';
     }
 }
 
@@ -2833,12 +2992,12 @@ function renderEmployees() {
     if (!dropdown) return;
 
     if (!employees || employees.length === 0) {
-        dropdown.innerHTML = '<div class="employee-empty">Chua cï¿½ nhï¿½n viï¿½n</div>';
+        dropdown.innerHTML = '<div class="employee-empty">Chưa có nhân viên</div>';
         return;
     }
 
     const employeesHtml = employees.map(emp => {
-        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nhï¿½n viï¿½n') : 'Nhï¿½n viï¿½n';
+        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nhân viên') : 'Nhân viên';
         return `
         <div class="employee-item" data-employee-id="${emp.id}" onclick="selectEmployee(event, ${emp.id}, '${emp.username.replace(/'/g, "\\'")}', '${(emp.fullName || emp.username).replace(/'/g, "\\'")}')">
             <div class="employee-info">
@@ -2849,7 +3008,7 @@ function renderEmployees() {
         `;
     }).join('');
 
-    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chua cï¿½ nhï¿½n viï¿½n</div>';
+    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chưa có nhân viên</div>';
 }
 
 function selectEmployee(evt, employeeId, employeeUsername, employeeName) {

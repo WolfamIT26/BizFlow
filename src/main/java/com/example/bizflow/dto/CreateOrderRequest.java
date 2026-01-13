@@ -13,6 +13,7 @@ public class CreateOrderRequest {
     private String refundMethod;
     private String returnReason;
     private String returnNote;
+    private Boolean usePoints;
     private List<OrderItemRequest> items;
 
     public CreateOrderRequest() {
@@ -96,6 +97,14 @@ public class CreateOrderRequest {
 
     public void setReturnNote(String returnNote) {
         this.returnNote = returnNote;
+    }
+
+    public Boolean getUsePoints() {
+        return usePoints;
+    }
+
+    public void setUsePoints(Boolean usePoints) {
+        this.usePoints = usePoints;
     }
 
     public List<OrderItemRequest> getItems() {

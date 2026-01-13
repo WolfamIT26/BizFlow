@@ -9,6 +9,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -47,12 +49,33 @@ public class CustomerController {
     
     @PostMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
-    public ResponseEntity<?> createCustomer(@RequestBody @NonNull Customer customer) {
+    public ResponseEntity<?> createCustomer(@RequestBody @NonNull CustomerCreateRequest request) {
         try {
+            String name = trimToNull(request.name);
+            String phone = trimToNull(request.phone);
+            if (name == null) {
+                return ResponseEntity.badRequest().body("Name is required.");
+            }
+            if (phone == null) {
+                return ResponseEntity.badRequest().body("Phone is required.");
+            }
+
+            Customer customer = new Customer();
+            customer.setName(name);
+            customer.setPhone(phone);
+            customer.setEmail(trimToNull(request.email));
+            customer.setAddress(trimToNull(request.address));
+            customer.setCccd(trimToNull(request.cccd));
+            if (trimToNull(request.dob) != null) {
+                customer.setDob(LocalDate.parse(request.dob.trim()));
+            }
+
             Customer saved = customerRepository.save(customer);
             return ResponseEntity.ok(saved);
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body("Invalid dob format. Use yyyy-MM-dd.");
         } catch (Exception e) {
-            return ResponseEntity.status(400).body("Error creating customer: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error creating customer: " + e.getMessage());
         }
     }
 
@@ -60,5 +83,20 @@ public class CustomerController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<Object> getCustomerOrderHistory(@PathVariable @NonNull Long id) {
         return ResponseEntity.ok(orderService.getCustomerOrderHistory(id));
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static class CustomerCreateRequest {
+        public String name;
+        public String phone;
+        public String email;
+        public String address;
+        public String cccd;
+        public String dob;
     }
 }

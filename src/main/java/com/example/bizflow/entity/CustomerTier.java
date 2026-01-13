@@ -3,7 +3,7 @@ package com.example.bizflow.entity;
 /**
  * Enum định nghĩa bậc thành viên
  * - monthlyLimit: giới hạn điểm / tháng
- * - discountValue: số tiền giảm khi dùng 1000 điểm
+ * - discountValue: số tiền giảm cho mỗi 100 điểm
  */
 public enum CustomerTier {
 
@@ -19,5 +19,13 @@ public enum CustomerTier {
     CustomerTier(int monthlyLimit, int discountValue) {
         this.monthlyLimit = monthlyLimit;
         this.discountValue = discountValue;
+    }
+
+    public int discountForPoints(int points) {
+        if (points < 100) {
+            return 0;
+        }
+        int steps = points / 100;
+        return steps * discountValue;
     }
 }

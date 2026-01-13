@@ -4,6 +4,7 @@ import com.example.bizflow.dto.CreateOrderRequest;
 import com.example.bizflow.dto.CreateOrderResponse;
 import com.example.bizflow.dto.OrderItemRequest;
 import com.example.bizflow.entity.Customer;
+import com.example.bizflow.entity.CustomerTier;
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.entity.OrderItem;
 import com.example.bizflow.entity.Payment;
@@ -135,6 +136,15 @@ public class OrderController {
             items.add(item);
         }
 
+        BigDecimal memberDiscount = BigDecimal.ZERO;
+        int pointsUsed = 0;
+        if (paid && customer != null && Boolean.TRUE.equals(request.getUsePoints())) {
+            DiscountResult result = resolveMemberDiscount(customer, total);
+            memberDiscount = result.discount;
+            pointsUsed = result.pointsUsed;
+            total = total.subtract(memberDiscount).max(BigDecimal.ZERO);
+        }
+
         order.setTotalAmount(total);
         Order savedOrder = orderRepository.save(order);
 
@@ -154,6 +164,9 @@ public class OrderController {
 
             // ✅ CỘNG ĐIỂM KHÁCH HÀNG (KHÔNG PHỤ THUỘC PHƯƠNG THỨC)
             if (customer != null) {
+                if (pointsUsed > 0) {
+                    pointService.redeemPoints(customer.getId(), pointsUsed);
+                }
                 pointService.addPoints(
                         customer.getId(),
                         total,
@@ -171,6 +184,62 @@ public class OrderController {
                         null
                 )
         );
+    }
+
+    private DiscountResult resolveMemberDiscount(Customer customer, BigDecimal total) {
+        if (customer == null || total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
+            return new DiscountResult(BigDecimal.ZERO, 0);
+        }
+        int points = customer.getTotalPoints() == null ? 0 : customer.getTotalPoints();
+        if (points < 100) {
+            return new DiscountResult(BigDecimal.ZERO, 0);
+        }
+
+        CustomerTier tier = customer.getTier();
+        if (tier == null) {
+            tier = resolveTierByPoints(points);
+        }
+        if (tier == null) {
+            return new DiscountResult(BigDecimal.ZERO, 0);
+        }
+
+        int rate = tier.discountValue;
+        if (rate <= 0) {
+            return new DiscountResult(BigDecimal.ZERO, 0);
+        }
+
+        int stepsByPoints = points / 100;
+        int stepsByTotal = total.divide(BigDecimal.valueOf(rate), 0, RoundingMode.DOWN).intValue();
+        int stepsUsed = Math.max(0, Math.min(stepsByPoints, stepsByTotal));
+        if (stepsUsed <= 0) {
+            return new DiscountResult(BigDecimal.ZERO, 0);
+        }
+
+        BigDecimal discount = BigDecimal.valueOf((long) stepsUsed * rate);
+        int pointsUsed = stepsUsed * 100;
+        return new DiscountResult(discount, pointsUsed);
+    }
+
+    private CustomerTier resolveTierByPoints(int points) {
+        CustomerTier selected = null;
+        for (CustomerTier tier : CustomerTier.values()) {
+            if (points >= tier.monthlyLimit) {
+                if (selected == null || tier.monthlyLimit > selected.monthlyLimit) {
+                    selected = tier;
+                }
+            }
+        }
+        return selected;
+    }
+
+    private static class DiscountResult {
+        private final BigDecimal discount;
+        private final int pointsUsed;
+
+        private DiscountResult(BigDecimal discount, int pointsUsed) {
+            this.discount = discount;
+            this.pointsUsed = pointsUsed;
+        }
     }
 
     private BigDecimal resolvePromotionalPrice(Product product, List<Promotion> promotions) {
