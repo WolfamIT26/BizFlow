@@ -5,7 +5,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica N
 .login-sidebar{flex:0 0 50%;background:linear-gradient(135deg,rgba(26,32,44,.15),rgba(44,62,80,.15)),url('/assets/img/login-side.png') center/cover no-repeat;color:#fff;display:flex;align-items:flex-start;padding:40px 50px;position:relative;height:100vh;overflow:visible}
 .sidebar-overlay{position:absolute;top:-20px;left:50%;transform:translateX(-50%);text-align:center;color:#fff;z-index:10;width:100%;display:flex;flex-direction:column;align-items:center}
 .sidebar-logo{width:300px;height:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,.35));object-fit:contain}
-.sidebar-tagline{margin-top:-80px;font-size:26px;font-weight:700;letter-spacing:1px;line-height:1.3;text-shadow:0 2px 6px rgba(0,0,0,.35);white-space:nowrap;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;-webkit-text-stroke:1.5px #4a90e2;animation:taglineStrokeGlow 3s ease-in-out infinite}
+.sidebar-tagline{margin-top:-40px;font-size:clamp(18px,2.2vw,26px);font-weight:700;letter-spacing:.6px;line-height:1.25;text-shadow:0 2px 6px rgba(0,0,0,.35);white-space:normal;text-align:center;max-width:90%;user-select:none;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;-webkit-text-stroke:1.2px #4a90e2;animation:taglineStrokeGlow 3s ease-in-out infinite}
 .sidebar-contact{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:18px;align-items:center;flex-wrap:nowrap;color:#fff;font-weight:600;z-index:1}
 .sidebar-contact-link{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-weight:600;padding:10px 16px;border:2px solid #fff;border-radius:8px;position:relative;background:rgba(255,255,255,0.05);animation:glowBorder 3s ease-in-out infinite;white-space:nowrap}
 .sidebar-contact-link svg{width:16px;height:16px;stroke:#fff}
@@ -46,3 +46,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica N
 .support-link:hover{color:#3B4F7D}
 .support-link svg{width:16px;height:16px}
 .alert-error{background:#ffeeee;color:#e74c3c;border-left:4px solid #e74c3c;padding:10px;border-radius:8px;margin-bottom:12px;font-size:13px}
+
+@media (max-width: 1024px){
+    .login-wrapper{flex-direction:column;height:auto}
+    .login-sidebar,.login-form-panel{flex:1 1 auto;width:100%;height:auto}
+    .login-sidebar{min-height:320px;padding:30px 24px}
+    .sidebar-overlay{position:static;transform:none;margin-bottom:20px}
+    .sidebar-logo{width:220px}
+    .sidebar-tagline{margin-top:-30px;font-size:20px;white-space:normal;text-align:center}
+    .sidebar-contact{position:static;transform:none;margin-top:20px;flex-wrap:wrap;justify-content:center}
+    .login-form-panel{padding:24px}
+    .login-form{max-width:420px}
+}
+
+@media (max-width: 600px){
+    body{background-color:#fff}
+    .login-sidebar{min-height:auto;padding:24px 16px}
+    .sidebar-logo{width:180px}
+    .sidebar-tagline{font-size:18px}
+    .login-form-panel{padding:20px 16px}
+    .login-form{padding:20px}
+    .form-footer{flex-direction:column;gap:8px;align-items:flex-start}
+}

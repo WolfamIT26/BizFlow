@@ -244,3 +244,53 @@
     padding: 8px 10px;
     font-size: 12px;
 }
+
+@media (max-width: 900px) {
+    .return-filter-row {
+        gap: 12px;
+    }
+
+    .return-filter-row > select#returnDatePreset {
+        flex: 1 1 180px;
+    }
+
+    .return-filter-row > input#returnSearchKeyword {
+        flex: 1 1 220px;
+        min-width: 0;
+    }
+
+    .return-range-panel {
+        width: min(360px, 92vw);
+    }
+}
+
+@media (max-width: 600px) {
+    .return-filter-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .return-filter-row > select#returnDatePreset,
+    .return-filter-row > input#returnSearchKeyword,
+    .return-filter-row > #returnSearchBtn,
+    .return-filter-row > #returnRangeInline {
+        flex: 1 1 auto;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .return-range-panel {
+        width: 100%;
+        left: 0;
+        right: 0;
+    }
+
+    .return-detail .invoice-detail-table {
+        overflow-x: auto;
+    }
+
+    .return-detail .detail-row.header,
+    .return-detail .detail-row.item-row {
+        min-width: 640px;
+    }
+}

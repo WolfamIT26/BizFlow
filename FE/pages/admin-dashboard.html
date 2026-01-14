@@ -424,6 +424,43 @@
             .search { min-width: 200px; }
             .grid-2 { grid-template-columns: 1fr; }
         }
+
+        @media (max-width: 768px) {
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .top-left {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            .top-right {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .search { min-width: auto; width: 100%; }
+            .main { padding: 16px; }
+            .cards { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+            .form-actions { flex-direction: column; align-items: stretch; }
+            .actions { flex-direction: column; gap: 8px; }
+            .table { font-size: 12px; }
+            .table th, .table td { padding: 6px 4px; }
+        }
+
+        @media (max-width: 480px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .page-title { font-size: 18px; }
+            .topbar { padding: 12px 16px; }
+            .card { padding: 12px; }
+            .status-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+            .pill { align-self: flex-start; }
+            .user-chip { justify-content: center; }
+            .icon-btn { width: 32px; height: 32px; }
+        }
     </style>
 </head>
 <body>

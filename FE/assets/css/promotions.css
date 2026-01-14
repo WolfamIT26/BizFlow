@@ -166,3 +166,22 @@
         min-width: 140px;
     }
 }
+
+@media (max-width: 480px) {
+    .promo-controls {
+        width: 100%;
+    }
+
+    .promo-search {
+        width: 100%;
+    }
+
+    .promo-search input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .promo-controls select {
+        width: 100%;
+    }
+}

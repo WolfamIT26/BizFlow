@@ -2489,11 +2489,261 @@
         grid-template-columns: 1fr;
     }
 
+    .header-left,
+    .header-actions {
+        flex-wrap: wrap;
+    }
+
     .toolbar-chip.toolbar-store {
         margin-left: 0;
     }
 
     .cart-row {
         grid-template-columns: 32px 90px 1fr 120px 60px 100px 110px 32px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pos-header {
+        flex-direction: column;
+        gap: 10px;
+        padding: 8px;
+    }
+
+    .header-left {
+        order: 1;
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .header-actions {
+        order: 2;
+        justify-content: center;
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .header-actions .store {
+        width: 100%;
+        text-align: center;
+    }
+
+    .pos-toolbar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .toolbar-search {
+        flex: 1;
+        min-width: unset;
+    }
+
+    .toolbar-search-results {
+        left: 0;
+        right: 0;
+        overflow-x: auto;
+    }
+
+    .toolbar-search-row {
+        min-width: 640px;
+    }
+
+    .pos-layout {
+        grid-template-columns: 1fr;
+        padding: 8px;
+    }
+
+    .product-panel {
+        padding: 12px;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+
+    .cart-table {
+        overflow-x: auto;
+    }
+
+    .cart-row {
+        grid-template-columns: 30px 80px 1fr 100px 50px 80px 90px 30px;
+        font-size: 12px;
+        padding: 12px 14px;
+        min-width: 640px;
+    }
+
+    .side-panel {
+        gap: 8px;
+    }
+
+    .customer-panel,
+    .payment-panel {
+        padding: 10px;
+    }
+
+    .modal-content {
+        width: 95vw;
+        padding: 16px;
+    }
+
+    .basic-page {
+        padding: 16px;
+    }
+
+    .basic-card {
+        padding: 18px;
+    }
+
+    .basic-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .basic-actions .primary-btn,
+    .basic-actions .ghost-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .transfer-qr-body {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .app-menu-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .customer-detail-body {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .detail-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .pos-header {
+        padding: 6px;
+    }
+
+    .header-left {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .order-tabs {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .header-actions {
+        order: 2;
+        gap: 6px;
+    }
+
+    .header-actions .store {
+        font-size: 11px;
+    }
+
+    .pos-toolbar {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .toolbar-search {
+        min-width: unset;
+    }
+
+    .toolbar-search-row {
+        min-width: 560px;
+    }
+
+    .pos-layout {
+        padding: 6px;
+    }
+
+    .product-panel {
+        padding: 8px;
+    }
+
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+
+    .cart-row {
+        grid-template-columns: 25px 70px 1fr 80px 40px 70px 80px 25px;
+        font-size: 11px;
+        padding: 10px 12px;
+        min-width: 560px;
+    }
+
+    .side-panel {
+        gap: 6px;
+    }
+
+    .customer-panel,
+    .payment-panel {
+        padding: 8px;
+    }
+
+    .summary-row input {
+        width: 100%;
+    }
+
+    .payment-options {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .payment-option {
+        justify-content: center;
+    }
+
+    .modal-content {
+        width: 98vw;
+        padding: 12px;
+    }
+
+    .modal-content.customer-modal {
+        width: 98vw;
+    }
+
+    .modal-content.invoice-modal {
+        width: 98vw;
+    }
+
+    .transfer-qr-body {
+        gap: 12px;
+    }
+
+    .app-menu-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-grid.two-cols,
+    .address-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .customer-detail {
+        width: 98vw;
+    }
+
+    .basic-page {
+        padding: 12px;
+    }
+
+    .basic-card {
+        padding: 16px;
     }
 }
