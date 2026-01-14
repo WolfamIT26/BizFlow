@@ -28,9 +28,26 @@
     </header>
 
     <main class="basic-page">
-        <section class="basic-card">
+        <section class="basic-card print-settings-card">
             <div class="basic-title">Máy in - Mẫu in</div>
-            <p class="basic-desc">Trang đang được hoàn thiện. Bạn có thể chỉnh sửa giao diện và bổ sung nghiệp vụ theo nhu cầu.</p>
+            <p class="basic-desc">Chọn khổ giấy in. Thiết lập này sẽ được áp dụng khi in hóa đơn.</p>
+            <div class="print-settings">
+                <label class="print-option">
+                    <input type="radio" name="printSize" value="K80">
+                    <span class="print-option-title">K80</span>
+                    <span class="print-option-desc">80mm (máy in bill phổ biến)</span>
+                </label>
+                <label class="print-option">
+                    <input type="radio" name="printSize" value="K58">
+                    <span class="print-option-title">K58</span>
+                    <span class="print-option-desc">58mm (máy nhỏ, taxi)</span>
+                </label>
+                <label class="print-option">
+                    <input type="radio" name="printSize" value="A6">
+                    <span class="print-option-title">A6</span>
+                    <span class="print-option-desc">100mm x 150mm (tem nhãn TMĐT)</span>
+                </label>
+            </div>
             <div class="basic-actions">
                 <button class="primary-btn" type="button" onclick="window.location.href='/pages/employee-dashboard.html'">Về bán hàng</button>
                 <button class="ghost-btn" type="button" onclick="window.location.href='/pages/invoice-list.html'">DS hóa đơn</button>
@@ -44,6 +61,7 @@
         document.getElementById('userInitial').textContent = userInitial;
         document.getElementById('userName').textContent = username || 'Nhân viên';
     </script>
+    <script src="../assets/js/print-templates.js"></script>
     <script src="../assets/js/app-shell.js"></script>
 </body>
 </html>

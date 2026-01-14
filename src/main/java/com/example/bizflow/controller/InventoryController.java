@@ -4,6 +4,7 @@ import com.example.bizflow.dto.InventoryHistoryItem;
 import com.example.bizflow.dto.InventoryReceiptRequest;
 import com.example.bizflow.dto.InventoryReceiptResponse;
 import com.example.bizflow.entity.InventoryTransaction;
+import com.example.bizflow.entity.Product;
 import com.example.bizflow.repository.InventoryTransactionRepository;
 import com.example.bizflow.repository.ProductRepository;
 import com.example.bizflow.service.InventoryService;

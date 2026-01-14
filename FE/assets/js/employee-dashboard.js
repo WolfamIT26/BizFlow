@@ -669,17 +669,8 @@ async function createOrder(isPaid) {
         const data = await res.json();
         const receiptData = buildReceiptData(data, { usePoints: isPaid && shouldUseMemberPoints() });
         const invoiceCode = receiptData.invoiceNumber || '-';
-        showPopup(
-            isPaid ? `Thanh toán thành công. Mã hóa đơn: ${invoiceCode}` : `Đã lưu tạm đơn: ${invoiceCode}`,
-            { type: 'success' }
-        );
         if (isPaid) {
             await openInvoiceModal(receiptData);
-            const printToggle = document.getElementById('printInvoiceToggle');
-            const shouldPrint = !!printToggle && printToggle.checked === true;
-            if (shouldPrint) {
-                setTimeout(() => printInvoiceReceipt(), 150);
-            }
             applyLocalStockAfterSale();
         }
         clearCart(true);
@@ -873,12 +864,14 @@ function setupInvoiceModal() {
     const closeBtn = document.getElementById('closeInvoiceModal');
     const footerCloseBtn = document.getElementById('closeInvoiceBtn');
     const printBtn = document.getElementById('printInvoiceBtn');
+    const printAltBtn = document.getElementById('printInvoiceBtnAlt');
     if (!modal) return;
 
     const close = () => closeInvoiceModal();
     closeBtn?.addEventListener('click', close);
     footerCloseBtn?.addEventListener('click', close);
     printBtn?.addEventListener('click', () => printInvoiceReceipt());
+    printAltBtn?.addEventListener('click', () => printInvoiceReceipt());
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             close();
@@ -886,10 +879,8 @@ function setupInvoiceModal() {
     });
 }
 
-async function openInvoiceModal(receiptData) {
-    const modal = document.getElementById('invoiceModal');
-    if (!modal || !receiptData) return;
-
+async function updateInvoiceReceipt(receiptData) {
+    if (!receiptData) return;
     const promoMap = await loadPromotionIndex();
     const itemsEl = document.getElementById('invoiceItems');
     if (itemsEl) {
@@ -925,7 +916,13 @@ async function openInvoiceModal(receiptData) {
     if (noteWrap) {
         noteWrap.style.display = noteValue ? 'grid' : 'none';
     }
+}
 
+async function openInvoiceModal(receiptData) {
+    const modal = document.getElementById('invoiceModal');
+    if (!modal || !receiptData) return;
+
+    await updateInvoiceReceipt(receiptData);
     modal.classList.add('show');
     modal.setAttribute('aria-hidden', 'false');
 }
@@ -1527,6 +1524,17 @@ function printInvoiceReceipt() {
         return;
     }
 
+    const printSize = localStorage.getItem('bizflow_print_size') || 'K80';
+    let pageWidth = '80mm';
+    let pageHeight = '200mm';
+    if (printSize === 'K58') {
+        pageWidth = '58mm';
+        pageHeight = '160mm';
+    } else if (printSize === 'A6') {
+        pageWidth = '100mm';
+        pageHeight = '150mm';
+    }
+
     const printWindow = window.open('', '_blank', 'width=480,height=700');
     if (!printWindow) {
         window.print();
@@ -1541,11 +1549,11 @@ function printInvoiceReceipt() {
     <meta charset="UTF-8" />
     <title>In hoa don</title>
     <style>
-        @page { size: 80mm 200mm; margin: 0; }
-        html, body { width: 80mm; margin: 0; }
+        @page { size: ${pageWidth} ${pageHeight}; margin: 0; }
+        html, body { width: ${pageWidth}; margin: 0; }
         body { font-family: Arial, sans-serif; }
         * { box-sizing: border-box; }
-        .print-sheet { width: 80mm; margin: 0; display: flex; justify-content: center; padding-top: 2mm; box-sizing: border-box; }
+        .print-sheet { width: ${pageWidth}; margin: 0; display: flex; justify-content: center; padding-top: 2mm; box-sizing: border-box; }
         .invoice-receipt { width: 74mm; font-size: 10.5px; line-height: 1.15; color: #2f3644; display: grid; gap: 4px; }
         .invoice-receipt div, .invoice-receipt span { margin: 0; padding: 0; }
         .receipt-header { text-align: center; display: grid; gap: 1px; }
@@ -3453,12 +3461,6 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
     const row = evt?.target?.closest('.employee-item');
     if (row) row.classList.add('active');
 }
-
-
-
-
-
-
 
 
 

@@ -11,6 +11,7 @@ window.addEventListener('DOMContentLoaded', () => {
     setupLogout();
     setupInvoiceDetailModal();
     handleInvoicePreset();
+    initResizableColumns();
     loadInvoices();
 });
 
@@ -90,6 +91,61 @@ function setupActions() {
         if (orderId) {
             openInvoiceDetail(orderId);
         }
+    });
+}
+
+function initResizableColumns() {
+    const table = document.querySelector('.invoice-table');
+    const headerRow = document.querySelector('.invoice-row.header');
+    if (!table || !headerRow) return;
+
+    const headers = Array.from(headerRow.children);
+    if (headers.length === 0) return;
+
+    const minWidth = 90;
+    const getWidths = () => headers.map(header => Math.max(minWidth, Math.round(header.getBoundingClientRect().width)));
+    let widths = getWidths();
+
+    const applyWidths = () => {
+        const cols = widths.map(width => `${width}px`).join(' ');
+        table.style.setProperty('--invoice-cols', cols);
+    };
+
+    applyWidths();
+
+    headers.forEach((header, index) => {
+        if (index === headers.length - 1) return;
+        const resizer = document.createElement('div');
+        resizer.className = 'col-resizer';
+        header.appendChild(resizer);
+
+        resizer.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            resizer.setPointerCapture(event.pointerId);
+
+            widths = getWidths();
+            const startX = event.clientX;
+            const startWidth = widths[index];
+            const originalUserSelect = document.body.style.userSelect;
+            document.body.style.userSelect = 'none';
+
+            const onMove = (moveEvent) => {
+                const delta = moveEvent.clientX - startX;
+                widths[index] = Math.max(minWidth, Math.round(startWidth + delta));
+                applyWidths();
+            };
+
+            const onUp = () => {
+                resizer.releasePointerCapture(event.pointerId);
+                document.body.style.userSelect = originalUserSelect;
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onUp);
+            };
+
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+        });
     });
 }
 

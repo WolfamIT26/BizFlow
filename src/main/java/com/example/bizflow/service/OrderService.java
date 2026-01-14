@@ -7,6 +7,7 @@ package com.example.bizflow.service;
 
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.repository.OrderRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -17,18 +18,22 @@ import java.util.Optional;
 
 @Service
 public class OrderService {
-    private static final DateTimeFormatter INVOICE_DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
-    private static final String DEFAULT_TYPE = "INV";
+    private static final DateTimeFormatter INVOICE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyMM");
+    private static final String DEFAULT_BRANCH_PREFIX = "TC";
 
     private final OrderRepository orderRepository;
+    private final String branchPrefix;
 
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository,
+                        @Value("${app.invoice.branch-prefix:TC}") String branchPrefix) {
         this.orderRepository = orderRepository;
+        this.branchPrefix = (branchPrefix == null || branchPrefix.isBlank())
+                ? DEFAULT_BRANCH_PREFIX
+                : branchPrefix.trim().toUpperCase();
     }
 
-    public String generateInvoiceNumberForDate(LocalDate date, String type) {
-        String normalizedType = (type == null || type.isBlank()) ? DEFAULT_TYPE : type.trim().toUpperCase();
-        String prefix = normalizedType + "-" + date.format(INVOICE_DATE_FORMAT) + "-";
+    public String generateInvoiceNumberForDate(LocalDate date) {
+        String prefix = branchPrefix + "-" + date.format(INVOICE_DATE_FORMAT);
 
         Optional<Order> latest = orderRepository.findTopByInvoiceNumberStartingWithOrderByInvoiceNumberDesc(prefix);
         int nextSequence = 1;
@@ -44,7 +49,13 @@ public class OrderService {
             }
         }
 
-        return prefix + String.format("%04d", nextSequence);
+        String invoiceNumber = prefix + String.format("%05d", nextSequence);
+        while (orderRepository.findByInvoiceNumber(invoiceNumber).isPresent()) {
+            nextSequence += 1;
+            invoiceNumber = prefix + String.format("%05d", nextSequence);
+        }
+
+        return invoiceNumber;
     }
 
     public Object getCustomerOrderHistory(Long id) {

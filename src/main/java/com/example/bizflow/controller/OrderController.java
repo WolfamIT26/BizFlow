@@ -3,6 +3,10 @@ package com.example.bizflow.controller;
 import com.example.bizflow.dto.CreateOrderRequest;
 import com.example.bizflow.dto.CreateOrderResponse;
 import com.example.bizflow.dto.OrderItemRequest;
+import com.example.bizflow.dto.OrderItemResponse;
+import com.example.bizflow.dto.OrderResponse;
+import com.example.bizflow.dto.OrderSummaryResponse;
+import com.example.bizflow.dto.PayOrderRequest;
 import com.example.bizflow.entity.Customer;
 import com.example.bizflow.entity.CustomerTier;
 import com.example.bizflow.entity.Order;
@@ -25,17 +29,22 @@ import com.example.bizflow.service.InventoryService;
 import com.example.bizflow.service.PointService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -77,6 +86,51 @@ public class OrderController {
         this.inventoryService = inventoryService;
     }
 
+    @PostMapping("/{id}/pay")
+    @Transactional
+    public ResponseEntity<?> payOrder(@PathVariable("id") Long orderId,
+                                      @RequestBody(required = false) PayOrderRequest request) {
+        if (orderId == null) {
+            return ResponseEntity.badRequest().body("Order id is required");
+        }
+
+        Order order = orderRepository.findByIdWithDetails(orderId).orElse(null);
+        if (order == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if ("PAID".equalsIgnoreCase(order.getStatus())) {
+            return ResponseEntity.ok("Order already paid");
+        }
+
+        order.setStatus("PAID");
+        orderRepository.save(order);
+
+        inventoryService.applySale(order, order.getItems(),
+                order.getUser() == null ? null : order.getUser().getId());
+
+        Payment payment = new Payment();
+        payment.setOrder(order);
+        payment.setMethod(request == null || request.getMethod() == null ? "TRANSFER" : request.getMethod());
+        payment.setAmount(order.getTotalAmount());
+        payment.setStatus("PAID");
+        payment.setPaidAt(java.time.LocalDateTime.now());
+        if (request != null && request.getToken() != null && !request.getToken().isBlank()) {
+            payment.setToken(request.getToken().trim());
+        }
+        paymentRepository.save(payment);
+
+        if (order.getCustomer() != null) {
+            pointService.addPoints(
+                    order.getCustomer().getId(),
+                    order.getTotalAmount(),
+                    "ORDER_" + order.getId()
+            );
+        }
+
+        return ResponseEntity.ok("Payment confirmed");
+    }
+
     // ================== TẠO ĐƠN + THANH TOÁN ==================
     @PostMapping
     @Transactional
@@ -105,7 +159,7 @@ public class OrderController {
         order.setCustomer(customer);
         order.setStatus(paid ? "PAID" : "UNPAID");
         order.setInvoiceNumber(
-                orderService.generateInvoiceNumberForDate(LocalDate.now(), "SALE")
+                orderService.generateInvoiceNumberForDate(LocalDate.now())
         );
 
         BigDecimal total = BigDecimal.ZERO;
@@ -191,9 +245,55 @@ public class OrderController {
                         total,
                         items.size(),
                         paid,
-                        null
+                        null,
+                        savedOrder.getInvoiceNumber()
                 )
         );
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<List<OrderSummaryResponse>> getOrderSummary() {
+        List<Order> orders = orderRepository.findAllWithDetails();
+        List<OrderSummaryResponse> result = orders.stream()
+                .map(this::toSummaryResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/returns/search")
+    public ResponseEntity<List<OrderSummaryResponse>> searchReturnOrders(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate
+    ) {
+        String trimmedKeyword = keyword == null ? null : keyword.trim();
+        if (trimmedKeyword != null && trimmedKeyword.isBlank()) {
+            trimmedKeyword = null;
+        }
+
+        LocalDateTime from = null;
+        LocalDateTime to = null;
+        if (fromDate != null && !fromDate.isBlank()) {
+            from = LocalDate.parse(fromDate.trim()).atStartOfDay();
+        }
+        if (toDate != null && !toDate.isBlank()) {
+            to = LocalDate.parse(toDate.trim()).atTime(LocalTime.MAX);
+        }
+
+        List<Order> orders = orderRepository.searchOrders(trimmedKeyword, from, to);
+        List<OrderSummaryResponse> result = orders.stream()
+                .filter(order -> "PAID".equalsIgnoreCase(order.getStatus()))
+                .filter(order -> !Boolean.TRUE.equals(order.getReturnOrder()))
+                .map(this::toSummaryResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
+        return orderRepository.findByIdWithDetails(id)
+                .map(order -> ResponseEntity.ok(toOrderResponse(order)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     private DiscountResult resolveMemberDiscount(Customer customer, BigDecimal total) {
@@ -250,6 +350,91 @@ public class OrderController {
             this.discount = discount;
             this.pointsUsed = pointsUsed;
         }
+    }
+
+    private OrderSummaryResponse toSummaryResponse(Order order) {
+        String userName = resolveUserName(order.getUser());
+        String customerName = order.getCustomer() == null ? null : order.getCustomer().getName();
+        String customerPhone = order.getCustomer() == null ? null : order.getCustomer().getPhone();
+        int itemCount = order.getItems() == null
+                ? 0
+                : order.getItems().stream()
+                    .mapToInt(item -> item.getQuantity() == null ? 0 : item.getQuantity())
+                    .sum();
+
+        return new OrderSummaryResponse(
+                order.getId(),
+                order.getUser() == null ? null : order.getUser().getId(),
+                userName,
+                order.getCustomer() == null ? null : order.getCustomer().getId(),
+                customerName,
+                customerPhone,
+                order.getTotalAmount(),
+                order.getCreatedAt(),
+                itemCount,
+                order.getInvoiceNumber(),
+                order.getStatus(),
+                userName,
+                userName,
+                order.getNote()
+        );
+    }
+
+    private OrderResponse toOrderResponse(Order order) {
+        String userName = resolveUserName(order.getUser());
+        String customerName = order.getCustomer() == null ? null : order.getCustomer().getName();
+        String customerPhone = order.getCustomer() == null ? null : order.getCustomer().getPhone();
+        List<OrderItemResponse> items = order.getItems() == null
+                ? new ArrayList<>()
+                : order.getItems().stream()
+                    .map(this::toOrderItemResponse)
+                    .collect(Collectors.toList());
+
+        return new OrderResponse(
+                order.getId(),
+                order.getUser() == null ? null : order.getUser().getId(),
+                userName,
+                order.getCustomer() == null ? null : order.getCustomer().getId(),
+                customerName,
+                customerPhone,
+                order.getTotalAmount(),
+                order.getCreatedAt(),
+                order.getInvoiceNumber(),
+                order.getStatus(),
+                userName,
+                userName,
+                items,
+                order.getNote()
+        );
+    }
+
+    private OrderItemResponse toOrderItemResponse(OrderItem item) {
+        BigDecimal lineTotal = item.getPrice() == null || item.getQuantity() == null
+                ? BigDecimal.ZERO
+                : item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+
+        return new OrderItemResponse(
+                item.getId(),
+                item.getProduct() == null ? null : item.getProduct().getId(),
+                item.getProduct() == null ? null : item.getProduct().getName(),
+                item.getQuantity(),
+                item.getPrice(),
+                lineTotal,
+                item.getProduct() == null ? null : item.getProduct().getCode(),
+                item.getProduct() == null ? null : item.getProduct().getBarcode(),
+                item.getProduct() == null ? null : item.getProduct().getUnit(),
+                null,
+                null,
+                null
+        );
+    }
+
+    private String resolveUserName(User user) {
+        if (user == null) return null;
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        return user.getUsername();
     }
 
     private BigDecimal resolvePromotionalPrice(Product product, List<Promotion> promotions) {

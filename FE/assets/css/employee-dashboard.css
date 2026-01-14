@@ -1611,15 +1611,44 @@
 }
 
 .modal-content.invoice-modal {
-    width: min(360px, 92vw);
-    padding: 16px;
+    width: min(540px, 96vw);
+    padding: 22px 22px 20px;
+    background: #ffffff;
+    border: 1px solid #e7ecf7;
+}
+
+.modal-content.invoice-modal .modal-header {
+    justify-content: center;
+    position: relative;
+    margin-bottom: 10px;
+}
+
+.modal-content.invoice-modal .modal-header h3 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: #1f2a44;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #e8f0ff 0%, #eef7ff 50%, #eaf7f1 100%);
+}
+
+.modal-content.invoice-modal .modal-header .icon-btn {
+    position: absolute;
+    right: 0;
 }
 
 .invoice-receipt {
-    font-size: 12px;
+    font-size: 14.5px;
     color: #2f3644;
     display: grid;
     gap: 10px;
+    background: #fbfcff;
+    border: 1px dashed #d8e0f2;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
 }
 
 .receipt-header {
@@ -1631,10 +1660,11 @@
 .receipt-brand {
     font-weight: 800;
     letter-spacing: 0.6px;
+    color: #1e3a8a;
 }
 
 .receipt-meta {
-    font-size: 11px;
+    font-size: 13px;
     color: #5b6274;
     display: grid;
     gap: 2px;
@@ -1643,12 +1673,12 @@
 .receipt-section {
     display: grid;
     gap: 4px;
-    font-size: 11px;
+    font-size: 13px;
     color: #4b5366;
 }
 
 .receipt-divider {
-    border-top: 1px dashed #cfd5e3;
+    border-top: 1px dashed #c3cce2;
 }
 
 .receipt-items {
@@ -1660,7 +1690,7 @@
     display: grid;
     grid-template-columns: 1.4fr 0.4fr 0.7fr 0.8fr;
     gap: 6px;
-    font-size: 11px;
+    font-size: 13px;
     align-items: center;
 }
 
@@ -1690,7 +1720,7 @@
 .receipt-totals {
     display: grid;
     gap: 4px;
-    font-size: 11px;
+    font-size: 13px;
 }
 
 .receipt-totals div {
@@ -1699,10 +1729,19 @@
 }
 
 .receipt-note {
-    font-size: 11px;
+    font-size: 13px;
     color: #4b5366;
     display: grid;
     gap: 2px;
+}
+
+.modal-content.invoice-modal #invoiceCode {
+    color: #1d4ed8;
+}
+
+.modal-content.invoice-modal #invoiceTotal {
+    color: #0f766e;
+    font-weight: 700;
 }
 
 @media print {
@@ -2191,6 +2230,46 @@
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+}
+
+.print-settings {
+    display: grid;
+    gap: 12px;
+    margin: 8px 0;
+}
+
+.print-option {
+    display: grid;
+    grid-template-columns: 18px auto;
+    gap: 10px;
+    align-items: center;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: #f9fbff;
+    cursor: pointer;
+}
+
+.print-option input {
+    margin: 0;
+}
+
+.print-option-title {
+    font-weight: 700;
+    color: #1f2a44;
+    display: block;
+}
+
+.print-option-desc {
+    display: block;
+    font-size: 12px;
+    color: #667085;
+    margin-top: 2px;
+}
+
+.print-option:hover {
+    border-color: #c6d4f0;
+    background: #f1f6ff;
 }
 
 .app-blue { background: #4c6fff; }
