@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
+
     @Query("SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.items LEFT JOIN FETCH o.user LEFT JOIN FETCH o.customer ORDER BY o.createdAt DESC")
     List<Order> findAllWithDetails();
 
@@ -28,14 +29,16 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByInvoiceNumber(String invoiceNumber);
 
     @Query("""
-        SELECT o FROM Order o
-        LEFT JOIN o.customer c
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.items i
+        LEFT JOIN FETCH i.product
+        LEFT JOIN FETCH o.customer c
         WHERE (:keyword IS NULL OR o.invoiceNumber LIKE %:keyword% OR c.phone LIKE %:keyword%)
           AND (:fromDate IS NULL OR o.createdAt >= :fromDate)
           AND (:toDate IS NULL OR o.createdAt <= :toDate)
         ORDER BY o.createdAt DESC
     """)
     List<Order> searchOrders(@Param("keyword") String keyword,
-                             @Param("fromDate") java.time.LocalDateTime fromDate,
-                             @Param("toDate") java.time.LocalDateTime toDate);
+            @Param("fromDate") java.time.LocalDateTime fromDate,
+            @Param("toDate") java.time.LocalDateTime toDate);
 }

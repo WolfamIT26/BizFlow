@@ -40,14 +40,23 @@ public class Customer {
     public Customer(String name, String phone) {
         this.name = name;
         this.phone = phone;
+        this.totalPoints = 0;
+        this.monthlyPoints = 0;
+        this.tier = CustomerTier.DONG;
     }
 
     // ===== HELPER METHOD =====
     public void addPoints(int points) {
-        if (points <= 0) return;
+        if (points <= 0) {
+            return;
+        }
 
-        if (totalPoints == null) totalPoints = 0;
-        if (monthlyPoints == null) monthlyPoints = 0;
+        if (totalPoints == null) {
+            totalPoints = 0;
+        }
+        if (monthlyPoints == null) {
+            monthlyPoints = 0;
+        }
 
         totalPoints += points;
         monthlyPoints += points;
@@ -55,8 +64,96 @@ public class Customer {
 
     @PrePersist
     public void ensureDefaults() {
-        if (totalPoints == null) totalPoints = 0;
-        if (monthlyPoints == null) monthlyPoints = 0;
-        if (tier == null) tier = CustomerTier.DONG;
+        if (totalPoints == null) {
+            totalPoints = 0;
+        }
+        if (monthlyPoints == null) {
+            monthlyPoints = 0;
+        }
+        if (tier == null) {
+            tier = CustomerTier.DONG;
+        }
+    }
+
+    // ===== GETTERS =====
+    public Long getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public Integer getTotalPoints() {
+        return totalPoints;
+    }
+
+    public Integer getMonthlyPoints() {
+        return monthlyPoints;
+    }
+
+    public CustomerTier getTier() {
+        return tier;
+    }
+
+    public LocalDate getDob() {
+        return dob;
+    }
+
+    public String getCccd() {
+        return cccd;
+    }
+
+    // ===== SETTERS =====
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setTotalPoints(Integer totalPoints) {
+        this.totalPoints = totalPoints;
+    }
+
+    public void setMonthlyPoints(Integer monthlyPoints) {
+        this.monthlyPoints = monthlyPoints;
+    }
+
+    public void setTier(CustomerTier tier) {
+        this.tier = tier;
+    }
+
+    public void setDob(LocalDate dob) {
+        this.dob = dob;
+    }
+
+    public void setCccd(String cccd) {
+        this.cccd = cccd;
     }
 }

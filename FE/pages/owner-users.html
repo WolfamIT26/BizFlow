@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Quản lý nhân viên</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2f3a8f;
+            --primary-dark: #1f2a66;
+            --accent: #4c6fff;
+            --highlight: #7dd3fc;
+            --bg: #f3f4f8;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-dark), var(--primary));
+            color: #e5e7eb;
+            padding: 18px 0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .brand-mark {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: grid; place-items: center;
+            background: rgba(255,255,255,0.15);
+            color: #fff; font-weight: 700;
+        }
+        .brand-name { font-weight: 700; }
+        .brand-sub { font-size: 12px; color: #c7d2fe; }
+        .nav {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 0;
+            gap: 2px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 18px;
+            margin: 0 10px;
+            border-radius: 10px;
+            color: #e5e7eb;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); }
+        .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        .nav-item .icon { width: 18px; text-align: center; }
+        .content { padding: 24px; }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-value.success { color: var(--success); }
+        .stat-value.danger { color: var(--danger); }
+        .stat-label {
+            font-size: 14px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+        }
+        .search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-active { background: #d1fae5; color: #059669; }
+        .badge-inactive { background: #fee2e2; color: #dc2626; }
+        .badge-owner { background: #fef3c7; color: #d97706; }
+        .badge-admin { background: #e0e7ff; color: #4f46e5; }
+        .badge-manager { background: #dbeafe; color: #2563eb; }
+        .badge-employee { background: #f3f4f6; color: #6b7280; }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e7ff;
+            color: var(--primary);
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-name {
+            font-weight: 600;
+        }
+        .user-email {
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            cursor: pointer;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 26px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: var(--success);
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--muted);
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BF</div>
+                <div>
+                    <div class="brand-name">BizFlow</div>
+                    <div class="brand-sub">Owner Center</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-item" href="owner-dashboard.html">
+                    <span class="icon">🏠</span><span>Tổng quan</span>
+                </a>
+                <a class="nav-item" href="owner-reports.html">
+                    <span class="icon">📊</span><span>Báo cáo doanh thu</span>
+                </a>
+                <a class="nav-item" href="owner-products.html">
+                    <span class="icon">🛍️</span><span>Sản phẩm</span>
+                </a>
+                <a class="nav-item" href="owner-categories.html">
+                    <span class="icon">📁</span><span>Danh mục</span>
+                </a>
+                <a class="nav-item" href="owner-inventory.html">
+                    <span class="icon">📦</span><span>Quản lý kho</span>
+                </a>
+                <a class="nav-item active" href="owner-users.html">
+                    <span class="icon">👤</span><span>Quản lý nhân viên</span>
+                </a>
+                <a class="nav-item" href="promotions.html">
+                    <span class="icon">🎯</span><span>Khuyến mãi</span>
+                </a>
+                <a class="nav-item" href="display-settings.html">
+                    <span class="icon">⚙️</span><span>Thiết lập</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="content">
+            <div class="page-header">
+                <h1 class="page-title">👤 Quản lý nhân viên</h1>
+                <button class="btn btn-primary" onclick="openAddModal()">+ Thêm nhân viên</button>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalUsers">--</div>
+                    <div class="stat-label">Tổng nhân viên</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value success" id="activeUsers">--</div>
+                    <div class="stat-label">Đang hoạt động</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value danger" id="inactiveUsers">--</div>
+                    <div class="stat-label">Đã vô hiệu</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="managerCount">--</div>
+                    <div class="stat-label">Quản lý</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Danh sách nhân viên</div>
+                <div class="toolbar">
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" id="searchInput" placeholder="Tìm kiếm nhân viên..." onkeyup="searchUsers()">
+                    </div>
+                    <select id="roleFilter" onchange="filterUsers()">
+                        <option value="">Tất cả vai trò</option>
+                        <option value="MANAGER">Quản lý</option>
+                        <option value="EMPLOYEE">Nhân viên</option>
+                    </select>
+                    <select id="statusFilter" onchange="filterUsers()">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="active">Hoạt động</option>
+                        <option value="inactive">Vô hiệu</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nhân viên</th>
+                            <th>Tên đăng nhập</th>
+                            <th>Vai trò</th>
+                            <th>Trạng thái</th>
+                            <th>Bật/Tắt</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="6" class="loading">Đang tải...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit User Modal -->
+    <div class="modal" id="userModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Thêm nhân viên mới</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <input type="hidden" id="userId">
+                <div class="form-group">
+                    <label>Họ tên *</label>
+                    <input type="text" id="userFullName" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tên đăng nhập *</label>
+                        <input type="text" id="userUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="userEmail">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mật khẩu <span id="passwordHint">(để trống nếu không đổi)</span></label>
+                        <input type="password" id="userPassword">
+                    </div>
+                    <div class="form-group">
+                        <label>Vai trò *</label>
+                        <select id="userRole" required>
+                            <option value="EMPLOYEE">Nhân viên</option>
+                            <option value="MANAGER">Quản lý</option>
+                            <option value="ADMIN">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Số điện thoại</label>
+                    <input type="tel" id="userPhone">
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        let allUsers = [];
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('token');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            };
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API_BASE}/users`, {
+                    headers: getAuthHeaders()
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Lọc bỏ OWNER và ADMIN vì không do Owner quản lý
+                    allUsers = data.filter(u => u.role !== 'OWNER' && u.role !== 'ADMIN');
+                    calculateStats();
+                    renderUsers(allUsers);
+                }
+            } catch (e) {
+                console.error('Error loading users:', e);
+            }
+        }
+
+        function calculateStats() {
+            document.getElementById('totalUsers').textContent = allUsers.length;
+            document.getElementById('activeUsers').textContent = allUsers.filter(u => u.enabled !== false).length;
+            document.getElementById('inactiveUsers').textContent = allUsers.filter(u => u.enabled === false).length;
+            document.getElementById('managerCount').textContent = allUsers.filter(u => u.role === 'MANAGER').length;
+        }
+
+        function getRoleBadge(role) {
+            const badges = {
+                'OWNER': '<span class="badge badge-owner">👑 Owner</span>',
+                'ADMIN': '<span class="badge badge-admin">⚡ Admin</span>',
+                'MANAGER': '<span class="badge badge-manager">📋 Quản lý</span>',
+                'EMPLOYEE': '<span class="badge badge-employee">👤 Nhân viên</span>'
+            };
+            return badges[role] || badges['EMPLOYEE'];
+        }
+
+        function getInitials(name) {
+            if (!name) return '?';
+            const parts = name.split(' ');
+            if (parts.length >= 2) {
+                return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            }
+            return name.substring(0, 2).toUpperCase();
+        }
+
+        function renderUsers(users) {
+            const tbody = document.getElementById('usersTableBody');
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">Không có nhân viên nào</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(user => {
+                const isEnabled = user.enabled !== false;
+                return `
+                    <tr>
+                        <td>
+                            <div class="user-info">
+                                <div class="avatar">${getInitials(user.fullName || user.username)}</div>
+                                <div>
+                                    <div class="user-name">${user.fullName || user.username}</div>
+                                    <div class="user-email">${user.email || '-'}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${user.username}</td>
+                        <td>${getRoleBadge(user.role)}</td>
+                        <td>
+                            <span class="badge ${isEnabled ? 'badge-active' : 'badge-inactive'}">
+                                ${isEnabled ? '✅ Hoạt động' : '🚫 Vô hiệu'}
+                            </span>
+                        </td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${isEnabled ? 'checked' : ''} onchange="toggleUser(${user.id})">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-primary" onclick="editUser(${user.id})">✏️</button>
+                            ${user.role !== 'OWNER' ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${user.id})">🗑️</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function searchUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allUsers.filter(u => 
+                u.username?.toLowerCase().includes(search) ||
+                u.fullName?.toLowerCase().includes(search) ||
+                u.email?.toLowerCase().includes(search)
+            );
+            renderUsers(filtered);
+        }
+
+        function filterUsers() {
+            const role = document.getElementById('roleFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            
+            let filtered = allUsers;
+            if (role) {
+                filtered = filtered.filter(u => u.role === role);
+            }
+            if (status === 'active') {
+                filtered = filtered.filter(u => u.enabled !== false);
+            } else if (status === 'inactive') {
+                filtered = filtered.filter(u => u.enabled === false);
+            }
+            renderUsers(filtered);
+        }
+
+        async function toggleUser(userId) {
+            try {
+                const res = await fetch(`${API_BASE}/users/${userId}/toggle-status`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+
+                if (res.ok) {
+                    loadUsers();
+                } else {
+                    const error = await res.text();
+                    alert('Lỗi: ' + error);
+                    loadUsers(); // Reload to reset toggle state
+                }
+            } catch (e) {
+                console.error('Error toggling user:', e);
+                alert('Lỗi khi thay đổi trạng thái');
+                loadUsers();
+            }
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').textContent = 'Thêm nhân viên mới';
+            document.getElementById('userForm').reset();
+            document.getElementById('userId').value = '';
+            document.getElementById('userUsername').disabled = false;
+            document.getElementById('passwordHint').style.display = 'none';
+            document.getElementById('userPassword').required = true;
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function editUser(id) {
+            const user = allUsers.find(u => u.id === id);
+            if (!user) return;
+
+            document.getElementById('modalTitle').textContent = 'Chỉnh sửa nhân viên';
+            document.getElementById('userId').value = user.id;
+            document.getElementById('userFullName').value = user.fullName || '';
+            document.getElementById('userUsername').value = user.username || '';
+            document.getElementById('userUsername').disabled = true;
+            document.getElementById('userEmail').value = user.email || '';
+            document.getElementById('userPhone').value = user.phone || '';
+            document.getElementById('userRole').value = user.role || 'EMPLOYEE';
+            document.getElementById('userPassword').value = '';
+            document.getElementById('passwordHint').style.display = 'inline';
+            document.getElementById('userPassword').required = false;
+            
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('active');
+        }
+
+        async function saveUser(event) {
+            event.preventDefault();
+            
+            const id = document.getElementById('userId').value;
+            const data = {
+                fullName: document.getElementById('userFullName').value,
+                username: document.getElementById('userUsername').value,
+                email: document.getElementById('userEmail').value,
+                phone: document.getElementById('userPhone').value,
+                role: document.getElementById('userRole').value
+            };
+
+            const password = document.getElementById('userPassword').value;
+            if (password) {
+                data.password = password;
+            }
+
+            try {
+                const url = id ? `${API_BASE}/users/${id}` : `${API_BASE}/users`;
+                const method = id ? 'PUT' : 'POST';
+                
+                const res = await fetch(url, {
+                    method,
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    alert(id ? 'Cập nhật thành công!' : 'Thêm nhân viên thành công!');
+                    closeModal();
+                    loadUsers();
+                } else {
+                    const error = await res.text();
+                    alert('Lỗi: ' + error);
+                }
+            } catch (e) {
+                console.error('Error saving user:', e);
+                alert('Lỗi khi lưu nhân viên');
+            }
+        }
+
+        async function deleteUser(id) {
+            if (!confirm('Bạn có chắc muốn xóa nhân viên này?')) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/users/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+
+                if (res.ok) {
+                    alert('Đã xóa nhân viên');
+                    loadUsers();
+                } else {
+                    const error = await res.text();
+                    alert('Lỗi: ' + error);
+                }
+            } catch (e) {
+                console.error('Error deleting user:', e);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadUsers);
+    </script>
+</body>
+</html>

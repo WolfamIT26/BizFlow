@@ -23,7 +23,7 @@ public class SecurityConfig {
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
@@ -32,24 +32,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/auth/**").permitAll()           // Allow auth endpoints
-                .requestMatchers("/").permitAll()                      // Allow root
-                .requestMatchers("/*.html").permitAll()                // Allow HTML files
-                .requestMatchers("/*.css").permitAll()                 // Allow CSS files
-                .requestMatchers("/*.js").permitAll()                  // Allow JS files
-                .requestMatchers("/index.html").permitAll()            // Allow login page
-                .requestMatchers("/dashboard.html").permitAll()        // Allow dashboard
-                .requestMatchers("/test.html").permitAll()             // Allow test page
-                .anyRequest().permitAll()                               // Allow everything else for now
-            )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // Stateless (JWT)
-            )
-            .httpBasic(basic -> basic.disable());  // Disable basic auth
-        
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(authz -> authz
+                .requestMatchers("/api/auth/**").permitAll() // Allow auth endpoints
+                .requestMatchers("/").permitAll() // Allow root
+                .requestMatchers("/*.html").permitAll() // Allow HTML files
+                .requestMatchers("/*.css").permitAll() // Allow CSS files
+                .requestMatchers("/*.js").permitAll() // Allow JS files
+                .requestMatchers("/index.html").permitAll() // Allow login page
+                .requestMatchers("/dashboard.html").permitAll() // Allow dashboard
+                .requestMatchers("/test.html").permitAll() // Allow test page
+                .anyRequest().permitAll() // Allow everything else for now
+                )
+                .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // Stateless (JWT)
+                )
+                .httpBasic(basic -> basic.disable());  // Disable basic auth
+
         return http.build();
     }
 }

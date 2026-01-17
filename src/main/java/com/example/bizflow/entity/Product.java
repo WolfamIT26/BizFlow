@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @Data
 @NoArgsConstructor
 public class Product {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "product_id")
@@ -33,6 +34,9 @@ public class Product {
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
+    @Column(name = "cost_price", precision = 12, scale = 2)
+    private BigDecimal costPrice;
+
     @Column(name = "unit")
     private String unit;
 
@@ -53,6 +57,46 @@ public class Product {
     }
 
     // Explicit getters/setters to ensure availability even without Lombok processing
+    public Long getId() {
+        return this.id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return this.name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getBarcode() {
+        return this.barcode;
+    }
+
+    public void setBarcode(String barcode) {
+        this.barcode = barcode;
+    }
+
+    public String getUnit() {
+        return this.unit;
+    }
+
+    public void setUnit(String unit) {
+        this.unit = unit;
+    }
+
+    public String getDescription() {
+        return this.description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     public BigDecimal getPrice() {
         return this.price;
     }
@@ -93,6 +137,14 @@ public class Product {
         this.stock = stock;
     }
 
+    public BigDecimal getCostPrice() {
+        return this.costPrice;
+    }
+
+    public void setCostPrice(BigDecimal costPrice) {
+        this.costPrice = costPrice;
+    }
+
     @PrePersist
     void ensureDefaults() {
         if (this.stock == null) {
@@ -100,6 +152,3 @@ public class Product {
         }
     }
 }
-
-
-

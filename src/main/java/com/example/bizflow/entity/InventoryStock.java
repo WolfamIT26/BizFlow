@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 public class InventoryStock {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -47,5 +48,30 @@ public class InventoryStock {
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    // Explicit getters/setters for compatibility
+    public Long getProductId() {
+        return this.productId;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public Integer getStock() {
+        return this.stock;
+    }
+
+    public void setStock(Integer stock) {
+        this.stock = stock;
+    }
+
+    public Long getUpdatedBy() {
+        return this.updatedBy;
+    }
+
+    public void setUpdatedBy(Long updatedBy) {
+        this.updatedBy = updatedBy;
     }
 }
