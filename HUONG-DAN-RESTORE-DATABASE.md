@@ -26,21 +26,9 @@ sleep 15
 
 ### 4. Restore database
 
-#### Cách 1: Dùng script tự động (Khuyến nghị)
+#### Cách 1: CHẠY LỆNH TRỰC TIẾP (Đơn giản nhất - Khuyến nghị)
 
-**Windows (chạy file .bat):**
-```cmd
-scripts\restore-latest-backup.bat
-```
-
-**macOS/Linux (chạy file .sh):**
-```bash
-./scripts/restore-latest-backup.sh
-```
-
-#### Cách 2: Restore thủ công (tất cả hệ điều hành)
-
-**Windows:**
+**Windows (CMD hoặc PowerShell):**
 ```cmd
 docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db\init\database-full.sql
 ```
@@ -49,6 +37,34 @@ docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db\init\databas
 ```bash
 docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db/init/database-full.sql
 ```
+
+#### Cách 2: Dùng script tự động
+
+**Windows (nếu muốn dùng file .bat):**
+```cmd
+scripts\restore-database-simple.bat
+```
+hoặc
+```cmd
+scripts\restore-latest-backup.bat
+```
+
+**macOS/Linux (nếu muốn dùng file .sh):**
+```bash
+./scripts/restore-latest-backup.sh
+```
+
+#### Cách 3: Dùng Docker Desktop (có giao diện)
+
+1. Mở **Docker Desktop**
+2. Vào tab **Containers** → Tìm container `bizflow-mysql`
+3. Click nút **CLI** (hoặc Exec) để mở terminal trong container
+4. Chạy lệnh:
+```bash
+mysql -u root -p123456 bizflow_db < /docker-entrypoint-initdb.d/database-full.sql
+```
+
+> **Lưu ý**: File backup phải được mount vào container. Nếu không thấy file, dùng Cách 1 bên ngoài container.
 
 ### 5. Kiểm tra database đã có dữ liệu
 ```bash
