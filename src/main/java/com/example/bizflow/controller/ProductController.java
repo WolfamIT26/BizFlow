@@ -9,9 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -138,22 +135,6 @@ public class ProductController {
         } catch (Exception e) {
             return ResponseEntity.status(400).body("Error permanently deleting product: " + e.getMessage());
         }
-    }
-
-    // Trong ProductController.java
-    private boolean hasOwnerOrAdminRole() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) {
-            return false;
-        }
-
-        // DEBUG: In ra để xem chính xác Java nhận được chuỗi gì
-        System.out.println("User Roles: " + auth.getAuthorities());
-
-        return auth.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                // Sửa equals thành equalsIgnoreCase
-                .anyMatch(role -> role.equalsIgnoreCase("OWNER") || role.equalsIgnoreCase("ADMIN"));
     }
 
     private void applyInventoryStocks(List<Product> products) {

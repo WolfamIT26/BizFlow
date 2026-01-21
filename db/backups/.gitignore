@@ -1,5 +1,0 @@
-# db/backups/
-
-# Chỉ giữ file backup mới nhất, ignore các file cũ
-*.sql
-!.gitkeep

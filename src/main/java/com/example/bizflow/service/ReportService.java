@@ -1,16 +1,19 @@
 package com.example.bizflow.service;
 
+import com.example.bizflow.dto.DailyReportDTO;
 import com.example.bizflow.dto.LowStockAlertDTO;
 import com.example.bizflow.dto.RevenueReportDTO;
 import com.example.bizflow.dto.TopProductDTO;
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.entity.OrderItem;
+import com.example.bizflow.entity.Payment;
 import com.example.bizflow.entity.Product;
 import com.example.bizflow.entity.ProductCost;
 import com.example.bizflow.entity.InventoryStock;
 import com.example.bizflow.entity.InventoryTransaction;
 import com.example.bizflow.entity.InventoryTransactionType;
 import com.example.bizflow.repository.OrderRepository;
+import com.example.bizflow.repository.PaymentRepository;
 import com.example.bizflow.repository.ProductRepository;
 import com.example.bizflow.repository.ProductCostRepository;
 import com.example.bizflow.repository.InventoryStockRepository;
@@ -30,6 +33,7 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
     private final ProductRepository productRepository;
     private final ProductCostRepository productCostRepository;
     private final InventoryStockRepository inventoryStockRepository;
@@ -42,11 +46,13 @@ public class ReportService {
     private Map<Long, BigDecimal> costPriceCache = new HashMap<>();
 
     public ReportService(OrderRepository orderRepository,
+            PaymentRepository paymentRepository,
             ProductRepository productRepository,
             ProductCostRepository productCostRepository,
             InventoryStockRepository inventoryStockRepository,
             InventoryTransactionRepository inventoryTransactionRepository) {
         this.orderRepository = orderRepository;
+        this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.productCostRepository = productCostRepository;
         this.inventoryStockRepository = inventoryStockRepository;
@@ -207,6 +213,136 @@ public class ReportService {
         LocalDate today = LocalDate.now();
         LocalDate startOfMonth = today.withDayOfMonth(1);
         return getRevenueReport(startOfMonth, today, "monthly");
+    }
+
+    /**
+     * Báo cáo theo ngày (thu/chi, hàng bán, hàng trả, công nợ, bàn giao)
+     */
+    public DailyReportDTO getDailyReport(LocalDate date) {
+        LocalDateTime startDateTime = date.atStartOfDay();
+        LocalDateTime endDateTime = date.atTime(LocalTime.MAX);
+
+        List<Order> orders = orderRepository.searchOrders(null, startDateTime, endDateTime);
+        List<Order> paidOrders = orders.stream()
+                .filter(o -> "PAID".equalsIgnoreCase(o.getStatus()))
+                .collect(Collectors.toList());
+
+        List<Order> paidSales = paidOrders.stream()
+                .filter(o -> !Boolean.TRUE.equals(o.getReturnOrder()))
+                .collect(Collectors.toList());
+
+        List<Order> paidReturns = paidOrders.stream()
+                .filter(o -> Boolean.TRUE.equals(o.getReturnOrder()))
+                .collect(Collectors.toList());
+
+        BigDecimal salesRevenue = sumOrderAmount(paidSales);
+        BigDecimal returnAmount = sumOrderAmount(paidReturns);
+
+        long salesQuantity = sumOrderQuantity(paidSales);
+        long returnQuantity = sumOrderQuantity(paidReturns);
+
+        BigDecimal debtIncrease = orders.stream()
+                .filter(o -> "UNPAID".equalsIgnoreCase(o.getStatus()))
+                .filter(o -> !Boolean.TRUE.equals(o.getReturnOrder()))
+                .map(o -> safeAmount(o.getTotalAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal debtDecrease = BigDecimal.ZERO;
+
+        Map<String, BigDecimal> incomeByMethod = new HashMap<>();
+        Map<String, BigDecimal> expenseByMethod = new HashMap<>();
+
+        List<Payment> payments = paymentRepository.findByPaidAtBetween(startDateTime, endDateTime);
+        for (Payment payment : payments) {
+            if (payment == null || payment.getAmount() == null) {
+                continue;
+            }
+            String method = normalizePaymentMethod(payment.getMethod());
+            incomeByMethod.merge(method, payment.getAmount(), BigDecimal::add);
+        }
+
+        for (Order order : paidReturns) {
+            BigDecimal amount = safeAmount(order.getTotalAmount());
+            String refundMethod = normalizePaymentMethod(order.getRefundMethod());
+            expenseByMethod.merge(refundMethod, amount, BigDecimal::add);
+        }
+
+        DailyReportDTO report = new DailyReportDTO();
+        report.setDate(date.format(DateTimeFormatter.ISO_DATE));
+        report.setStartTime(date.atStartOfDay().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+        report.setEndTime(date.atTime(23, 59).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
+
+        DailyReportDTO.Breakdown income = new DailyReportDTO.Breakdown();
+        income.setCash(getAmount(incomeByMethod, "CASH"));
+        income.setCard(getAmount(incomeByMethod, "CARD"));
+        income.setTransfer(getAmount(incomeByMethod, "TRANSFER"));
+        income.setVoucher(getAmount(incomeByMethod, "VOUCHER"));
+        income.setOther(getAmount(incomeByMethod, "OTHER"));
+        income.setTotal(income.getCash()
+                .add(income.getCard())
+                .add(income.getTransfer())
+                .add(income.getVoucher())
+                .add(income.getOther()));
+
+        DailyReportDTO.Breakdown expense = new DailyReportDTO.Breakdown();
+        expense.setCash(getAmount(expenseByMethod, "CASH"));
+        expense.setCard(getAmount(expenseByMethod, "CARD"));
+        expense.setTransfer(getAmount(expenseByMethod, "TRANSFER"));
+        expense.setVoucher(getAmount(expenseByMethod, "VOUCHER"));
+        expense.setOther(getAmount(expenseByMethod, "OTHER"));
+        expense.setTotal(expense.getCash()
+                .add(expense.getCard())
+                .add(expense.getTransfer())
+                .add(expense.getVoucher())
+                .add(expense.getOther()));
+
+        DailyReportDTO.DebtSummary debt = new DailyReportDTO.DebtSummary();
+        debt.setIncrease(debtIncrease);
+        debt.setDecrease(debtDecrease);
+        debt.setTotal(debtIncrease.subtract(debtDecrease));
+
+        DailyReportDTO.Summary summary = new DailyReportDTO.Summary();
+        summary.setIncome(income);
+        summary.setExpense(expense);
+        summary.setDebt(debt);
+        summary.setNetTotal(income.getTotal().subtract(expense.getTotal()));
+        report.setSummary(summary);
+
+        DailyReportDTO.SalesSummary sales = new DailyReportDTO.SalesSummary();
+        sales.setQuantity(salesQuantity);
+        sales.setValue(salesRevenue);
+        report.setSales(sales);
+
+        DailyReportDTO.SalesSummary returns = new DailyReportDTO.SalesSummary();
+        returns.setQuantity(returnQuantity);
+        returns.setValue(returnAmount);
+        report.setReturns(returns);
+
+        DailyReportDTO.OtherSummary other = new DailyReportDTO.OtherSummary();
+        other.setTotalInvoices(paidOrders.size());
+        other.setSalesInvoices(paidSales.size());
+        other.setReturnInvoices(paidReturns.size());
+        other.setExchangeInvoices(paidReturns.stream()
+                .filter(o -> isExchangeOrder(o.getOrderType()))
+                .count());
+        other.setVoucherCount(payments.stream()
+                .filter(p -> "VOUCHER".equals(normalizePaymentMethod(p.getMethod())))
+                .count());
+        other.setDiscountCount(0);
+        other.setCardPaymentCount(payments.stream()
+                .filter(p -> "CARD".equals(normalizePaymentMethod(p.getMethod())))
+                .count());
+        report.setOther(other);
+
+        DailyReportDTO.CashSummary cash = new DailyReportDTO.CashSummary();
+        cash.setOpeningCash(BigDecimal.ZERO);
+        cash.setCashCollected(income.getCash());
+        cash.setCashRefunded(expense.getCash());
+        cash.setCashNet(income.getCash().subtract(expense.getCash()));
+        cash.setExpectedHandover(cash.getOpeningCash().add(cash.getCashNet()));
+        report.setCash(cash);
+
+        return report;
     }
 
     /**
@@ -449,5 +585,62 @@ public class ReportService {
         ProductSalesData(Product product) {
             this.product = product;
         }
+    }
+
+    private BigDecimal safeAmount(BigDecimal amount) {
+        return amount != null ? amount : BigDecimal.ZERO;
+    }
+
+    private BigDecimal sumOrderAmount(List<Order> orders) {
+        return orders.stream()
+                .map(order -> safeAmount(order.getTotalAmount()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private long sumOrderQuantity(List<Order> orders) {
+        long total = 0;
+        for (Order order : orders) {
+            if (order.getItems() == null) {
+                continue;
+            }
+            for (OrderItem item : order.getItems()) {
+                if (item.getQuantity() != null) {
+                    total += item.getQuantity();
+                }
+            }
+        }
+        return total;
+    }
+
+    private BigDecimal getAmount(Map<String, BigDecimal> map, String key) {
+        return map.getOrDefault(key, BigDecimal.ZERO);
+    }
+
+    private String normalizePaymentMethod(String method) {
+        if (method == null) {
+            return "CASH";
+        }
+        String upper = method.trim().toUpperCase(Locale.ROOT);
+        if (upper.contains("CASH") || upper.contains("TIEN MAT")) {
+            return "CASH";
+        }
+        if (upper.contains("CARD") || upper.contains("POS") || upper.contains("THE")) {
+            return "CARD";
+        }
+        if (upper.contains("TRANSFER") || upper.contains("BANK") || upper.contains("CHUYEN KHOAN")) {
+            return "TRANSFER";
+        }
+        if (upper.contains("VOUCHER") || upper.contains("COUPON")) {
+            return "VOUCHER";
+        }
+        return "OTHER";
+    }
+
+    private boolean isExchangeOrder(String orderType) {
+        if (orderType == null) {
+            return false;
+        }
+        String upper = orderType.trim().toUpperCase(Locale.ROOT);
+        return upper.contains("EXCHANGE") || upper.contains("DOI");
     }
 }

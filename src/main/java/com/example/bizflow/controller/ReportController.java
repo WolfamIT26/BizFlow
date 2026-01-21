@@ -1,5 +1,6 @@
 package com.example.bizflow.controller;
 
+import com.example.bizflow.dto.DailyReportDTO;
 import com.example.bizflow.dto.LowStockAlertDTO;
 import com.example.bizflow.dto.RevenueReportDTO;
 import com.example.bizflow.dto.TopProductDTO;
@@ -70,6 +71,16 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getRevenueComparison() {
         return ResponseEntity.ok(reportService.getRevenueComparison());
+    }
+
+    // ==================== BÁO CÁO THEO NGÀY ====================
+    @GetMapping("/daily")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN', 'MANAGER', 'EMPLOYEE')")
+    public ResponseEntity<DailyReportDTO> getDailyReport(
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        LocalDate targetDate = date != null ? date : LocalDate.now();
+        return ResponseEntity.ok(reportService.getDailyReport(targetDate));
     }
 
     // ==================== TOP SẢN PHẨM BÁN CHẠY ====================

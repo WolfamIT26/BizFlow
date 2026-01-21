@@ -24,9 +24,11 @@ import com.example.bizflow.repository.PaymentRepository;
 import com.example.bizflow.repository.ProductRepository;
 import com.example.bizflow.repository.PromotionRepository;
 import com.example.bizflow.repository.UserRepository;
+import com.example.bizflow.dto.OrderMessage;
 import com.example.bizflow.service.OrderService;
 import com.example.bizflow.service.InventoryService;
 import com.example.bizflow.service.PointService;
+import com.example.bizflow.service.OrderMessageProducer;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,6 +63,7 @@ public class OrderController {
     private final OrderService orderService;
     private final PointService pointService;
     private final InventoryService inventoryService;
+    private final OrderMessageProducer orderMessageProducer;
 
     public OrderController(
             OrderRepository orderRepository,
@@ -72,7 +75,8 @@ public class OrderController {
             UserRepository userRepository,
             OrderService orderService,
             PointService pointService,
-            InventoryService inventoryService
+            InventoryService inventoryService,
+            OrderMessageProducer orderMessageProducer
     ) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
@@ -84,6 +88,7 @@ public class OrderController {
         this.orderService = orderService;
         this.pointService = pointService;
         this.inventoryService = inventoryService;
+        this.orderMessageProducer = orderMessageProducer;
     }
 
     @PostMapping("/{id}/pay")
@@ -237,6 +242,34 @@ public class OrderController {
                         "ORDER_" + savedOrder.getId()
                 );
             }
+        }
+
+        // ==================== GỬI MESSAGE QUA RABBITMQ ====================
+        try {
+            OrderMessage orderMessage = new OrderMessage(
+                savedOrder.getId(),
+                savedOrder.getInvoiceNumber(),
+                customer != null ? customer.getId() : null,
+                customer != null ? customer.getName() : "Khách lẻ",
+                customer != null ? customer.getPhone() : "-",
+                total,
+                items.size(),
+                user != null ? user.getUsername() : "system",
+                LocalDateTime.now(),
+                items.stream()
+                    .map(item -> new OrderMessage.OrderItemMessage(
+                        item.getProduct().getId(),
+                        item.getProduct().getName(),
+                        item.getQuantity(),
+                        item.getPrice()
+                    ))
+                    .collect(Collectors.toList())
+            );
+            
+            orderMessageProducer.sendOrderCreatedMessage(orderMessage);
+        } catch (Exception e) {
+            // Log lỗi nhưng không fail order creation
+            System.err.println("Failed to send RabbitMQ message: " + e.getMessage());
         }
 
         return ResponseEntity.ok(

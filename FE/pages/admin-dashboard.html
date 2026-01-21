@@ -562,7 +562,6 @@
                         <div class="card-subtitle">Quản lý cấu hình quan trọng</div>
                         <div class="actions">
                             <button class="action-btn primary" type="button" onclick="document.getElementById('createUserCard').scrollIntoView({behavior: 'smooth'})">Tạo tài khoản</button>
-                            <button class="action-btn" type="button" onclick="document.getElementById('createBranchCard').scrollIntoView({behavior: 'smooth'})">Tạo chi nhánh</button>
                             <button class="action-btn">Xem báo cáo</button>
                         </div>
                     </div>
@@ -645,12 +644,6 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="adminBranch">Chi nhánh</label>
-                                <select id="adminBranch" name="branchId">
-                                    <option value="">Đang tải chi nhánh...</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
                                 <label for="adminPassword">Mật khẩu tạm</label>
                                 <div class="password-input-wrapper">
                                     <input id="adminPassword" name="password" type="password" placeholder="Tối thiểu 6 ký tự" required />
@@ -674,64 +667,6 @@
                     </form>
                 </section>
 
-                <section class="card" id="createBranchCard">
-                    <div class="card-title">Tạo chi nhánh mới</div>
-                    <div class="card-subtitle">Quản lý điểm bán và chủ chi nhánh</div>
-                    <form id="adminCreateBranchForm">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="branchName">Tên chi nhánh</label>
-                                <input id="branchName" name="name" type="text" placeholder="Chi nhánh Trung Tâm" required />
-                            </div>
-                            <div class="form-group">
-                                <label for="branchAddress">Địa chỉ</label>
-                                <input id="branchAddress" name="address" type="text" placeholder="Số 123, Quận 1" />
-                            </div>
-                            <div class="form-group">
-                                <label for="branchPhone">Số điện thoại</label>
-                                <input id="branchPhone" name="phone" type="tel" placeholder="0909876543" />
-                            </div>
-                            <div class="form-group">
-                                <label for="branchEmail">Email</label>
-                                <input id="branchEmail" name="email" type="email" placeholder="chinhanh@bizflow.vn" />
-                            </div>
-                            <div class="form-group">
-                                <label for="branchOwner">Owner phụ trách</label>
-                                <select id="branchOwner" name="ownerId">
-                                    <option value="">Chưa gán owner</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="branchActive">Trạng thái</label>
-                                <select id="branchActive" name="isActive">
-                                    <option value="true">Đang hoạt động</option>
-                                    <option value="false">Tạm ngưng</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-actions">
-                            <button class="action-btn primary" type="submit">Tạo chi nhánh</button>
-                            <span id="adminBranchStatus" class="status-message"></span>
-                        </div>
-                    </form>
-                </section>
-
-                <section class="card">
-                    <div class="card-title">Phiên đăng nhập</div>
-                    <div class="card-subtitle">Thông tin xác thực dùng cho kiểm thử</div>
-                    <div class="status-row">
-                        <span>User ID</span>
-                        <strong id="userId">-</strong>
-                    </div>
-                    <div class="status-row">
-                        <span>Username</span>
-                        <strong id="username">-</strong>
-                    </div>
-                    <div class="status-row">
-                        <span>Access Token</span>
-                        <strong id="tokenInfo">-</strong>
-                    </div>
-                </section>
             </main>
         </div>
     </div>
@@ -741,22 +676,16 @@
             adminSummary: '/api/dashboard/admin-summary',
             recentUsers: '/api/dashboard/recent-users',
             branches: '/api/dashboard/branches',
-            createUser: '/api/users',
-            createBranch: '/api/branches',
-            owners: '/api/users'
+            createUser: '/api/users'
         };
 
         window.addEventListener('load', () => {
             enforceAuth();
             renderHeader();
-            fillSessionInfo();
             loadAdminSummary();
             loadRecentUsers();
             loadBranches();
-            loadBranchOptions();
-            loadOwnerOptions();
             wireCreateUserForm();
-            wireCreateBranchForm();
             wirePasswordToggle('adminPassword', 'toggleAdminPassword');
         });
 
@@ -863,53 +792,6 @@
             }
         }
 
-        async function loadBranchOptions() {
-            const branchSelect = document.getElementById('adminBranch');
-            try {
-                const response = await fetch(apiEndpoints.branches);
-                if (!response.ok) {
-                    throw new Error('Không thể tải chi nhánh');
-                }
-                const branches = await response.json();
-                branchSelect.innerHTML = '<option value="">-- Chọn chi nhánh --</option>';
-                branches.forEach(branch => {
-                    const option = document.createElement('option');
-                    option.value = branch.id;
-                    option.textContent = branch.name || `Chi nhánh #${branch.id}`;
-                    branchSelect.appendChild(option);
-                });
-                if (!branches.length) {
-                    branchSelect.innerHTML = '<option value="">Chưa có chi nhánh</option>';
-                }
-            } catch (error) {
-                branchSelect.innerHTML = '<option value="">Không tải được chi nhánh</option>';
-            }
-        }
-
-        async function loadOwnerOptions() {
-            const ownerSelect = document.getElementById('branchOwner');
-            try {
-                const response = await fetch(apiEndpoints.owners);
-                if (!response.ok) {
-                    throw new Error('Không thể tải danh sách user');
-                }
-                const users = await response.json();
-                const owners = users.filter(user => user.role === 'OWNER');
-                ownerSelect.innerHTML = '<option value="">Chưa gán owner</option>';
-                owners.forEach(user => {
-                    const option = document.createElement('option');
-                    option.value = user.id;
-                    option.textContent = user.fullName ? `${user.fullName} (${user.username})` : user.username;
-                    ownerSelect.appendChild(option);
-                });
-                if (!owners.length) {
-                    ownerSelect.innerHTML = '<option value="">Chưa có owner</option>';
-                }
-            } catch (error) {
-                ownerSelect.innerHTML = '<option value="">Không tải được owner</option>';
-            }
-        }
-
         function wireCreateUserForm() {
             const form = document.getElementById('adminCreateUserForm');
             const status = document.getElementById('adminUserStatus');
@@ -924,8 +806,7 @@
                     email: (data.email || '').trim(),
                     fullName: (data.fullName || '').trim(),
                     phoneNumber: (data.phoneNumber || '').trim() || null,
-                    role: data.role,
-                    branchId: data.branchId ? Number(data.branchId) : null
+                    role: data.role
                 };
 
                 try {
@@ -949,55 +830,6 @@
                     status.classList.add('status-error');
                 }
             });
-        }
-
-        function wireCreateBranchForm() {
-            const form = document.getElementById('adminCreateBranchForm');
-            const status = document.getElementById('adminBranchStatus');
-            form.addEventListener('submit', async event => {
-                event.preventDefault();
-                status.textContent = '';
-                status.className = 'status-message';
-                const data = Object.fromEntries(new FormData(form).entries());
-                const payload = {
-                    name: (data.name || '').trim(),
-                    address: (data.address || '').trim() || null,
-                    phone: (data.phone || '').trim() || null,
-                    email: (data.email || '').trim() || null,
-                    ownerId: data.ownerId ? Number(data.ownerId) : null,
-                    isActive: data.isActive === 'true'
-                };
-
-                try {
-                    const response = await fetch(apiEndpoints.createBranch, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (!response.ok) {
-                        const message = await response.text();
-                        throw new Error(message || 'Không thể tạo chi nhánh');
-                    }
-                    status.textContent = 'Tạo chi nhánh thành công.';
-                    status.classList.add('status-success');
-                    form.reset();
-                    await loadBranches();
-                    await loadBranchOptions();
-                    await loadAdminSummary();
-                } catch (error) {
-                    status.textContent = error.message || 'Có lỗi xảy ra.';
-                    status.classList.add('status-error');
-                }
-            });
-        }
-
-        function fillSessionInfo() {
-            const userId = sessionStorage.getItem('userId');
-            const username = sessionStorage.getItem('username') || 'Admin';
-            const token = sessionStorage.getItem('accessToken');
-            document.getElementById('userId').textContent = userId || '-';
-            document.getElementById('username').textContent = username;
-            document.getElementById('tokenInfo').textContent = token || '-';
         }
 
         function logout() {

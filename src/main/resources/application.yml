@@ -4,15 +4,15 @@ spring:
 
   # ================= DATABASE =================
   datasource:
-    url: jdbc:mysql://localhost:3306/bizflow_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:mysql}:3306/bizflow_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
     username: root
-    password:
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # ================= JPA =================
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -21,14 +21,22 @@ spring:
 
   # ================= REDIS CACHE =================
   cache:
-    type: redis
+    type: none  # Disable cache tạm thời
 
   # ✅ REDIS (NEW – SPRING BOOT 3.x)
   data:
     redis:
-      host: localhost
-      port: 6380
+      host: ${REDIS_HOST:redis}
+      port: 6379
       timeout: 6000
+
+  # ================= RABBITMQ =================
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    
   # ================= CORS =================
   mvc:
     cors:

@@ -69,91 +69,62 @@
     </div>
 
     <section class="pos-toolbar">
-        <div class="toolbar-search">
-            <button class="dropdown-btn">Tìm kiếm</button>
-            <input id="searchInput" type="text" placeholder="(F3) Nhập tên hàng hóa, mã vạch, mã SKU">
-            <div class="toolbar-search-results" id="toolbarSearchResults" aria-hidden="true">
-                <div class="toolbar-search-row header">
-                    <span>#</span>
-                    <span>Mã SP</span>
-                    <span>SKU</span>
-                    <span>Tên sản phẩm</span>
-                    <span>SL</span>
-                    <span>ĐVT</span>
-                    <span>Đơn giá</span>
-                    <span>Thành tiền</span>
+        <div class="toolbar-group toolbar-group--main">
+            <div class="toolbar-search">
+                <button class="dropdown-btn">Tìm kiếm</button>
+                <input id="searchInput" type="text" placeholder="(F3) Nhập tên hàng hóa, mã vạch, mã SKU">
+                <div class="toolbar-qty toolbar-qty--inline">
+                    <span class="barcode" aria-hidden="true">|||</span>
+                    <label for="qtyInput">SL</label>
+                    <input id="qtyInput" type="number" min="1" value="1">
                 </div>
-                <div class="toolbar-search-list" id="toolbarSearchList"></div>
-                <div class="toolbar-search-empty" id="toolbarSearchEmpty">Không có sản phẩm</div>
+                <div class="toolbar-search-results" id="toolbarSearchResults" aria-hidden="true">
+                    <div class="toolbar-search-row header">
+                        <span>#</span>
+                        <span>Mã SP</span>
+                        <span>SKU</span>
+                        <span>Tên sản phẩm</span>
+                        <span>SL</span>
+                        <span>ĐVT</span>
+                        <span>Đơn giá</span>
+                        <span>Thành tiền</span>
+                    </div>
+                    <div class="toolbar-search-list" id="toolbarSearchList"></div>
+                    <div class="toolbar-search-empty" id="toolbarSearchEmpty">Không có sản phẩm</div>
+                </div>
             </div>
+            <div class="toolbar-toggle">
+                <label class="switch">
+                    <input type="checkbox" id="splitLine">
+                    <span class="slider"></span>
+                </label>
+                <span>Tách dòng</span>
+            </div>
+            <button class="toolbar-chip" id="employeeSelector">
+                <span class="chip-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                        <circle cx="12" cy="8" r="3" />
+                        <path d="M5 20a7 7 0 0 1 14 0" />
+                    </svg>
+                </span>
+                <span id="selectedEmployeeName">Đang tải...</span>
+                <span class="chip-caret">&#9662;</span>
+            </button>
+            <div class="employee-dropdown" id="employeeList" style="display: none;">
+                <div class="employee-empty">Đang tải...</div>
+            </div>
+            <button class="toolbar-chip" type="button" onclick="window.location.href='/pages/promotions.html'">
+                <span class="chip-icon">
+                    <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+                        <path d="M4 7h16v10H4z" />
+                        <path d="M7 7V5h10v2" />
+                        <path d="M9 11h6" />
+                    </svg>
+                </span>
+                <span>Khuyến mãi</span>
+                <span class="chip-caret">&#9662;</span>
+            </button>
         </div>
-        <div class="toolbar-qty">
-            <span class="barcode" aria-hidden="true">|||</span>
-            <label for="qtyInput">SL</label>
-            <input id="qtyInput" type="number" min="1" value="1">
-        </div>
-        <div class="toolbar-toggle">
-            <label class="switch">
-                <input type="checkbox" id="splitLine">
-                <span class="slider"></span>
-            </label>
-            <span>Tách dòng</span>
-        </div>
-        <button class="toolbar-chip" id="employeeSelector">
-            <span class="chip-icon">
-                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
-                    <circle cx="12" cy="8" r="3" />
-                    <path d="M5 20a7 7 0 0 1 14 0" />
-                </svg>
-            </span>
-            <span id="selectedEmployeeName">Đang tải...</span>
-            <span class="chip-caret">&#9662;</span>
-        </button>
-        <div class="employee-dropdown" id="employeeList" style="display: none;">
-            <div class="employee-empty">Đang tải...</div>
-        </div>
-                <button class="toolbar-chip" type="button" onclick="window.location.href='/pages/promotions.html'">
-            <span class="chip-icon">
-                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
-                    <path d="M4 7h16v10H4z" />
-                    <path d="M7 7V5h10v2" />
-                    <path d="M9 11h6" />
-                </svg>
-            </span>
-            <span>Khuyến mãi</span>
-            <span class="chip-caret">&#9662;</span>
-        </button>
-        <button class="toolbar-chip" type="button" id="inventoryBtn">
-            <span class="chip-icon">
-                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
-                    <path d="M4 7h16v10H4z" />
-                    <path d="M7 11h10" />
-                    <path d="M7 15h6" />
-                </svg>
-            </span>
-            <span>Tồn kho</span>
-            <span class="chip-caret">&#9662;</span>
-        </button>
-        <button class="toolbar-chip">
-            <span class="chip-icon">
-                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
-                    <path d="M4 12l8-8 8 8-8 8-8-8Z" />
-                    <path d="M9 12h6" />
-                </svg>
-            </span>
-            <span>(Alt + B) Chọn bảng giá   </span>
-            <span class="chip-caret">&#9662;</span>
-        </button>
-        <button class="toolbar-chip toolbar-store">
-            <span class="chip-icon">
-                <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
-                    <path d="M4 10h16l-2-5H6l-2 5Z" />
-                    <path d="M6 10v9h12v-9" />
-                </svg>
-            </span>
-            <span>Tại cửa hàng     </span>
-            <span class="chip-caret">&#9662;</span>
-        </button>
     </section>
 
     <section class="pos-layout">
@@ -743,21 +714,9 @@
                     <span class="app-icon app-indigo">QL</span>
                     <span>Trang quản lý</span>
                 </button>
-                <button class="app-tile" data-app="display">
-                    <span class="app-icon app-blue">TH</span>
-                    <span>Thiết lập hiển thị</span>
-                </button>
-                <button class="app-tile" data-app="einvoice">
-                    <span class="app-icon app-pink">MT</span>
-                    <span>HĐĐT từ MTT</span>
-                </button>
                 <button class="app-tile" data-app="guide">
                     <span class="app-icon app-purple">HD</span>
                     <span>Hướng dẫn</span>
-                </button>
-                <button class="app-tile" data-app="feedback">
-                    <span class="app-icon app-cyan">GY</span>
-                    <span>Góp ý cải tiến</span>
                 </button>
                 <button class="app-tile" data-app="intro">
                     <span class="app-icon app-orange">GT</span>

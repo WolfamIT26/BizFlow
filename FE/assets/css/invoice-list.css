@@ -322,6 +322,12 @@
     overflow-y: auto;
 }
 
+.invoice-detail-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 12px;
+}
+
 .detail-row {
     display: grid;
     grid-template-columns: 2.2fr 0.9fr 0.6fr 0.9fr 0.9fr 0.7fr;

@@ -309,14 +309,8 @@ function resolveAppRoute(target) {
             return '/pages/access-log.html';
         case 'management':
             return '/pages/management.html';
-        case 'display':
-            return '/pages/display-settings.html';
-        case 'einvoice':
-            return '/pages/einvoice-mtt.html';
         case 'guide':
             return '/pages/guide.html';
-        case 'feedback':
-            return '/pages/feedback.html';
         case 'intro':
             return '/pages/introduction.html';
         default:
@@ -611,6 +605,14 @@ function addToCart(productId, productName, productPrice) {
 
     renderCart();
     updateTotal();
+
+    const qtyInput = document.getElementById('qtyInput');
+    if (qtyInput) {
+        qtyInput.value = '1';
+        if (isToolbarSearchOpen()) {
+            renderToolbarSearchResults(document.getElementById('searchInput').value);
+        }
+    }
 }
 
 function clearCart(resetCustomer = true) {
@@ -3461,7 +3463,5 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
     const row = evt?.target?.closest('.employee-item');
     if (row) row.classList.add('active');
 }
-
-
 
 

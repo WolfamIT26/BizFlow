@@ -9,10 +9,7 @@
         { key: 'daily-report', label: 'Bao cao theo ngay', icon: 'BC', color: 'app-teal', href: '/pages/daily-report.html' },
         { key: 'access-log', label: 'Nhat ky truy cap', icon: 'NK', color: 'app-gray', href: '/pages/access-log.html' },
         { key: 'management', label: 'Trang quan ly', icon: 'QL', color: 'app-indigo', href: '/pages/management.html' },
-        { key: 'display', label: 'Thiet lap hien thi', icon: 'TH', color: 'app-blue', href: '/pages/display-settings.html' },
-        { key: 'einvoice', label: 'HDDT tu MTT', icon: 'MT', color: 'app-pink', href: '/pages/einvoice-mtt.html' },
         { key: 'guide', label: 'Huong dan', icon: 'HD', color: 'app-purple', href: '/pages/guide.html' },
-        { key: 'feedback', label: 'Gop y cai tien', icon: 'GY', color: 'app-cyan', href: '/pages/feedback.html' },
         { key: 'intro', label: 'Gioi thieu', icon: 'GT', color: 'app-orange', href: '/pages/introduction.html' }
     ];
 
@@ -171,6 +168,5 @@
         });
     });
 })();
-
 
 

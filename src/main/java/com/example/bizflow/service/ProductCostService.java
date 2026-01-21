@@ -78,6 +78,7 @@ public class ProductCostService {
         productCost = productCostRepository.save(productCost);
 
         // 2. Cập nhật giá vốn trong bảng products (để đồng bộ)
+        @SuppressWarnings("null")
         Optional<Product> optProduct = productRepository.findById(productId);
         if (optProduct.isPresent()) {
             Product product = optProduct.get();
@@ -118,7 +119,9 @@ public class ProductCostService {
         inventoryStockRepository.save(stock);
 
         // Cập nhật stock trong bảng products (đồng bộ)
-        productRepository.findById(productId).ifPresent(product -> {
+        @SuppressWarnings("null")
+        Optional<Product> optProduct = productRepository.findById(productId);
+        optProduct.ifPresent(product -> {
             int productOldStock = product.getStock() != null ? product.getStock() : 0;
             product.setStock(productOldStock + quantityIn);
             productRepository.save(product);

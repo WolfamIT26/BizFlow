@@ -1,6 +1,7 @@
 const API_BASE = resolveApiBase();
 let invoices = [];
 let promotionIndex = null;
+let currentInvoiceDetail = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -266,21 +267,9 @@ function ensureAppMenuModal() {
                     <span class="app-icon app-indigo">QL</span>
                     <span>Trang quản lý</span>
                 </button>
-                <button class="app-tile" data-app="display">
-                    <span class="app-icon app-blue">TH</span>
-                    <span>Thiết lập hiển thị</span>
-                </button>
-                <button class="app-tile" data-app="einvoice">
-                    <span class="app-icon app-pink">MT</span>
-                    <span>HĐĐT từ MTT</span>
-                </button>
                 <button class="app-tile" data-app="guide">
                     <span class="app-icon app-purple">HD</span>
                     <span>Hướng dẫn</span>
-                </button>
-                <button class="app-tile" data-app="feedback">
-                    <span class="app-icon app-cyan">GY</span>
-                    <span>Góp ý cải tiến</span>
                 </button>
                 <button class="app-tile" data-app="intro">
                     <span class="app-icon app-orange">GT</span>
@@ -320,14 +309,8 @@ function resolveAppRoute(target) {
             return '/pages/access-log.html';
         case 'management':
             return '/pages/management.html';
-        case 'display':
-            return '/pages/display-settings.html';
-        case 'einvoice':
-            return '/pages/einvoice-mtt.html';
         case 'guide':
             return '/pages/guide.html';
-        case 'feedback':
-            return '/pages/feedback.html';
         case 'intro':
             return '/pages/introduction.html';
         default:
@@ -674,6 +657,12 @@ function setupInvoiceDetailModal() {
             close();
         }
     });
+
+    document.getElementById('printInvoiceDetailBtn')?.addEventListener('click', () => {
+        if (currentInvoiceDetail) {
+            printInvoiceDetail(currentInvoiceDetail);
+        }
+    });
 }
 
 async function openInvoiceDetail(orderId) {
@@ -709,6 +698,7 @@ async function openInvoiceDetail(orderId) {
 
 function renderInvoiceDetail(data, promoMap) {
     if (!data) return;
+    currentInvoiceDetail = data;
     setText('detailInvoiceNumber', data.invoiceNumber || '-');
     setText('detailEmployee', data.salesName || data.userName || '-');
     setText('detailCashier', data.cashierName || data.userName || '-');
@@ -753,6 +743,137 @@ function renderInvoiceDetail(data, promoMap) {
             </div>
         `;
     }).join('');
+}
+
+function printInvoiceDetail(data) {
+    const printSize = localStorage.getItem('bizflow_print_size') || 'K80';
+    let pageWidth = '80mm';
+    let pageHeight = '200mm';
+    if (printSize === 'K58') {
+        pageWidth = '58mm';
+        pageHeight = '160mm';
+    } else if (printSize === 'A6') {
+        pageWidth = '100mm';
+        pageHeight = '150mm';
+    }
+
+    const items = Array.isArray(data.items) ? data.items : [];
+    const itemRows = items.map((item) => {
+        const quantity = Number(item.quantity) || 0;
+        const unitPrice = Number(item.price) || 0;
+        const baseTotal = Number(item.lineTotal) || unitPrice * quantity;
+        const discountPercent = Number(item.discountPercent) || 0;
+        const discountAmount = Number(item.discountAmount) || 0;
+        const discountValue = discountPercent > 0
+            ? baseTotal * (discountPercent / 100)
+            : discountAmount;
+        const lineTotal = Math.max(0, baseTotal - discountValue);
+        return `
+            <div class="receipt-item">
+                <span>${escapeHtml(item.productName || '-')}</span>
+                <span>${quantity}</span>
+                <span>${formatPriceCompact(unitPrice)}</span>
+                <span>${formatPriceCompact(lineTotal)}</span>
+            </div>
+        `;
+    }).join('');
+
+    const invoiceCode = data.invoiceNumber || '-';
+    const invoiceDate = formatDate(data.createdAt);
+    const cashier = data.cashierName || data.userName || '-';
+    const customerName = data.customerName || 'Khách lẻ';
+    const customerPhone = data.customerPhone || '-';
+    const totalAmount = formatPriceCompact(Number(data.totalAmount) || 0);
+    const note = data.note ? escapeHtml(data.note) : '-';
+
+    const content = `
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>In hoa don</title>
+    <style>
+        @page { size: ${pageWidth} ${pageHeight}; margin: 0; }
+        html, body { width: ${pageWidth}; margin: 0; }
+        body { font-family: Arial, sans-serif; }
+        * { box-sizing: border-box; }
+        .print-sheet { width: ${pageWidth}; margin: 0; display: flex; justify-content: center; padding-top: 2mm; box-sizing: border-box; }
+        .invoice-receipt { width: 74mm; font-size: 10.5px; line-height: 1.15; color: #2f3644; display: grid; gap: 4px; }
+        .receipt-header { text-align: center; display: grid; gap: 1px; }
+        .receipt-brand { font-weight: 800; letter-spacing: 0.4px; }
+        .receipt-meta { font-size: 9px; color: #5b6274; display: grid; gap: 0; }
+        .receipt-section { display: grid; gap: 1px; }
+        .receipt-divider { border-top: 1px dashed #c9ceda; margin: 1px 0; }
+        .receipt-items { display: grid; gap: 2px; }
+        .receipt-item { display: grid; grid-template-columns: 1.4fr 0.5fr 0.8fr 1fr; gap: 3px; }
+        .receipt-item.header { font-weight: 700; font-size: 9.5px; color: #2f3644; }
+        .receipt-item span:nth-child(2),
+        .receipt-item span:nth-child(3),
+        .receipt-item span:nth-child(4) { text-align: right; }
+        .receipt-totals { display: grid; gap: 1px; }
+        .receipt-totals div { display: flex; justify-content: space-between; }
+        .receipt-note { font-size: 9px; color: #4b5366; display: grid; gap: 0; }
+    </style>
+</head>
+<body>
+<div class="print-sheet">
+    <div class="invoice-receipt">
+        <div class="receipt-header">
+            <div class="receipt-brand">BizFlow POS</div>
+            <div class="receipt-meta">
+                <div>Mã hóa đơn: <strong>${escapeHtml(invoiceCode)}</strong></div>
+                <div>Thời gian: <span>${escapeHtml(invoiceDate)}</span></div>
+            </div>
+        </div>
+        <div class="receipt-section">
+            <div>Thu ngân: <span>${escapeHtml(cashier)}</span></div>
+            <div>Khách hàng: <span>${escapeHtml(customerName)}</span></div>
+            <div>SĐT: <span>${escapeHtml(customerPhone)}</span></div>
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-items">
+            <div class="receipt-item header">
+                <span>SP</span>
+                <span>SL</span>
+                <span>Đơn giá</span>
+                <span>Thành tiền</span>
+            </div>
+            ${itemRows}
+        </div>
+        <div class="receipt-divider"></div>
+        <div class="receipt-totals">
+            <div><span>Tổng cộng</span><span>${totalAmount}đ</span></div>
+        </div>
+        <div class="receipt-note">
+            <span>Ghi chú:</span>
+            <span>${note}</span>
+        </div>
+    </div>
+</div>
+<script>
+    window.onload = () => {
+        window.focus();
+        window.print();
+        setTimeout(() => window.close(), 200);
+    };
+</script>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank', 'width=480,height=700');
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+}
+
+function formatPriceCompact(price) {
+    return new Intl.NumberFormat('vi-VN', {
+        minimumFractionDigits: 0
+    }).format(price);
 }
 
 async function loadPromotionIndex() {
