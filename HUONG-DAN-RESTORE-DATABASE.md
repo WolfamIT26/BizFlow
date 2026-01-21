@@ -13,6 +13,13 @@ docker-compose up -d
 ```
 
 ### 3. Chờ MySQL khởi động (10-15 giây)
+
+**Windows (Command Prompt hoặc PowerShell):**
+```cmd
+timeout /t 15
+```
+
+**macOS/Linux:**
 ```bash
 sleep 15
 ```
@@ -20,11 +27,25 @@ sleep 15
 ### 4. Restore database
 
 #### Cách 1: Dùng script tự động (Khuyến nghị)
+
+**Windows (chạy file .bat):**
+```cmd
+scripts\restore-latest-backup.bat
+```
+
+**macOS/Linux (chạy file .sh):**
 ```bash
 ./scripts/restore-latest-backup.sh
 ```
 
-#### Cách 2: Restore thủ công
+#### Cách 2: Restore thủ công (tất cả hệ điều hành)
+
+**Windows:**
+```cmd
+docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db\init\database-full.sql
+```
+
+**macOS/Linux:**
 ```bash
 docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db/init/database-full.sql
 ```
@@ -54,6 +75,23 @@ sleep 15
 ```
 
 ### Nếu muốn xóa database cũ và restore lại từ đầu
+
+**Windows:**
+```cmd
+REM Xóa containers và volumes
+docker-compose down -v
+
+REM Start lại
+docker-compose up -d
+
+REM Chờ MySQL khởi động
+timeout /t 15
+
+REM Restore database
+scripts\restore-latest-backup.bat
+```
+
+**macOS/Linux:**
 ```bash
 # Xóa containers và volumes
 docker-compose down -v
