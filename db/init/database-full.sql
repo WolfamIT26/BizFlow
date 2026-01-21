@@ -17,6 +17,14 @@ mysqldump: [Warning] Using a password on the command line interface can be insec
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
+-- Current Database: `bizflow_db`
+--
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/ `bizflow_db` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+USE `bizflow_db`;
+
+--
 -- Table structure for table `branches`
 --
 
@@ -628,4 +636,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-01-21 16:52:46
+-- Dump completed on 2026-01-21 17:38:11
