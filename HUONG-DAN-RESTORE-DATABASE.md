@@ -14,7 +14,7 @@ docker-compose up -d
 
 ### 3. Chờ MySQL khởi động (10-15 giây)
 
-**Windows (Command Prompt hoặc PowerShell):**
+**Windows:**
 ```cmd
 timeout /t 15
 ```
@@ -24,9 +24,7 @@ timeout /t 15
 sleep 15
 ```
 
-### 4. Restore database
-
-#### Cách 1: CHẠY LỆNH TRỰC TIẾP (Đơn giản nhất - Khuyến nghị)
+### 4. Restore database bằng lệnh Docker
 
 **Windows (CMD hoặc PowerShell):**
 ```cmd
@@ -37,34 +35,6 @@ docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db\init\databas
 ```bash
 docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db/init/database-full.sql
 ```
-
-#### Cách 2: Dùng script tự động
-
-**Windows (nếu muốn dùng file .bat):**
-```cmd
-scripts\restore-database-simple.bat
-```
-hoặc
-```cmd
-scripts\restore-latest-backup.bat
-```
-
-**macOS/Linux (nếu muốn dùng file .sh):**
-```bash
-./scripts/restore-latest-backup.sh
-```
-
-#### Cách 3: Dùng Docker Desktop (có giao diện)
-
-1. Mở **Docker Desktop**
-2. Vào tab **Containers** → Tìm container `bizflow-mysql`
-3. Click nút **CLI** (hoặc Exec) để mở terminal trong container
-4. Chạy lệnh:
-```bash
-mysql -u root -p123456 bizflow_db < /docker-entrypoint-initdb.d/database-full.sql
-```
-
-> **Lưu ý**: File backup phải được mount vào container. Nếu không thấy file, dùng Cách 1 bên ngoài container.
 
 ### 5. Kiểm tra database đã có dữ liệu
 ```bash
@@ -92,22 +62,6 @@ sleep 15
 
 ### Nếu muốn xóa database cũ và restore lại từ đầu
 
-**Windows:**
-```cmd
-REM Xóa containers và volumes
-docker-compose down -v
-
-REM Start lại
-docker-compose up -d
-
-REM Chờ MySQL khởi động
-timeout /t 15
-
-REM Restore database
-scripts\restore-latest-backup.bat
-```
-
-**macOS/Linux:**
 ```bash
 # Xóa containers và volumes
 docker-compose down -v
@@ -115,11 +69,11 @@ docker-compose down -v
 # Start lại
 docker-compose up -d
 
-# Chờ MySQL khởi động
+# Chờ MySQL khởi động (Windows dùng: timeout /t 15)
 sleep 15
 
-# Restore database
-./scripts/restore-latest-backup.sh
+# Restore database (Windows dùng db\init\database-full.sql)
+docker-compose exec -T mysql mysql -u root -p123456 bizflow_db < db/init/database-full.sql
 ```
 
 ---
