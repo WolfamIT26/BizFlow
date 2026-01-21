@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 public class InventoryTransaction {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "transaction_id")
@@ -64,5 +65,103 @@ public class InventoryTransaction {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
+    }
+
+    // ===== GETTERS =====
+    public Long getId() {
+        return id;
+    }
+
+    public Long getProductId() {
+        return productId;
+    }
+
+    public Long getWarehouseId() {
+        return warehouseId;
+    }
+
+    public Long getShelfId() {
+        return shelfId;
+    }
+
+    public InventoryTransactionType getTransactionType() {
+        return transactionType;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public BigDecimal getUnitPrice() {
+        return unitPrice;
+    }
+
+    public String getReferenceType() {
+        return referenceType;
+    }
+
+    public Long getReferenceId() {
+        return referenceId;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    // ===== SETTERS =====
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public void setProductId(Long productId) {
+        this.productId = productId;
+    }
+
+    public void setWarehouseId(Long warehouseId) {
+        this.warehouseId = warehouseId;
+    }
+
+    public void setShelfId(Long shelfId) {
+        this.shelfId = shelfId;
+    }
+
+    public void setTransactionType(InventoryTransactionType transactionType) {
+        this.transactionType = transactionType;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public void setUnitPrice(BigDecimal unitPrice) {
+        this.unitPrice = unitPrice;
+    }
+
+    public void setReferenceType(String referenceType) {
+        this.referenceType = referenceType;
+    }
+
+    public void setReferenceId(Long referenceId) {
+        this.referenceId = referenceId;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -19,13 +19,14 @@ import java.util.List;
 
 @Service
 public class InventoryService {
+
     private final ProductRepository productRepository;
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final InventoryStockRepository inventoryStockRepository;
 
     public InventoryService(ProductRepository productRepository,
-                            InventoryTransactionRepository inventoryTransactionRepository,
-                            InventoryStockRepository inventoryStockRepository) {
+            InventoryTransactionRepository inventoryTransactionRepository,
+            InventoryStockRepository inventoryStockRepository) {
         this.productRepository = productRepository;
         this.inventoryTransactionRepository = inventoryTransactionRepository;
         this.inventoryStockRepository = inventoryStockRepository;
@@ -67,7 +68,9 @@ public class InventoryService {
     }
 
     public int getAvailableStock(Long productId) {
-        if (productId == null) return 0;
+        if (productId == null) {
+            return 0;
+        }
         return inventoryStockRepository.findByProductId(productId)
                 .map(InventoryStock::getStock)
                 .orElse(0);
@@ -119,5 +122,106 @@ public class InventoryService {
             tx.setCreatedBy(userId);
             inventoryTransactionRepository.save(tx);
         }
+    }
+
+    /**
+     * Điều chỉnh tồn kho (Kiểm kho / Cân bằng kho)
+     *
+     * @param productId ID sản phẩm
+     * @param newQuantity Số lượng thực tế sau kiểm kê
+     * @param reason Lý do điều chỉnh (AUDIT, DAMAGE, LOSS, CORRECTION)
+     * @param note Ghi chú
+     * @param userId ID người thực hiện
+     */
+    @Transactional
+    public InventoryTransaction adjustStock(Long productId, int newQuantity, String reason, String note, Long userId) {
+        if (productId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product ID is required");
+        }
+        if (newQuantity < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity cannot be negative");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product not found"));
+
+        InventoryStock stockRow = inventoryStockRepository.findByProductId(productId).orElseGet(() -> {
+            InventoryStock created = new InventoryStock();
+            created.setProductId(productId);
+            created.setStock(0);
+            return created;
+        });
+
+        int currentStock = stockRow.getStock() == null ? 0 : stockRow.getStock();
+        int difference = newQuantity - currentStock;
+
+        if (difference == 0) {
+            // Không có thay đổi
+            return null;
+        }
+
+        // Cập nhật stock
+        stockRow.setStock(newQuantity);
+        stockRow.setUpdatedBy(userId);
+        inventoryStockRepository.save(stockRow);
+
+        // Ghi lại transaction
+        InventoryTransaction tx = new InventoryTransaction();
+        tx.setProductId(product.getId());
+        tx.setTransactionType(InventoryTransactionType.ADJUST);
+        tx.setQuantity(Math.abs(difference));
+        tx.setReferenceType(reason != null ? reason : "AUDIT");
+        tx.setNote(buildAdjustNote(currentStock, newQuantity, difference, note));
+        tx.setCreatedBy(userId);
+        return inventoryTransactionRepository.save(tx);
+    }
+
+    /**
+     * Xuất kho thủ công (hư hỏng, mất mát)
+     */
+    @Transactional
+    public InventoryTransaction manualStockOut(Long productId, int quantity, String reason, String note, Long userId) {
+        if (productId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product ID is required");
+        }
+        if (quantity <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantity must be > 0");
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Product not found"));
+
+        InventoryStock stockRow = inventoryStockRepository.findByProductId(productId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock record not found"));
+
+        int currentStock = stockRow.getStock() == null ? 0 : stockRow.getStock();
+        if (currentStock < quantity) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Insufficient stock. Current: " + currentStock + ", Requested: " + quantity);
+        }
+
+        int newStock = currentStock - quantity;
+        stockRow.setStock(newStock);
+        stockRow.setUpdatedBy(userId);
+        inventoryStockRepository.save(stockRow);
+
+        InventoryTransaction tx = new InventoryTransaction();
+        tx.setProductId(product.getId());
+        tx.setTransactionType(InventoryTransactionType.OUT);
+        tx.setQuantity(quantity);
+        tx.setReferenceType(reason != null ? reason : "MANUAL_OUT");
+        tx.setNote(note);
+        tx.setCreatedBy(userId);
+        return inventoryTransactionRepository.save(tx);
+    }
+
+    private String buildAdjustNote(int oldQty, int newQty, int diff, String userNote) {
+        String direction = diff > 0 ? "Tăng" : "Giảm";
+        String base = String.format("Điều chỉnh kho: %s %d (Cũ: %d → Mới: %d)",
+                direction, Math.abs(diff), oldQty, newQty);
+        if (userNote != null && !userNote.isBlank()) {
+            return base + " | " + userNote;
+        }
+        return base;
     }
 }

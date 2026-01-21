@@ -16,6 +16,7 @@ import java.util.List;
 
 @Service
 public class UserService {
+
     @Autowired
     private UserRepository userRepository;
 
@@ -73,5 +74,21 @@ public class UserService {
 
     public void deleteUser(@NonNull Long id) {
         userRepository.deleteById(id);
+    }
+
+    public User setUserEnabled(@NonNull Long id, boolean enabled) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEnabled(enabled);
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
+    }
+
+    public User toggleUserEnabled(@NonNull Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setEnabled(!user.getEnabled());
+        user.setUpdatedAt(LocalDateTime.now());
+        return userRepository.save(user);
     }
 }

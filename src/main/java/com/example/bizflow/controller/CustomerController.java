@@ -15,15 +15,16 @@ import java.time.format.DateTimeParseException;
 @RestController
 @RequestMapping("/api/customers")
 public class CustomerController {
+
     private final CustomerRepository customerRepository;
     private final OrderService orderService;
 
     public CustomerController(CustomerRepository customerRepository,
-                              OrderService orderService) {
+            OrderService orderService) {
         this.customerRepository = customerRepository;
         this.orderService = orderService;
     }
-    
+
     @GetMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> getAllCustomers() {
@@ -34,7 +35,7 @@ public class CustomerController {
             return ResponseEntity.status(500).body("Error fetching customers: " + e.getMessage());
         }
     }
-    
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> getCustomerById(@PathVariable @NonNull Long id) {
@@ -46,7 +47,7 @@ public class CustomerController {
             return ResponseEntity.status(500).body("Error fetching customer: " + e.getMessage());
         }
     }
-    
+
     @PostMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> createCustomer(@RequestBody @NonNull CustomerCreateRequest request) {
@@ -60,9 +61,7 @@ public class CustomerController {
                 return ResponseEntity.badRequest().body("Phone is required.");
             }
 
-            Customer customer = new Customer();
-            customer.setName(name);
-            customer.setPhone(phone);
+            Customer customer = new Customer(name, phone);
             customer.setEmail(trimToNull(request.email));
             customer.setAddress(trimToNull(request.address));
             customer.setCccd(trimToNull(request.cccd));
@@ -86,12 +85,15 @@ public class CustomerController {
     }
 
     private static String trimToNull(String value) {
-        if (value == null) return null;
+        if (value == null) {
+            return null;
+        }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static class CustomerCreateRequest {
+
         public String name;
         public String phone;
         public String email;
