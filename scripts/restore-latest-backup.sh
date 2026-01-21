@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Script tự động restore database backup mới nhất
+# Script tự động restore database từ backup đầy đủ
 
-echo "🔍 Tìm file backup mới nhất..."
+echo "🔍 Sử dụng file backup đầy đủ..."
 
-# Tìm file backup mới nhất trong db/backups/
-LATEST_BACKUP=$(ls -t db/backups/bizflow_backup_*.sql 2>/dev/null | head -n1)
+# File backup đầy đủ
+LATEST_BACKUP="db/init/database-full.sql"
 
-if [ -z "$LATEST_BACKUP" ]; then
-    echo "❌ Không tìm thấy file backup nào trong db/backups/"
+if [ ! -f "$LATEST_BACKUP" ]; then
+    echo "❌ Không tìm thấy file backup: $LATEST_BACKUP"
     exit 1
 fi
 
