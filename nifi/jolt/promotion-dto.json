@@ -1,0 +1,25 @@
+[
+  {
+    "operation": "shift",
+    "spec": {
+      "code": "code",
+      "name": "name",
+      "description": "description",
+      "discountType": "discountType",
+      "discountValue": "discountValue",
+      "startDate": "startDate",
+      "endDate": "endDate",
+      "active": "active",
+      "targets": "targets",
+      "bundleItems": "bundleItems"
+    }
+  },
+  {
+    "operation": "default",
+    "spec": {
+      "active": true,
+      "targets": [],
+      "bundleItems": []
+    }
+  }
+]
