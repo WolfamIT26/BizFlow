@@ -109,15 +109,17 @@ async function loadPromotions() {
 }
 
 function buildPromoProducts(activePromos, productList) {
-    const productMap = new Map((productList || []).map((p) => [p.id, p]));
+    const safeProducts = Array.isArray(productList) ? productList : [];
+    const safePromos = Array.isArray(activePromos) ? activePromos : [];
+    const productMap = new Map(safeProducts.map((p) => [p.id, p]));
     const results = new Map();
 
-    (activePromos || []).forEach((promo) => {
+    safePromos.forEach((promo) => {
         const targetIds = new Set();
         (promo.targets || []).forEach((t) => {
             if (t.targetType === 'PRODUCT') targetIds.add(t.targetId);
             if (t.targetType === 'CATEGORY') {
-                productList.forEach(p => { if (p.categoryId === t.targetId) targetIds.add(p.id); });
+                safeProducts.forEach(p => { if (p.categoryId === t.targetId) targetIds.add(p.id); });
             }
         });
         (promo.bundleItems || []).forEach(bi => { if (bi.productId) targetIds.add(bi.productId); });
@@ -143,6 +145,9 @@ function buildPromoProducts(activePromos, productList) {
 }
 
 function selectBestPromotion(product, promos) {
+    if (!Array.isArray(promos) || promos.length === 0) {
+        return { promo: null, price: NaN, label: '-' };
+    }
     const basePrice = Number(product?.price);
     const candidates = promos.map(promo => ({ promo, price: getPromoPrice(basePrice, promo) }));
     const priced = candidates.filter(c => Number.isFinite(c.price)).sort((a, b) => a.price - b.price);
@@ -167,13 +172,13 @@ function renderPromoGrid(list) {
         const product = entry.product || {};
         const promo = entry.bestPromotion || {};
         const basePrice = Number(product.price);
-        const promoPrice = entry.promoPrice;
+        const promoPrice = Number(entry.promoPrice);
         const imageMarkup = buildProductImageMarkup(product);
-        const discountLabel = entry.promoLabel;
+        const discountLabel = entry.promoLabel || '-';
         const promoDates = formatPromoDates(promo.startDate, promo.endDate);
 
         return `
-            <div class="promo-card promo-card--row">
+            <div class="promo-card">
                 <div class="promo-badge-km">KM</div>
                 
                 <div class="promo-image">
@@ -306,7 +311,10 @@ function stripDiacritics(v) {
     return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function normalizeKeyword(v) { return stripDiacritics(v.toLowerCase().trim()); }
+function normalizeKeyword(v) {
+    if (!v) return '';
+    return stripDiacritics(v.toString().toLowerCase().trim());
+}
 
 function escapeHtml(v) {
     return (v || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
