@@ -2,6 +2,7 @@ package com.example.bizflow.service;
 
 import com.example.bizflow.dto.ProductCostHistoryDTO;
 import com.example.bizflow.dto.ProductCostUpdateRequest;
+import com.example.bizflow.dto.NewProductPurchaseRequest;
 import com.example.bizflow.entity.Product;
 import com.example.bizflow.entity.ProductCost;
 import com.example.bizflow.entity.ProductCostHistory;
@@ -156,6 +157,63 @@ public class ProductCostService {
         List<ProductCostHistory> histories = costHistoryRepository
                 .findByProductIdOrderByCreatedAtDesc(productId);
         return histories.isEmpty() ? null : histories.get(0);
+    }
+
+    @Transactional
+    public ProductCostHistory createProductAndPurchase(NewProductPurchaseRequest request, Long userId) {
+        if (request == null) {
+            throw new IllegalArgumentException("Missing request");
+        }
+        String code = request.getCode() != null ? request.getCode().trim() : "";
+        String name = request.getName() != null ? request.getName().trim() : "";
+        if (code.isEmpty() || name.isEmpty()) {
+            throw new IllegalArgumentException("Product code and name are required");
+        }
+        if (productRepository.findByCode(code).isPresent()) {
+            throw new IllegalArgumentException("Product code already exists");
+        }
+        BigDecimal price = request.getPrice();
+        BigDecimal costPrice = request.getCostPrice();
+        Integer quantity = request.getQuantity();
+        if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Product price must be greater than 0");
+        }
+        if (costPrice == null || costPrice.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Cost price is required");
+        }
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0");
+        }
+
+        Product product = new Product();
+        product.setCode(code);
+        product.setName(name);
+        product.setLegacyCode(code);
+        product.setLegacyName(name);
+        product.setBarcode(normalizeOptional(request.getBarcode()));
+        product.setPrice(price);
+        product.setCostPrice(costPrice);
+        product.setUnit(normalizeOptional(request.getUnit()));
+        product.setDescription(normalizeOptional(request.getDescription()));
+        product.setCategoryId(request.getCategoryId());
+        product.setStatus("active");
+        product.setStock(0);
+        Product saved = productRepository.save(product);
+
+        InventoryStock stock = new InventoryStock();
+        stock.setProductId(saved.getId());
+        stock.setStock(0);
+        inventoryStockRepository.save(stock);
+
+        return recordPurchase(saved.getId(), costPrice, quantity, request.getNote(), userId);
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**

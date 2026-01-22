@@ -31,6 +31,13 @@ public class Product {
     @Column(name = "product_name", nullable = false)
     private String name;
 
+    // Legacy columns in the existing DB schema
+    @Column(name = "code", nullable = false)
+    private String legacyCode;
+
+    @Column(name = "name", nullable = false)
+    private String legacyName;
+
     @Column(name = "price", nullable = false, precision = 15, scale = 2)
     private BigDecimal price;
 
@@ -121,6 +128,22 @@ public class Product {
         this.code = code;
     }
 
+    public String getLegacyCode() {
+        return this.legacyCode;
+    }
+
+    public void setLegacyCode(String legacyCode) {
+        this.legacyCode = legacyCode;
+    }
+
+    public String getLegacyName() {
+        return this.legacyName;
+    }
+
+    public void setLegacyName(String legacyName) {
+        this.legacyName = legacyName;
+    }
+
     public String getStatus() {
         return this.status;
     }
@@ -149,6 +172,15 @@ public class Product {
     void ensureDefaults() {
         if (this.stock == null) {
             this.stock = 20;
+        }
+        if (this.legacyCode == null) {
+            this.legacyCode = this.code;
+        }
+        if (this.legacyName == null) {
+            this.legacyName = this.name;
+        }
+        if (this.unit == null) {
+            this.unit = "sp";
         }
     }
 }

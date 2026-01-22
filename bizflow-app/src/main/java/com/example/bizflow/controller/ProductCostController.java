@@ -2,6 +2,7 @@ package com.example.bizflow.controller;
 
 import com.example.bizflow.dto.ProductCostHistoryDTO;
 import com.example.bizflow.dto.ProductCostUpdateRequest;
+import com.example.bizflow.dto.NewProductPurchaseRequest;
 import com.example.bizflow.entity.ProductCost;
 import com.example.bizflow.service.ProductCostService;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -65,6 +66,21 @@ public class ProductCostController {
                     request.getQuantity(),
                     request.getNote(),
                     userId);
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Nhap hang voi san pham moi (tao san pham, cap nhat gia von va ton kho)
+     */
+    @PostMapping("/purchase/new-product")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<?> recordPurchaseWithNewProduct(@RequestBody NewProductPurchaseRequest request) {
+        try {
+            Long userId = getCurrentUserId();
+            var history = productCostService.createProductAndPurchase(request, userId);
             return ResponseEntity.ok(history);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

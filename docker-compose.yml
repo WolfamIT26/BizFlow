@@ -88,6 +88,8 @@ services:
       - redis
       - rabbitmq
       - ai_service
+    volumes:
+      - ./FE/assets:/app/FE/assets
     networks:
       - bizflow-net
 
@@ -117,6 +119,8 @@ services:
       - "3000:80"
     depends_on:
       - gateway
+    volumes:
+      - ./FE/assets:/usr/share/nginx/html/assets
     networks:
       - bizflow-net
 

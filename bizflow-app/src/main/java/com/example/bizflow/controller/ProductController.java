@@ -69,6 +69,12 @@ public class ProductController {
     @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<?> createProduct(@RequestBody @NonNull Product product) {
         try {
+            if (product.getLegacyCode() == null) {
+                product.setLegacyCode(product.getCode());
+            }
+            if (product.getLegacyName() == null) {
+                product.setLegacyName(product.getName());
+            }
             Product saved = productRepository.save(product);
             InventoryStock stock = new InventoryStock();
             stock.setProductId(saved.getId());
@@ -88,6 +94,8 @@ public class ProductController {
                     .map(existing -> {
                         existing.setName(product.getName());
                         existing.setCode(product.getCode());
+                        existing.setLegacyName(product.getName());
+                        existing.setLegacyCode(product.getCode());
                         existing.setBarcode(product.getBarcode());
                         existing.setPrice(product.getPrice());
                         existing.setCostPrice(product.getCostPrice());
