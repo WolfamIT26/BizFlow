@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -80,6 +80,11 @@
         }
         .nav-item:hover { background: rgba(255,255,255,0.06); }
         .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        .nav-item.drawer-active {
             background: rgba(255,255,255,0.1);
             border-left-color: var(--highlight);
             color: #fff;
@@ -322,7 +327,88 @@
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
-    </style>
+            body.in-drawer .sidebar {
+            display: none;
+        }
+        body.in-drawer .layout {
+            grid-template-columns: 1fr;
+        }
+        body.in-drawer .purchase-backdrop,
+        body.in-drawer .purchase-drawer {
+            display: none;
+        }        .purchase-backdrop {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            width: calc(100% - 250px);
+            background: rgba(15, 23, 42, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 999;
+        }
+        .purchase-drawer {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            width: calc(100% - 250px);
+            height: 100vh;
+            background: #0f172a;
+            box-shadow: -10px 0 30px rgba(15, 23, 42, 0.35);
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 1000;
+        }
+        .purchase-frame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: #0f172a;
+        }
+        .purchase-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        body.purchase-open {
+            overflow: hidden;
+        }
+        body.purchase-open .purchase-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        body.purchase-open .purchase-drawer {
+            transform: translateX(0);
+        }
+        .nav-item.drawer-active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        body.in-drawer .sidebar {
+            display: none;
+        }
+        body.in-drawer .layout {
+            grid-template-columns: 1fr;
+        }
+        body.in-drawer .purchase-backdrop,
+        body.in-drawer .purchase-drawer {
+            display: none;
+        }</style>
 </head>
 <body>
     <div class="layout">
@@ -350,7 +436,7 @@
                 <a class="nav-item" href="owner-inventory.html">
                     <span class="icon">📦</span><span>Quản lý kho</span>
                 </a>
-                <a class="nav-item" href="owner-purchase.html">
+                <a class="nav-item" href="javascript:void(0)" data-purchase-href="owner-purchase.html" data-purchase-link="true" onclick="return window.openPurchaseDrawer ? window.openPurchaseDrawer(event) : false;">
                     <span class="icon">🚚</span><span>Nhập hàng & Giá vốn</span>
                 </a>
                 <a class="nav-item active" href="owner-users.html">
@@ -719,5 +805,90 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', loadUsers);
     </script>
-</body>
+        
+        
+    <div id="purchaseBackdrop" class="purchase-backdrop"></div>
+    <aside id="purchaseDrawer" class="purchase-drawer" aria-hidden="true">
+        <button id="purchaseClose" class="purchase-close" type="button" aria-label="Đóng">×</button>
+        <iframe id="purchaseFrame" class="purchase-frame" title="Nhập hàng & Giá vốn"></iframe>
+    </aside>
+    <script>
+        (function () {
+            const initDrawer = () => {
+                const links = document.querySelectorAll('[data-purchase-link="true"]');
+                const drawer = document.getElementById('purchaseDrawer');
+                const frame = document.getElementById('purchaseFrame');
+                const closeBtn = document.getElementById('purchaseClose');
+                const backdrop = document.getElementById('purchaseBackdrop');
+
+                if (!links.length || !drawer || !frame) return;
+
+                let previousActiveLink = null;
+
+                const openDrawer = (eventOrLink) => {
+                    const link = eventOrLink && eventOrLink.currentTarget ? eventOrLink.currentTarget : eventOrLink;
+                    if (eventOrLink && eventOrLink.preventDefault) {
+                        eventOrLink.preventDefault();
+                    }
+
+                    const url = (link && link.dataset && link.dataset.purchaseHref) ? link.dataset.purchaseHref : 'owner-purchase.html';
+                    frame.src = url;
+
+                    const allNavItems = document.querySelectorAll('.nav-item');
+                    for (let i = 0; i < allNavItems.length; i++) {
+                        if (allNavItems[i].classList.contains('active')) {
+                            previousActiveLink = allNavItems[i];
+                        }
+                        allNavItems[i].classList.remove('active');
+                    }
+                    if (link && link.classList) {
+                        link.classList.add('drawer-active');
+                    }
+
+                    document.body.classList.add('purchase-open');
+                    drawer.setAttribute('aria-hidden', 'false');
+                    return false;
+                };
+
+                const closeDrawer = () => {
+                    const activeDrawerLink = document.querySelector('.nav-item.drawer-active');
+                    if (activeDrawerLink) {
+                        activeDrawerLink.classList.remove('drawer-active');
+                    }
+                    if (previousActiveLink) {
+                        previousActiveLink.classList.add('active');
+                    }
+                    document.body.classList.remove('purchase-open');
+                    drawer.setAttribute('aria-hidden', 'true');
+                };
+
+                for (let i = 0; i < links.length; i++) {
+                    links[i].addEventListener('click', openDrawer);
+                }
+
+                window.openPurchaseDrawer = function(e){ return openDrawer(e); };
+                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+                if (backdrop) backdrop.addEventListener('click', closeDrawer);
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeDrawer();
+                });
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initDrawer);
+            } else {
+                initDrawer();
+            }
+        })();
+    </script>    <script>
+        if (window.self !== window.top) {
+            document.body.classList.add('in-drawer');
+        }
+    </script></body>
 </html>
+
+
+
+
+
+
