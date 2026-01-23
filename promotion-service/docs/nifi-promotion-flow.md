@@ -106,6 +106,32 @@ GetFile/QueryDatabase/InvokeHTTP
   -> InvokeHTTP (Promotion Service)
   -> RouteOnAttribute (success/error)
 
+## Step 3b: Backend -> NiFi signal (after DB commit)
+When Promotion Service creates/updates/deletes a promotion, it can send a lightweight signal to NiFi
+to trigger heavy processing (clear cache, notify employees, sync to marketing, ...).
+
+### Suggested signal endpoint (NiFi)
+- Processor: ListenHTTP (or HandleHttpRequest + HandleHttpResponse)
+- Endpoint: /promotion/signal
+- Method: POST
+- Content-Type: application/json
+
+Example payload:
+{
+  "eventType": "PROMOTION_UPDATED",
+  "timestamp": "2026-01-23T14:30:00",
+  "promotion": {
+    "id": 15,
+    "code": "PROMO10",
+    "active": true
+  }
+}
+
+Notes
+- Promotion Service sends the signal only after DB commit.
+- Configure `nifi.promotion.signal-url` in Promotion Service to enable the signal.
+- Recommended: set env var `NIFI_PROMOTION_SIGNAL_URL` for flexible deployment.
+
 ## (Optional) Step 4: Event publish
 After a successful POST, emit a simple event.
 

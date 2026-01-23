@@ -18,5 +18,7 @@ public interface PromotionService {
 
     PromotionDTO updatePromotion(Long id, PromotionDTO dto);
 
+    void deletePromotion(Long id);
+
     void deactivatePromotion(Long id);
 }

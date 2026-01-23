@@ -488,19 +488,28 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8080/api';
+        const API_BASE = resolveApiBase();
         let allProducts = [];
         let productCosts = {};
 
+        function resolveApiBase() {
+            const configured = window.API_BASE_URL || window.API_BASE;
+            if (configured) return configured.replace(/\/$/, '');
+            if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port === '3000')) {
+                return 'http://localhost:8080/api';
+            }
+            return `${window.location.origin}/api`;
+        }
+
         function getAuthToken() {
-            return localStorage.getItem('token');
+            return sessionStorage.getItem('accessToken') || localStorage.getItem('token');
         }
 
         function getAuthHeaders() {
             const token = getAuthToken();
             return {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': token ? `Bearer ${token}` : ''
             };
         }
 
@@ -531,22 +540,25 @@
                 if (res.ok) {
                     allProducts = await res.json();
                     populateProductSelects();
+                } else {
+                    populateProductSelects(true);
                 }
             } catch (e) {
                 console.error('Error loading products:', e);
+                populateProductSelects(true);
             }
         }
 
-        function populateProductSelects() {
+        function populateProductSelects(hasError) {
             const purchaseSelect = document.getElementById('purchaseProduct');
             const historySelect = document.getElementById('historyProduct');
-            
-            const options = allProducts.map(p => 
-                `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.code} - ${p.name}</option>`
+            const fallback = hasError ? '<option value="">-- Không tải được sản phẩm --</option>' : '<option value="">-- Chọn sản phẩm --</option>';
+            const options = (allProducts || []).map(p =>
+                `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.code || p.id} - ${p.name || 'Sản phẩm'}</option>`
             ).join('');
-            
-            purchaseSelect.innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + options;
-            historySelect.innerHTML = '<option value="">-- Tất cả --</option>' + options;
+
+            purchaseSelect.innerHTML = fallback + options;
+            historySelect.innerHTML = (hasError ? '<option value="">-- Không tải được sản phẩm --</option>' : '<option value="">-- Tất cả --</option>') + options;
         }
 
         function isNewProductMode() {

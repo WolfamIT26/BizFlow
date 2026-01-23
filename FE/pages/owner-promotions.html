@@ -1,0 +1,1249 @@
+﻿
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Quản lý khuyến mãi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2f3a8f;
+            --primary-dark: #1f2a66;
+            --accent: #4c6fff;
+            --highlight: #7dd3fc;
+            --bg: #f3f4f8;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 100vh;
+        }
+        .sidebar {
+            background: linear-gradient(180deg, var(--primary-dark), var(--primary));
+            color: #e5e7eb;
+            padding: 18px 0;
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 20px 14px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .brand-mark {
+            width: 38px; height: 38px;
+            border-radius: 10px;
+            display: grid; place-items: center;
+            background: rgba(255,255,255,0.15);
+            color: #fff; font-weight: 700;
+        }
+        .brand-name { font-weight: 700; }
+        .brand-sub { font-size: 12px; color: #c7d2fe; }
+        .nav {
+            display: flex;
+            flex-direction: column;
+            padding: 8px 0;
+            gap: 2px;
+        }
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 18px;
+            margin: 0 10px;
+            border-radius: 10px;
+            color: #e5e7eb;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.06); }
+        .nav-item.active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        .nav-item.drawer-active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        .nav-item .icon { width: 18px; text-align: center; }
+        .content { padding: 24px; }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .page-title { font-size: 24px; font-weight: 700; }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        .toolbar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 280px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 14px;
+        }
+        .search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 14px;
+        }
+        .select-box {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            font-size: 14px;
+        }
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warning { background: var(--warning); color: #1f2937; }
+        .btn-sm { padding: 6px 10px; font-size: 12px; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: var(--muted);
+            font-size: 13px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
+        }
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-active { background: #d1fae5; color: #059669; }
+        .badge-inactive { background: #fee2e2; color: #dc2626; }
+        .badge-type { background: #eef2ff; color: #4338ca; }
+        .badge-target { background: #e0f2fe; color: #0369a1; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .stack { display: flex; flex-direction: column; gap: 4px; }
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 720px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--muted);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group label {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 14px;
+        }
+        .inline-row {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+        .inline-row select,
+        .inline-row input {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        .inline-row select {
+            width: 100%;
+        }
+        .inline-row.bundle {
+            grid-template-columns: 1.2fr 1.2fr 0.8fr auto;
+        }
+        .section-title {
+            margin-top: 10px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .section-note {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .status-text {
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .status-success { color: #16a34a; font-weight: 600; }
+        .status-error { color: #dc2626; font-weight: 600; }
+            body.in-drawer .sidebar {
+            display: none;
+        }
+        body.in-drawer .layout {
+            grid-template-columns: 1fr;
+        }
+        body.in-drawer .purchase-backdrop,
+        body.in-drawer .purchase-drawer {
+            display: none;
+        }        .purchase-backdrop {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            width: calc(100% - 250px);
+            background: rgba(15, 23, 42, 0.45);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 999;
+        }
+        .purchase-drawer {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 250px;
+            right: 0;
+            width: calc(100% - 250px);
+            height: 100vh;
+            background: #0f172a;
+            box-shadow: -10px 0 30px rgba(15, 23, 42, 0.35);
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            z-index: 1000;
+        }
+        .purchase-frame {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: #0f172a;
+        }
+        .purchase-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+        body.purchase-open {
+            overflow: hidden;
+        }
+        body.purchase-open .purchase-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        body.purchase-open .purchase-drawer {
+            transform: translateX(0);
+        }
+        .nav-item.drawer-active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        body.in-drawer .sidebar {
+            display: none;
+        }
+        body.in-drawer .layout {
+            grid-template-columns: 1fr;
+        }
+        body.in-drawer .purchase-backdrop,
+        body.in-drawer .purchase-drawer {
+            display: none;
+        }
+        @media (max-width: 960px) {
+            .layout { grid-template-columns: 76px 1fr; }
+            .brand, .brand-sub { display: none; }
+            .nav-item { justify-content: center; border-left: none; margin: 0 8px; }
+            .nav-item span:not(.icon) { display: none; }
+        }
+        @media (max-width: 640px) {
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { display: none; }
+            .content { padding: 16px; }
+            .page-title { font-size: 20px; }
+            .form-grid { grid-template-columns: 1fr; }
+            th, td { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BF</div>
+                <div>
+                    <div class="brand-name">BizFlow</div>
+                    <div class="brand-sub">Owner Center</div>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-item" href="owner-dashboard.html">
+                    <span class="icon">🏠</span><span>Tổng quan</span>
+                </a>
+                <a class="nav-item" href="owner-reports.html">
+                    <span class="icon">📊</span><span>Báo cáo doanh thu</span>
+                </a>
+                <a class="nav-item" href="owner-products.html">
+                    <span class="icon">🛍️</span><span>Sản phẩm</span>
+                </a>
+                <a class="nav-item" href="owner-categories.html">
+                    <span class="icon">📁</span><span>Danh mục</span>
+                </a>
+                <a class="nav-item" href="owner-inventory.html">
+                    <span class="icon">📦</span><span>Quản lý kho</span>
+                </a>
+                <a class="nav-item" href="javascript:void(0)" data-purchase-href="owner-purchase.html" data-purchase-link="true" onclick="return window.openPurchaseDrawer ? window.openPurchaseDrawer(event) : false;">
+                    <span class="icon">🚚</span><span>Nhập hàng & Giá vốn</span>
+                </a>
+                <a class="nav-item" href="owner-users.html">
+                    <span class="icon">👤</span><span>Quản lý nhân viên</span>
+                </a>
+                <a class="nav-item active" href="owner-promotions.html">
+                    <span class="icon">🎯</span><span>Khuyến mãi</span>
+                </a>
+                <a class="nav-item" href="display-settings.html">
+                    <span class="icon">⚙️</span><span>Thiết lập</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="content">
+            <div class="page-header">
+                <h1 class="page-title">🎯 Quản lý khuyến mãi</h1>
+                <div class="actions">
+                    <button class="btn btn-primary" onclick="openCreateModal()">+ Thêm khuyến mãi</button>
+                    <button class="btn btn-success" onclick="reloadPromotions()">⟳ Tải lại</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Bộ lọc & tìm kiếm</div>
+                <div class="toolbar">
+                    <label class="search-box">
+                        <span>🔍</span>
+                        <input type="text" id="searchInput" placeholder="Tìm theo mã hoặc tên khuyến mãi..." oninput="applyFilters()">
+                    </label>
+                    <select id="typeFilter" class="select-box" onchange="applyFilters()">
+                        <option value="ALL">Tất cả loại</option>
+                        <option value="PERCENT">Giảm %</option>
+                        <option value="FIXED">Giảm tiền</option>
+                        <option value="BUNDLE">Combo</option>
+                    </select>
+                    <select id="targetFilter" class="select-box" onchange="applyFilters()">
+                        <option value="ALL">Tất cả đối tượng</option>
+                        <option value="CATEGORY">Theo danh mục</option>
+                        <option value="PRODUCT">Theo sản phẩm</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Danh sách khuyến mãi</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã</th>
+                            <th>Tên khuyến mãi</th>
+                            <th>Loại</th>
+                            <th>Giá trị</th>
+                            <th>Đối tượng</th>
+                            <th>Combo</th>
+                            <th>Thời gian</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="promotionTableBody">
+                        <tr><td colspan="9" class="loading">Đang tải...</td></tr>
+                    </tbody>
+                </table>
+                <div id="promoEmpty" class="status-text" style="display:none; padding-top: 12px;">Không có khuyến mãi phù hợp.</div>
+            </div>
+        </div>
+    </div>
+    <div class="modal" id="promotionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Thêm khuyến mãi</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="promotionForm" onsubmit="savePromotion(event)">
+                <input type="hidden" id="promotionId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Mã khuyến mãi *</label>
+                        <input type="text" id="promoCode" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên khuyến mãi *</label>
+                        <input type="text" id="promoName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Loại giảm *</label>
+                        <select id="promoType" required onchange="toggleBundleSection()">
+                            <option value="PERCENT">Giảm %</option>
+                            <option value="FIXED">Giảm tiền</option>
+                            <option value="BUNDLE">Combo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Giá trị giảm *</label>
+                        <input type="number" id="promoValue" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày bắt đầu</label>
+                        <input type="datetime-local" id="promoStart">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày kết thúc</label>
+                        <input type="datetime-local" id="promoEnd">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Mô tả</label>
+                        <textarea id="promoDescription" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="section-title">Đối tượng áp dụng</div>
+                <div class="section-note">Thêm sản phẩm hoặc danh mục áp dụng.</div>
+                <div id="targetList" class="stack"></div>
+                <button type="button" class="btn btn-warning btn-sm" onclick="addTargetRow()">+ Thêm đối tượng</button>
+
+                <div id="bundleSection">
+                    <div class="section-title">Combo / Bundle</div>
+                    <div class="section-note">Chọn 2 sản phẩm và số lượng áp dụng.</div>
+                    <div id="bundleList" class="stack"></div>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="addBundleRow()">+ Thêm combo</button>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px;">
+                    <label><input type="checkbox" id="promoActive" checked> Đang hoạt động</label>
+                </div>
+
+                <div class="form-actions">
+                    <span id="formStatus" class="status-text"></span>
+                    <button type="button" class="btn" onclick="closeModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu khuyến mãi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="purchaseBackdrop" class="purchase-backdrop"></div>
+    <aside id="purchaseDrawer" class="purchase-drawer" aria-hidden="true">
+        <button id="purchaseClose" class="purchase-close" type="button" aria-label="Đóng">×</button>
+        <iframe id="purchaseFrame" class="purchase-frame" title="Nhập hàng & Giá vốn"></iframe>
+    </aside>
+    <script>
+        const API_BASE = resolveApiBase();
+        const PROMOTION_API = `${API_BASE}/v1/promotions`;
+        let promotions = [];
+        let cachedProducts = [];
+        let cachedCategories = [];
+        let productsLoaded = false;
+        let categoriesLoaded = false;
+        const FALLBACK_CATEGORIES = [
+            { id: 1, name: 'Nước Giải Khát' },
+            { id: 2, name: 'Đồ Ăn Vặt' },
+            { id: 3, name: 'Hóa Mỹ Phẩm' },
+            { id: 4, name: 'Gia Vị & Nước Chấm' },
+            { id: 5, name: 'Sản Phẩm Chăm Sóc Nhà Cửa' },
+            { id: 6, name: 'Bánh Kẹo' },
+            { id: 7, name: 'Bia & Rượu' },
+            { id: 8, name: 'Mì, Phở, Cháo Gói' },
+            { id: 9, name: 'Đồ Hộp & Thực Phẩm Đóng Hộp' },
+            { id: 10, name: 'Thuốc Lá & Diêm' }
+        ];
+
+        function resolveApiBase() {
+            const configured = window.API_BASE_URL || window.API_BASE;
+            if (configured) return configured.replace(/\/$/, '');
+            if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port === '3000')) {
+                return 'http://localhost:8080/api';
+            }
+            return `${window.location.origin}/api`;
+        }
+
+        function enforceAuth() {
+            const token = sessionStorage.getItem('accessToken');
+            const role = sessionStorage.getItem('role');
+            if (!token) {
+                window.location.href = '/pages/login.html';
+                return;
+            }
+            if (role !== 'OWNER' && role !== 'ADMIN') {
+                window.location.href = '/pages/employee-dashboard.html';
+            }
+        }
+
+        function getAuthHeaders() {
+            const token = sessionStorage.getItem('accessToken') || localStorage.getItem('token');
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : ''
+            };
+        }
+
+        function reloadPromotions() {
+            loadPromotions();
+        }
+
+        async function loadPromotions() {
+            const tbody = document.getElementById('promotionTableBody');
+            tbody.innerHTML = '<tr><td colspan="9" class="loading">Đang tải...</td></tr>';
+            document.getElementById('promoEmpty').style.display = 'none';
+            try {
+                const res = await fetch(PROMOTION_API, { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    throw new Error('Không thể tải danh sách khuyến mãi');
+                }
+                promotions = await res.json();
+                applyFilters();
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="9" class="loading">Không tải được dữ liệu.</td></tr>';
+            }
+        }
+
+        function applyFilters() {
+            const keyword = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+            const type = document.getElementById('typeFilter').value;
+            const target = document.getElementById('targetFilter').value;
+
+            const filtered = promotions.filter(p => {
+                const matchesKeyword = !keyword || (p.code || '').toLowerCase().includes(keyword) || (p.name || '').toLowerCase().includes(keyword);
+                if (!matchesKeyword) return false;
+
+                const promoType = normalizeType(p.discountType);
+                const matchesType = type === 'ALL' || promoType === type;
+                if (!matchesType) return false;
+
+                const targets = Array.isArray(p.targets) ? p.targets : [];
+                const matchesTarget = target === 'ALL' || targets.some(t => t.targetType === target);
+                return matchesTarget;
+            });
+
+            renderTable(filtered);
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('promotionTableBody');
+            const empty = document.getElementById('promoEmpty');
+            if (!list.length) {
+                tbody.innerHTML = '';
+                empty.style.display = 'block';
+                return;
+            }
+            empty.style.display = 'none';
+
+            tbody.innerHTML = list.map(p => {
+                const typeLabel = getTypeLabel(p.discountType);
+                const targets = formatTargets(p.targets);
+                const bundles = formatBundles(p.bundleItems);
+                const statusBadge = p.active ? 'badge-active' : 'badge-inactive';
+                const statusText = p.active ? 'Đang chạy' : 'Tạm dừng';
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(p.code || '-')}</strong></td>
+                        <td>
+                            <div class="stack">
+                                <strong>${escapeHtml(p.name || '-')}</strong>
+                                <span class="muted">${escapeHtml(p.description || '')}</span>
+                            </div>
+                        </td>
+                        <td><span class="badge badge-type">${typeLabel}</span></td>
+                        <td>${formatValue(p.discountType, p.discountValue)}</td>
+                        <td>${targets}</td>
+                        <td>${bundles}</td>
+                        <td class="muted">${formatDateRange(p.startDate, p.endDate)}</td>
+                        <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                        <td class="actions">
+                            <button class="btn btn-sm btn-primary" onclick="openEditModal(${p.id})">✏️</button>
+                            <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.id})">🗑️</button>
+                            ${p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Thêm khuyến mãi';
+            document.getElementById('promotionForm').reset();
+            document.getElementById('promotionId').value = '';
+            document.getElementById('targetList').innerHTML = '';
+            document.getElementById('bundleList').innerHTML = '';
+            addTargetRow();
+            addBundleRow();
+            setFormStatus('');
+            toggleBundleSection();
+            document.getElementById('promotionModal').classList.add('active');
+        }
+
+        function openEditModal(id) {
+            const promo = promotions.find(p => p.id === id);
+            if (!promo) return;
+
+            document.getElementById('modalTitle').textContent = 'Cập nhật khuyến mãi';
+            document.getElementById('promotionId').value = promo.id || '';
+            document.getElementById('promoCode').value = promo.code || '';
+            document.getElementById('promoName').value = promo.name || '';
+            document.getElementById('promoType').value = normalizeType(promo.discountType);
+            document.getElementById('promoValue').value = promo.discountValue ?? '';
+            document.getElementById('promoDescription').value = promo.description || '';
+            document.getElementById('promoStart').value = toInputDateTime(promo.startDate);
+            document.getElementById('promoEnd').value = toInputDateTime(promo.endDate);
+            document.getElementById('promoActive').checked = promo.active !== false;
+
+            document.getElementById('targetList').innerHTML = '';
+            const targets = Array.isArray(promo.targets) && promo.targets.length ? promo.targets : [null];
+            targets.forEach(t => addTargetRow(t));
+
+            document.getElementById('bundleList').innerHTML = '';
+            const bundles = Array.isArray(promo.bundleItems) ? promo.bundleItems : [];
+            const rows = toBundleRowData(bundles);
+            if (rows.length) {
+                rows.forEach(b => addBundleRow(b));
+            } else {
+                addBundleRow();
+            }
+
+            setFormStatus('');
+            toggleBundleSection();
+            document.getElementById('promotionModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('promotionModal').classList.remove('active');
+        }
+
+        async function loadProductsForTargets() {
+            if (productsLoaded) return cachedProducts;
+            try {
+                const res = await fetch(`${API_BASE}/products`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    cachedProducts = await res.json();
+                    productsLoaded = true;
+                } else {
+                    console.warn('Không thể tải sản phẩm:', res.status);
+                }
+            } catch (err) {
+                console.warn('Không thể tải danh sách sản phẩm cho đối tượng khuyến mãi.');
+            }
+            return cachedProducts;
+        }
+
+        async function loadCategoriesForTargets() {
+            if (categoriesLoaded) return cachedCategories;
+            try {
+                let res = await fetch(`${API_BASE}/categories/all`, { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
+                }
+                if (res.ok) {
+                    const raw = await res.json();
+                    cachedCategories = normalizeCategories(raw);
+                    if (!cachedCategories.length) {
+                        cachedCategories = FALLBACK_CATEGORIES.slice();
+                    }
+                    categoriesLoaded = true;
+                } else {
+                    console.warn('Không thể tải danh mục:', res.status);
+                }
+            } catch (err) {
+                console.warn('Không thể tải danh sách danh mục cho đối tượng khuyến mãi.');
+            }
+            if (!cachedCategories.length) {
+                cachedCategories = FALLBACK_CATEGORIES.slice();
+                categoriesLoaded = true;
+            }
+            return cachedCategories;
+        }
+
+        function buildProductOptions(selectedId) {
+            if (!Array.isArray(cachedProducts) || !cachedProducts.length) {
+                return '<option value="">Không có sản phẩm</option>';
+            }
+            return cachedProducts.map(p => {
+                const label = `${formatLabelId(p.id)} - ${p.name || p.code || 'Sản phẩm'}`;
+                const selected = selectedId && Number(selectedId) === Number(p.id) ? 'selected' : '';
+                return `<option value="${p.id}" ${selected}>${escapeHtml(label)}</option>`;
+            }).join('');
+        }
+
+        function buildCategoryOptions(selectedId) {
+            if (!Array.isArray(cachedCategories) || !cachedCategories.length) {
+                return '<option value="">Không có danh mục</option>';
+            }
+            return cachedCategories.map(c => {
+                const label = `${formatLabelId(c.id)} - ${c.name || 'Danh mục'}`;
+                const selected = selectedId && Number(selectedId) === Number(c.id) ? 'selected' : '';
+                return `<option value="${c.id}" ${selected}>${escapeHtml(label)}</option>`;
+            }).join('');
+        }
+
+        function formatLabelId(value) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return String(value ?? '').trim();
+            return String(num).padStart(2, '0');
+        }
+
+        function normalizeCategories(list) {
+            if (!Array.isArray(list)) return [];
+            return list.map(item => ({
+                id: item.id ?? item.categoryId ?? item.category_id,
+                name: item.name ?? item.categoryName ?? item.category_name,
+                status: item.status
+            })).filter(c => c.id);
+        }
+
+        function createTargetValueField(type, selectedId) {
+            if (type === 'PRODUCT') {
+                return createProductSelect('target-id target-product', selectedId);
+            }
+            if (type === 'CATEGORY') {
+                const select = document.createElement('select');
+                select.className = 'target-id target-category';
+                select.innerHTML = buildCategoryOptions(selectedId);
+                return select;
+            }
+            const input = document.createElement('input');
+            input.className = 'target-id';
+            input.type = 'number';
+            input.min = '1';
+            input.placeholder = 'ID';
+            input.value = selectedId ? Number(selectedId) : '';
+            return input;
+        }
+
+        function updateTargetValueField(row, type, selectedId) {
+            const oldField = row.querySelector('.target-id');
+            if (oldField) oldField.remove();
+            const newField = createTargetValueField(type, selectedId);
+            const removeBtn = row.querySelector('button');
+            row.insertBefore(newField, removeBtn);
+        }
+
+        function addTargetRow(data) {
+            const container = document.getElementById('targetList');
+            const row = document.createElement('div');
+            row.className = 'inline-row';
+            row.innerHTML = `
+                <select class="target-type">
+                    <option value="PRODUCT">Sản phẩm</option>
+                    <option value="CATEGORY">Danh mục</option>
+                </select>
+                <button type="button" class="btn btn-danger btn-sm">Xóa</button>
+            `;
+            row.querySelector('button').addEventListener('click', () => row.remove());
+            const typeSelect = row.querySelector('.target-type');
+            const initialType = data?.targetType || 'PRODUCT';
+            typeSelect.value = initialType === 'CATEGORY' ? 'CATEGORY' : 'PRODUCT';
+            updateTargetValueField(row, typeSelect.value, data?.targetId);
+            typeSelect.addEventListener('change', () => {
+                updateTargetValueField(row, typeSelect.value, null);
+                if (typeSelect.value === 'PRODUCT') {
+                    loadProductsForTargets().then(() => {
+                        const select = row.querySelector('.target-id');
+                        if (select) select.innerHTML = buildProductOptions(null);
+                    });
+                } else if (typeSelect.value === 'CATEGORY') {
+                    loadCategoriesForTargets().then(() => {
+                        const select = row.querySelector('.target-id');
+                        if (select) select.innerHTML = buildCategoryOptions(null);
+                    });
+                }
+            });
+
+            if (typeSelect.value === 'PRODUCT') {
+                loadProductsForTargets().then(() => {
+                    const select = row.querySelector('.target-id');
+                    if (select) select.innerHTML = buildProductOptions(data?.targetId);
+                });
+            } else if (typeSelect.value === 'CATEGORY') {
+                loadCategoriesForTargets().then(() => {
+                    const select = row.querySelector('.target-id');
+                    if (select) select.innerHTML = buildCategoryOptions(data?.targetId);
+                });
+            }
+            container.appendChild(row);
+        }
+
+        function createProductSelect(className, selectedId) {
+            const select = document.createElement('select');
+            select.className = className;
+            select.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(selectedId)}`;
+            return select;
+        }
+
+        function addBundleRow(data) {
+            const container = document.getElementById('bundleList');
+            const row = document.createElement('div');
+            row.className = 'inline-row bundle';
+            row.innerHTML = `
+                <div class="bundle-field"></div>
+                <div class="bundle-field"></div>
+                <input class="bundle-qty" type="number" min="1" placeholder="Số lượng" value="1">
+                <button type="button" class="btn btn-danger btn-sm">Xóa</button>
+            `;
+            row.querySelector('button').addEventListener('click', () => row.remove());
+            const selectA = createProductSelect('bundle-product-a', data?.productIdA || data?.productId || '');
+            const selectB = createProductSelect('bundle-product-b', data?.productIdB || '');
+            const fields = row.querySelectorAll('.bundle-field');
+            if (fields[0]) fields[0].appendChild(selectA);
+            if (fields[1]) fields[1].appendChild(selectB);
+            if (data?.quantity) {
+                row.querySelector('.bundle-qty').value = data.quantity;
+            }
+            loadProductsForTargets().then(() => {
+                selectA.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(data?.productIdA || data?.productId)}`;
+                selectB.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(data?.productIdB)}`;
+            });
+            container.appendChild(row);
+        }
+
+        function toBundleRowData(items) {
+            if (!Array.isArray(items) || !items.length) return [];
+            const rows = [];
+            for (let i = 0; i < items.length; i += 2) {
+                const first = items[i];
+                const second = items[i + 1];
+                if (!first) continue;
+                if (second && first.quantity !== second.quantity) {
+                    rows.push({ productIdA: first.productId, quantity: first.quantity });
+                    rows.push({ productIdA: second.productId, quantity: second.quantity });
+                    continue;
+                }
+                rows.push({
+                    productIdA: first.productId,
+                    productIdB: second ? second.productId : '',
+                    quantity: first.quantity || (second ? second.quantity : 1)
+                });
+            }
+            return rows;
+        }
+
+        function toggleBundleSection() {
+            const type = document.getElementById('promoType').value;
+            const bundleNote = document.querySelector('#bundleSection .section-note');
+            if (bundleNote) {
+                bundleNote.textContent = type === 'BUNDLE'
+                    ? 'Bắt buộc ít nhất 1 combo khi chọn loại Combo.'
+                    : 'Chỉ bắt buộc khi chọn loại Combo.';
+            }
+            const bundleSection = document.getElementById('bundleSection');
+            if (bundleSection) {
+                const disable = type !== 'BUNDLE';
+                bundleSection.style.opacity = disable ? '0.6' : '1';
+                bundleSection.style.pointerEvents = disable ? 'none' : 'auto';
+            }
+        }
+        function buildPayload() {
+            const id = document.getElementById('promotionId').value;
+            const promoType = document.getElementById('promoType').value;
+            const payload = {
+                id: id ? Number(id) : undefined,
+                code: document.getElementById('promoCode').value.trim(),
+                name: document.getElementById('promoName').value.trim(),
+                description: document.getElementById('promoDescription').value.trim() || null,
+                discountType: document.getElementById('promoType').value,
+                discountValue: Number(document.getElementById('promoValue').value),
+                startDate: formatDateValue(document.getElementById('promoStart').value),
+                endDate: formatDateValue(document.getElementById('promoEnd').value),
+                active: document.getElementById('promoActive').checked
+            };
+
+            payload.targets = Array.from(document.querySelectorAll('#targetList .inline-row')).map(row => {
+                const type = row.querySelector('.target-type').value;
+                const idVal = Number(row.querySelector('.target-id').value);
+                if (!type || !idVal) return null;
+                return { targetType: type, targetId: idVal };
+            }).filter(Boolean);
+
+            payload.bundleItems = [];
+            if (promoType === 'BUNDLE') {
+                Array.from(document.querySelectorAll('#bundleList .inline-row')).forEach(row => {
+                    const qtyVal = Number(row.querySelector('.bundle-qty')?.value) || 1;
+                    const productA = Number(row.querySelector('.bundle-product-a')?.value);
+                    const productB = Number(row.querySelector('.bundle-product-b')?.value);
+                    if (productA) {
+                        payload.bundleItems.push({ productId: productA, quantity: qtyVal });
+                    }
+                    if (productB) {
+                        payload.bundleItems.push({ productId: productB, quantity: qtyVal });
+                    }
+                });
+            }
+
+            return payload;
+        }
+
+        async function savePromotion(event) {
+            event.preventDefault();
+            setFormStatus('');
+            const payload = buildPayload();
+            const id = document.getElementById('promotionId').value;
+            const url = id ? `${PROMOTION_API}/${id}` : PROMOTION_API;
+            const method = id ? 'PUT' : 'POST';
+            try {
+                const res = await fetch(url, {
+                    method,
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Không thể lưu khuyến mãi');
+                }
+                setFormStatus('Lưu khuyến mãi thành công.', true);
+                closeModal();
+                await loadPromotions();
+            } catch (err) {
+                setFormStatus(err.message || 'Có lỗi xảy ra.', false);
+            }
+        }
+
+        async function deletePromotion(id) {
+            if (!confirm('Bạn có chắc muốn xóa khuyến mãi này?')) return;
+            try {
+                const res = await fetch(`${PROMOTION_API}/${id}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Không thể xóa khuyến mãi');
+                }
+                await loadPromotions();
+            } catch (err) {
+                alert(err.message || 'Lỗi khi xóa.');
+            }
+        }
+
+        async function deactivatePromotion(id) {
+            if (!confirm('Tạm dừng khuyến mãi này?')) return;
+            try {
+                const res = await fetch(`${PROMOTION_API}/${id}/deactivate`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Không thể tạm dừng');
+                }
+                await loadPromotions();
+            } catch (err) {
+                alert(err.message || 'Lỗi khi tạm dừng.');
+            }
+        }
+
+        function setFormStatus(message, success) {
+            const el = document.getElementById('formStatus');
+            if (!el) return;
+            el.textContent = message || '';
+            el.className = 'status-text';
+            if (!message) return;
+            el.classList.add(success ? 'status-success' : 'status-error');
+        }
+
+        function normalizeType(type) {
+            if (!type) return 'PERCENT';
+            if (type === 'FIXED_AMOUNT') return 'FIXED';
+            return type;
+        }
+
+        function getTypeLabel(type) {
+            const normalized = normalizeType(type);
+            if (normalized === 'PERCENT') return 'Giảm %';
+            if (normalized === 'FIXED') return 'Giảm tiền';
+            if (normalized === 'BUNDLE') return 'Combo';
+            return normalized;
+        }
+
+        function formatValue(type, value) {
+            const normalized = normalizeType(type);
+            if (normalized === 'PERCENT') return `${Number(value || 0)}%`;
+            if (normalized === 'FIXED') return formatCurrency(value);
+            if (normalized === 'BUNDLE') return formatCurrency(value);
+            return value ?? '-';
+        }
+
+        function formatTargets(targets) {
+            if (!Array.isArray(targets) || !targets.length) return '<span class="muted">Không có</span>';
+            return targets.map(t => `<span class="badge badge-target">${t.targetType}:${t.targetId}</span>`).join(' ');
+        }
+
+        function formatBundles(bundleItems) {
+            if (!Array.isArray(bundleItems) || !bundleItems.length) return '<span class="muted">-</span>';
+            return bundleItems.map(b => `<span class="badge badge-target">${b.productId} x ${b.quantity}</span>`).join(' ');
+        }
+
+        function formatDateRange(start, end) {
+            const startText = formatDate(start);
+            const endText = formatDate(end);
+            if (startText === '-' && endText === '-') return 'Không giới hạn';
+            return `${startText} → ${endText}`;
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = parseDate(value);
+            if (!date) return '-';
+            return date.toLocaleString('vi-VN', { hour12: false });
+        }
+
+        function parseDate(value) {
+            if (Array.isArray(value)) {
+                const [y, m, d, h = 0, mi = 0] = value;
+                return new Date(y, m - 1, d, h, mi);
+            }
+            const date = new Date(value);
+            return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        function toInputDateTime(value) {
+            if (!value) return '';
+            if (Array.isArray(value)) {
+                const [y, m, d, h = 0, mi = 0] = value;
+                return `${y}-${pad(m)}-${pad(d)}T${pad(h)}:${pad(mi)}`;
+            }
+            if (typeof value === 'string' && value.length >= 16) {
+                return value.slice(0, 16);
+            }
+            const date = parseDate(value);
+            if (!date) return '';
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        function formatDateValue(value) {
+            if (!value) return null;
+            return value.length === 16 ? `${value}:00` : value;
+        }
+
+        function formatCurrency(amount) {
+            const num = Number(amount);
+            if (!Number.isFinite(num)) return '-';
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+        }
+
+        function pad(val) {
+            return String(val).padStart(2, '0');
+        }
+
+        function escapeHtml(v) {
+            return (v || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
+        }
+
+        (function () {
+            const initDrawer = () => {
+                const links = document.querySelectorAll('[data-purchase-link="true"]');
+                const drawer = document.getElementById('purchaseDrawer');
+                const frame = document.getElementById('purchaseFrame');
+                const closeBtn = document.getElementById('purchaseClose');
+                const backdrop = document.getElementById('purchaseBackdrop');
+
+                if (!links.length || !drawer || !frame) return;
+
+                let previousActiveLink = null;
+
+                const openDrawer = (eventOrLink) => {
+                    const link = eventOrLink && eventOrLink.currentTarget ? eventOrLink.currentTarget : eventOrLink;
+                    if (eventOrLink && eventOrLink.preventDefault) {
+                        eventOrLink.preventDefault();
+                    }
+
+                    const url = (link && link.dataset && link.dataset.purchaseHref) ? link.dataset.purchaseHref : 'owner-purchase.html';
+                    frame.src = url;
+
+                    const allNavItems = document.querySelectorAll('.nav-item');
+                    for (let i = 0; i < allNavItems.length; i++) {
+                        if (allNavItems[i].classList.contains('active')) {
+                            previousActiveLink = allNavItems[i];
+                        }
+                        allNavItems[i].classList.remove('active');
+                    }
+                    if (link && link.classList) {
+                        link.classList.add('drawer-active');
+                    }
+
+                    document.body.classList.add('purchase-open');
+                    drawer.setAttribute('aria-hidden', 'false');
+                    return false;
+                };
+
+                const closeDrawer = () => {
+                    const activeDrawerLink = document.querySelector('.nav-item.drawer-active');
+                    if (activeDrawerLink) {
+                        activeDrawerLink.classList.remove('drawer-active');
+                    }
+                    if (previousActiveLink) {
+                        previousActiveLink.classList.add('active');
+                    }
+                    document.body.classList.remove('purchase-open');
+                    drawer.setAttribute('aria-hidden', 'true');
+                };
+
+                for (let i = 0; i < links.length; i++) {
+                    links[i].addEventListener('click', openDrawer);
+                }
+
+                window.openPurchaseDrawer = function(e){ return openDrawer(e); };
+                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+                if (backdrop) backdrop.addEventListener('click', closeDrawer);
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') closeDrawer();
+                });
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initDrawer);
+            } else {
+                initDrawer();
+            }
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            enforceAuth();
+            loadPromotions();
+        });
+    </script>
+    <script>
+        if (window.self !== window.top) {
+            document.body.classList.add('in-drawer');
+        }
+    </script>
+</body>
+</html>
