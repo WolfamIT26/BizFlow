@@ -84,11 +84,6 @@
             border-left-color: var(--highlight);
             color: #fff;
         }
-        .nav-item.drawer-active {
-            background: rgba(255,255,255,0.1);
-            border-left-color: var(--highlight);
-            color: #fff;
-        }
         .nav-item .icon { width: 18px; text-align: center; }
         .content { padding: 24px; }
         .page-header {
@@ -327,16 +322,7 @@
             grid-template-columns: 1fr 1fr;
             gap: 16px;
         }
-            body.in-drawer .sidebar {
-            display: none;
-        }
-        body.in-drawer .layout {
-            grid-template-columns: 1fr;
-        }
-        body.in-drawer .purchase-backdrop,
-        body.in-drawer .purchase-drawer {
-            display: none;
-        }        .purchase-backdrop {
+        .purchase-backdrop {
             position: fixed;
             top: 0;
             bottom: 0;
@@ -362,8 +348,7 @@
             transform: translateX(100%);
             transition: transform 0.25s ease;
             z-index: 1000;
-        }
-        .purchase-frame {
+        }.purchase-frame {
             width: 100%;
             height: 100%;
             border: 0;
@@ -394,21 +379,7 @@
         body.purchase-open .purchase-drawer {
             transform: translateX(0);
         }
-        .nav-item.drawer-active {
-            background: rgba(255,255,255,0.1);
-            border-left-color: var(--highlight);
-            color: #fff;
-        }
-        body.in-drawer .sidebar {
-            display: none;
-        }
-        body.in-drawer .layout {
-            grid-template-columns: 1fr;
-        }
-        body.in-drawer .purchase-backdrop,
-        body.in-drawer .purchase-drawer {
-            display: none;
-        }</style>
+    </style>
 </head>
 <body>
     <div class="layout">
@@ -436,7 +407,7 @@
                 <a class="nav-item" href="owner-inventory.html">
                     <span class="icon">📦</span><span>Quản lý kho</span>
                 </a>
-                <a class="nav-item" href="javascript:void(0)" data-purchase-href="owner-purchase.html" data-purchase-link="true" onclick="return window.openPurchaseDrawer ? window.openPurchaseDrawer(event) : false;">
+                <a class="nav-item" href="#" data-purchase-href="owner-purchase.html" data-purchase-link="true">
                     <span class="icon">🚚</span><span>Nhập hàng & Giá vốn</span>
                 </a>
                 <a class="nav-item active" href="owner-users.html">
@@ -562,6 +533,12 @@
             </form>
         </div>
     </div>
+
+    <div id="purchaseBackdrop" class="purchase-backdrop"></div>
+    <aside id="purchaseDrawer" class="purchase-drawer" aria-hidden="true">
+        <button id="purchaseClose" class="purchase-close" type="button" aria-label="Đóng">×</button>
+        <iframe id="purchaseFrame" class="purchase-frame" title="Nhập hàng & Giá vốn"></iframe>
+    </aside>
 
     <script>
         const API_BASE = 'http://localhost:8080/api';
@@ -805,86 +782,50 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', loadUsers);
     </script>
-        
-        
-    <div id="purchaseBackdrop" class="purchase-backdrop"></div>
-    <aside id="purchaseDrawer" class="purchase-drawer" aria-hidden="true">
-        <button id="purchaseClose" class="purchase-close" type="button" aria-label="Đóng">×</button>
-        <iframe id="purchaseFrame" class="purchase-frame" title="Nhập hàng & Giá vốn"></iframe>
-    </aside>
     <script>
         (function () {
-            const initDrawer = () => {
-                const links = document.querySelectorAll('[data-purchase-link="true"]');
-                const drawer = document.getElementById('purchaseDrawer');
-                const frame = document.getElementById('purchaseFrame');
-                const closeBtn = document.getElementById('purchaseClose');
-                const backdrop = document.getElementById('purchaseBackdrop');
+            const links = document.querySelectorAll('[data-purchase-link="true"]');
+            const drawer = document.getElementById('purchaseDrawer');
+            const frame = document.getElementById('purchaseFrame');
+            const closeBtn = document.getElementById('purchaseClose');
+            const backdrop = document.getElementById('purchaseBackdrop');
 
-                if (!links.length || !drawer || !frame) return;
+            if (!links.length || !drawer || !frame) return;
 
-                let previousActiveLink = null;
-
-                const openDrawer = (eventOrLink) => {
-                    const link = eventOrLink && eventOrLink.currentTarget ? eventOrLink.currentTarget : eventOrLink;
-                    if (eventOrLink && eventOrLink.preventDefault) {
-                        eventOrLink.preventDefault();
-                    }
-
-                    const url = (link && link.dataset && link.dataset.purchaseHref) ? link.dataset.purchaseHref : 'owner-purchase.html';
-                    frame.src = url;
-
-                    const allNavItems = document.querySelectorAll('.nav-item');
-                    for (let i = 0; i < allNavItems.length; i++) {
-                        if (allNavItems[i].classList.contains('active')) {
-                            previousActiveLink = allNavItems[i];
-                        }
-                        allNavItems[i].classList.remove('active');
-                    }
-                    if (link && link.classList) {
-                        link.classList.add('drawer-active');
-                    }
-
-                    document.body.classList.add('purchase-open');
-                    drawer.setAttribute('aria-hidden', 'false');
-                    return false;
-                };
-
-                const closeDrawer = () => {
-                    const activeDrawerLink = document.querySelector('.nav-item.drawer-active');
-                    if (activeDrawerLink) {
-                        activeDrawerLink.classList.remove('drawer-active');
-                    }
-                    if (previousActiveLink) {
-                        previousActiveLink.classList.add('active');
-                    }
-                    document.body.classList.remove('purchase-open');
-                    drawer.setAttribute('aria-hidden', 'true');
-                };
-
-                for (let i = 0; i < links.length; i++) {
-                    links[i].addEventListener('click', openDrawer);
+            const openDrawer = (target) => {
+                const link = target?.currentTarget || target;
+                if (target && target.preventDefault) {
+                    target.preventDefault();
+                    target.stopPropagation?.();
+                    target.stopImmediatePropagation?.();
                 }
-
-                window.openPurchaseDrawer = function(e){ return openDrawer(e); };
-                if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
-                if (backdrop) backdrop.addEventListener('click', closeDrawer);
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') closeDrawer();
-                });
+                const url = (link && link.dataset && link.dataset.purchaseHref) || 'owner-purchase.html';
+                frame.src = url;
+                document.body.classList.add('purchase-open');
+                drawer.setAttribute('aria-hidden', 'false');
             };
 
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initDrawer);
-            } else {
-                initDrawer();
-            }
+            const closeDrawer = () => {
+                document.body.classList.remove('purchase-open');
+                drawer.setAttribute('aria-hidden', 'true');
+            };
+
+            links.forEach((link) => link.addEventListener('click', openDrawer, true));
+            const nav = document.querySelector('.nav');
+            nav?.addEventListener('click', (e) => {
+                const link = e.target?.closest?.('[data-purchase-link="true" onclick="return openPurchaseDrawer(event)"]');
+                if (!link) return;
+                openDrawer(link);
+            }, true);
+            window.openPurchaseDrawer = function(e){ openDrawer(e); return false; };
+            closeBtn?.addEventListener('click', closeDrawer);
+            backdrop?.addEventListener('click', closeDrawer);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeDrawer();
+            });
         })();
-    </script>    <script>
-        if (window.self !== window.top) {
-            document.body.classList.add('in-drawer');
-        }
-    </script></body>
+    </script>
+</body>
 </html>
 
 
