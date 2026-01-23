@@ -4,7 +4,7 @@ spring:
 
   # ================= DATABASE =================
   datasource:
-    url: jdbc:mysql://${DB_HOST:mysql}:3306/bizflow_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:mysql}:3306/bizflow_db?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
     username: root
     password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -51,6 +51,9 @@ server:
   port: 8080
   servlet:
     context-path: /
+    encoding:
+      charset: UTF-8
+      force: true
 
 # ================= JWT =================
 app:

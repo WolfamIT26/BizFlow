@@ -7,6 +7,10 @@ import com.example.promotion.entity.BundleItem;
 import com.example.promotion.entity.Promotion;
 import com.example.promotion.entity.PromotionTarget;
 import com.example.promotion.repository.PromotionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
@@ -14,23 +18,39 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 public class PromotionServiceImpl implements PromotionService {
 
+    private static final Logger log = LoggerFactory.getLogger(PromotionServiceImpl.class);
+
     private final PromotionRepository promotionRepository;
     private final CacheManager cacheManager;
+    private final RestTemplate restTemplate;
 
-    public PromotionServiceImpl(PromotionRepository promotionRepository, CacheManager cacheManager) {
+    @Value("${nifi.promotion.signal-url:}")
+    private String nifiSignalUrl;
+
+    public PromotionServiceImpl(
+            PromotionRepository promotionRepository,
+            CacheManager cacheManager,
+            RestTemplateBuilder restTemplateBuilder
+    ) {
         this.promotionRepository = promotionRepository;
         this.cacheManager = cacheManager;
+        this.restTemplate = restTemplateBuilder.build();
     }
 
     /* ================== QUERY ================== */
@@ -74,6 +94,7 @@ public class PromotionServiceImpl implements PromotionService {
     @CachePut(cacheNames = "promotionByCode", key = "#result.code", unless = "#result == null")
     @CacheEvict(cacheNames = "activePromotions", allEntries = true)
     public PromotionDTO createPromotion(PromotionDTO dto) {
+        validatePromotionDTO(dto, null);
         Promotion promotion = new Promotion();
         promotion.setTargets(new ArrayList<>());
         promotion.setBundleItems(new ArrayList<>());
@@ -81,6 +102,7 @@ public class PromotionServiceImpl implements PromotionService {
         applyDTOToEntity(dto, promotion);
         PromotionDTO created = toDTO(promotionRepository.save(promotion));
         refreshActivePromotionCache(created);
+        emitNifiSignalAfterCommit("PROMOTION_CREATED", created);
         return created;
     }
 
@@ -91,6 +113,7 @@ public class PromotionServiceImpl implements PromotionService {
         if (id == null) {
             throw new IllegalArgumentException("Promotion id must not be null");
         }
+        validatePromotionDTO(dto, id);
 
         Promotion promotion = promotionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Promotion not found"));
@@ -115,7 +138,25 @@ public class PromotionServiceImpl implements PromotionService {
             evictActivePromotionByCode(previousCode);
         }
         refreshActivePromotionCache(updated);
+        emitNifiSignalAfterCommit("PROMOTION_UPDATED", updated);
         return updated;
+    }
+
+    @Override
+    @CacheEvict(cacheNames = "activePromotions", allEntries = true)
+    public void deletePromotion(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Promotion id must not be null");
+        }
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found"));
+        PromotionDTO snapshot = toDTO(promotion);
+
+        promotionRepository.delete(promotion);
+        evictPromotionByCode(promotion.getCode());
+        evictActivePromotionByCode(promotion.getCode());
+        emitNifiSignalAfterCommit("PROMOTION_DELETED", snapshot);
     }
 
     @Override
@@ -233,6 +274,89 @@ public class PromotionServiceImpl implements PromotionService {
         }
     }
 
+    private void validatePromotionDTO(PromotionDTO dto, Long currentId) {
+        if (dto == null) {
+            throw new IllegalArgumentException("Promotion payload must not be null");
+        }
+
+        String code = dto.getCode() != null ? dto.getCode().trim() : "";
+        if (code.isEmpty()) {
+            throw new IllegalArgumentException("Promotion code must not be blank");
+        }
+
+        String name = dto.getName() != null ? dto.getName().trim() : "";
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("Promotion name must not be blank");
+        }
+
+        if (dto.getDiscountType() == null) {
+            throw new IllegalArgumentException("Discount type must be provided");
+        }
+
+        if (dto.getDiscountValue() == null) {
+            throw new IllegalArgumentException("Discount value must be provided");
+        }
+
+        double value = dto.getDiscountValue();
+        if (value < 0) {
+            throw new IllegalArgumentException("Discount value must be non-negative");
+        }
+        if (dto.getDiscountType() == Promotion.DiscountType.PERCENT && (value <= 0 || value > 100)) {
+            throw new IllegalArgumentException("Percent discount must be between 1 and 100");
+        }
+
+        if (dto.getStartDate() != null && dto.getEndDate() != null
+                && dto.getEndDate().isBefore(dto.getStartDate())) {
+            throw new IllegalArgumentException("End date must be after start date");
+        }
+
+        validateTargets(dto);
+        validateBundleItems(dto);
+
+        promotionRepository.findByCode(code)
+                .filter(existing -> currentId == null || !existing.getId().equals(currentId))
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException("Promotion code already exists");
+                });
+    }
+
+    private void validateTargets(PromotionDTO dto) {
+        if (dto.getTargets() == null) {
+            return;
+        }
+        for (PromotionTargetDTO target : dto.getTargets()) {
+            if (target == null) {
+                throw new IllegalArgumentException("Promotion target must not be null");
+            }
+            if (target.getTargetType() == null) {
+                throw new IllegalArgumentException("Promotion target type must be provided");
+            }
+            if (target.getTargetId() == null || target.getTargetId() <= 0) {
+                throw new IllegalArgumentException("Promotion target id must be a positive number");
+            }
+        }
+    }
+
+    private void validateBundleItems(PromotionDTO dto) {
+        if (dto.getBundleItems() == null) {
+            return;
+        }
+        if (dto.getDiscountType() == Promotion.DiscountType.BUNDLE && dto.getBundleItems().isEmpty()) {
+            throw new IllegalArgumentException("Bundle promotions must include at least one bundle item");
+        }
+        for (BundleItemDTO item : dto.getBundleItems()) {
+            if (item == null) {
+                throw new IllegalArgumentException("Bundle item must not be null");
+            }
+            if (item.getProductId() == null || item.getProductId() <= 0) {
+                throw new IllegalArgumentException("Bundle item productId must be a positive number");
+            }
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Bundle item quantity must be a positive number");
+            }
+        }
+    }
+
     private Promotion.DiscountType normalizeDiscountType(Promotion promotion) {
         Promotion.DiscountType raw = promotion.getDiscountType();
         String promotionType = promotion.getPromotionType();
@@ -326,5 +450,38 @@ public class PromotionServiceImpl implements PromotionService {
             return false;
         }
         return dto.getEndDate() == null || !dto.getEndDate().isBefore(now);
+    }
+
+    private void emitNifiSignalAfterCommit(String eventType, PromotionDTO dto) {
+        if (!isNifiSignalEnabled()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            sendNifiSignal(eventType, dto);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                sendNifiSignal(eventType, dto);
+            }
+        });
+    }
+
+    private boolean isNifiSignalEnabled() {
+        return nifiSignalUrl != null && !nifiSignalUrl.isBlank();
+    }
+
+    private void sendNifiSignal(String eventType, PromotionDTO dto) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("eventType", eventType);
+        payload.put("promotion", dto);
+        payload.put("timestamp", LocalDateTime.now());
+
+        try {
+            restTemplate.postForEntity(nifiSignalUrl, payload, Void.class);
+        } catch (Exception ex) {
+            log.warn("Failed to send NiFi signal to {}", nifiSignalUrl, ex);
+        }
     }
 }

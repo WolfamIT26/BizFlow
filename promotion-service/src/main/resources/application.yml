@@ -28,3 +28,11 @@ spring:
 
 server:
   port: 8082
+
+nifi:
+  promotion:
+    signal-url: ${NIFI_PROMOTION_SIGNAL_URL:}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:my-secret-key-for-jwt-token-generation-and-verification}
