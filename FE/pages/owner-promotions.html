@@ -263,8 +263,21 @@
             gap: 8px;
             align-items: center;
         }
+        .inline-row select,
+        .inline-row input {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+        .inline-row select {
+            width: 100%;
+        }
         .inline-row.bundle {
-            grid-template-columns: 1fr 1fr auto;
+            grid-template-columns: 1.2fr 1.2fr 0.8fr auto;
         }
         .section-title {
             margin-top: 10px;
@@ -454,8 +467,6 @@
                         <option value="ALL">Tất cả đối tượng</option>
                         <option value="CATEGORY">Theo danh mục</option>
                         <option value="PRODUCT">Theo sản phẩm</option>
-                        <option value="BRANCH">Theo chi nhánh</option>
-                        <option value="CUSTOMER_GROUP">Theo nhóm KH</option>
                     </select>
                 </div>
             </div>
@@ -528,14 +539,16 @@
                 </div>
 
                 <div class="section-title">Đối tượng áp dụng</div>
-                <div class="section-note">Thêm sản phẩm/danh mục/chi nhánh/nhóm khách hàng áp dụng.</div>
+                <div class="section-note">Thêm sản phẩm hoặc danh mục áp dụng.</div>
                 <div id="targetList" class="stack"></div>
                 <button type="button" class="btn btn-warning btn-sm" onclick="addTargetRow()">+ Thêm đối tượng</button>
 
-                <div class="section-title">Combo / Bundle</div>
-                <div class="section-note">Chỉ bắt buộc khi chọn loại Combo.</div>
-                <div id="bundleList" class="stack"></div>
-                <button type="button" class="btn btn-warning btn-sm" onclick="addBundleRow()">+ Thêm combo</button>
+                <div id="bundleSection">
+                    <div class="section-title">Combo / Bundle</div>
+                    <div class="section-note">Chọn 2 sản phẩm và số lượng áp dụng.</div>
+                    <div id="bundleList" class="stack"></div>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="addBundleRow()">+ Thêm combo</button>
+                </div>
 
                 <div class="form-group" style="margin-top: 12px;">
                     <label><input type="checkbox" id="promoActive" checked> Đang hoạt động</label>
@@ -559,6 +572,22 @@
         const API_BASE = resolveApiBase();
         const PROMOTION_API = `${API_BASE}/v1/promotions`;
         let promotions = [];
+        let cachedProducts = [];
+        let cachedCategories = [];
+        let productsLoaded = false;
+        let categoriesLoaded = false;
+        const FALLBACK_CATEGORIES = [
+            { id: 1, name: 'Nước Giải Khát' },
+            { id: 2, name: 'Đồ Ăn Vặt' },
+            { id: 3, name: 'Hóa Mỹ Phẩm' },
+            { id: 4, name: 'Gia Vị & Nước Chấm' },
+            { id: 5, name: 'Sản Phẩm Chăm Sóc Nhà Cửa' },
+            { id: 6, name: 'Bánh Kẹo' },
+            { id: 7, name: 'Bia & Rượu' },
+            { id: 8, name: 'Mì, Phở, Cháo Gói' },
+            { id: 9, name: 'Đồ Hộp & Thực Phẩm Đóng Hộp' },
+            { id: 10, name: 'Thuốc Lá & Diêm' }
+        ];
 
         function resolveApiBase() {
             const configured = window.API_BASE_URL || window.API_BASE;
@@ -582,7 +611,7 @@
         }
 
         function getAuthHeaders() {
-            const token = sessionStorage.getItem('accessToken');
+            const token = sessionStorage.getItem('accessToken') || localStorage.getItem('token');
             return {
                 'Content-Type': 'application/json',
                 'Authorization': token ? `Bearer ${token}` : ''
@@ -704,8 +733,13 @@
             targets.forEach(t => addTargetRow(t));
 
             document.getElementById('bundleList').innerHTML = '';
-            const bundles = Array.isArray(promo.bundleItems) && promo.bundleItems.length ? promo.bundleItems : [null];
-            bundles.forEach(b => addBundleRow(b));
+            const bundles = Array.isArray(promo.bundleItems) ? promo.bundleItems : [];
+            const rows = toBundleRowData(bundles);
+            if (rows.length) {
+                rows.forEach(b => addBundleRow(b));
+            } else {
+                addBundleRow();
+            }
 
             setFormStatus('');
             toggleBundleSection();
@@ -716,6 +750,113 @@
             document.getElementById('promotionModal').classList.remove('active');
         }
 
+        async function loadProductsForTargets() {
+            if (productsLoaded) return cachedProducts;
+            try {
+                const res = await fetch(`${API_BASE}/products`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    cachedProducts = await res.json();
+                    productsLoaded = true;
+                } else {
+                    console.warn('Không thể tải sản phẩm:', res.status);
+                }
+            } catch (err) {
+                console.warn('Không thể tải danh sách sản phẩm cho đối tượng khuyến mãi.');
+            }
+            return cachedProducts;
+        }
+
+        async function loadCategoriesForTargets() {
+            if (categoriesLoaded) return cachedCategories;
+            try {
+                let res = await fetch(`${API_BASE}/categories/all`, { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
+                }
+                if (res.ok) {
+                    const raw = await res.json();
+                    cachedCategories = normalizeCategories(raw);
+                    if (!cachedCategories.length) {
+                        cachedCategories = FALLBACK_CATEGORIES.slice();
+                    }
+                    categoriesLoaded = true;
+                } else {
+                    console.warn('Không thể tải danh mục:', res.status);
+                }
+            } catch (err) {
+                console.warn('Không thể tải danh sách danh mục cho đối tượng khuyến mãi.');
+            }
+            if (!cachedCategories.length) {
+                cachedCategories = FALLBACK_CATEGORIES.slice();
+                categoriesLoaded = true;
+            }
+            return cachedCategories;
+        }
+
+        function buildProductOptions(selectedId) {
+            if (!Array.isArray(cachedProducts) || !cachedProducts.length) {
+                return '<option value="">Không có sản phẩm</option>';
+            }
+            return cachedProducts.map(p => {
+                const label = `${formatLabelId(p.id)} - ${p.name || p.code || 'Sản phẩm'}`;
+                const selected = selectedId && Number(selectedId) === Number(p.id) ? 'selected' : '';
+                return `<option value="${p.id}" ${selected}>${escapeHtml(label)}</option>`;
+            }).join('');
+        }
+
+        function buildCategoryOptions(selectedId) {
+            if (!Array.isArray(cachedCategories) || !cachedCategories.length) {
+                return '<option value="">Không có danh mục</option>';
+            }
+            return cachedCategories.map(c => {
+                const label = `${formatLabelId(c.id)} - ${c.name || 'Danh mục'}`;
+                const selected = selectedId && Number(selectedId) === Number(c.id) ? 'selected' : '';
+                return `<option value="${c.id}" ${selected}>${escapeHtml(label)}</option>`;
+            }).join('');
+        }
+
+        function formatLabelId(value) {
+            const num = Number(value);
+            if (!Number.isFinite(num)) return String(value ?? '').trim();
+            return String(num).padStart(2, '0');
+        }
+
+        function normalizeCategories(list) {
+            if (!Array.isArray(list)) return [];
+            return list.map(item => ({
+                id: item.id ?? item.categoryId ?? item.category_id,
+                name: item.name ?? item.categoryName ?? item.category_name,
+                status: item.status
+            })).filter(c => c.id);
+        }
+
+        function createTargetValueField(type, selectedId) {
+            if (type === 'PRODUCT') {
+                return createProductSelect('target-id target-product', selectedId);
+            }
+            if (type === 'CATEGORY') {
+                const select = document.createElement('select');
+                select.className = 'target-id target-category';
+                select.innerHTML = buildCategoryOptions(selectedId);
+                return select;
+            }
+            const input = document.createElement('input');
+            input.className = 'target-id';
+            input.type = 'number';
+            input.min = '1';
+            input.placeholder = 'ID';
+            input.value = selectedId ? Number(selectedId) : '';
+            return input;
+        }
+
+        function updateTargetValueField(row, type, selectedId) {
+            const oldField = row.querySelector('.target-id');
+            if (oldField) oldField.remove();
+            const newField = createTargetValueField(type, selectedId);
+            const removeBtn = row.querySelector('button');
+            row.insertBefore(newField, removeBtn);
+        }
+
         function addTargetRow(data) {
             const container = document.getElementById('targetList');
             const row = document.createElement('div');
@@ -724,18 +865,48 @@
                 <select class="target-type">
                     <option value="PRODUCT">Sản phẩm</option>
                     <option value="CATEGORY">Danh mục</option>
-                    <option value="BRANCH">Chi nhánh</option>
-                    <option value="CUSTOMER_GROUP">Nhóm khách</option>
                 </select>
-                <input class="target-id" type="number" min="1" placeholder="ID">
                 <button type="button" class="btn btn-danger btn-sm">Xóa</button>
             `;
             row.querySelector('button').addEventListener('click', () => row.remove());
-            if (data) {
-                row.querySelector('.target-type').value = data.targetType || 'PRODUCT';
-                row.querySelector('.target-id').value = data.targetId || '';
+            const typeSelect = row.querySelector('.target-type');
+            const initialType = data?.targetType || 'PRODUCT';
+            typeSelect.value = initialType === 'CATEGORY' ? 'CATEGORY' : 'PRODUCT';
+            updateTargetValueField(row, typeSelect.value, data?.targetId);
+            typeSelect.addEventListener('change', () => {
+                updateTargetValueField(row, typeSelect.value, null);
+                if (typeSelect.value === 'PRODUCT') {
+                    loadProductsForTargets().then(() => {
+                        const select = row.querySelector('.target-id');
+                        if (select) select.innerHTML = buildProductOptions(null);
+                    });
+                } else if (typeSelect.value === 'CATEGORY') {
+                    loadCategoriesForTargets().then(() => {
+                        const select = row.querySelector('.target-id');
+                        if (select) select.innerHTML = buildCategoryOptions(null);
+                    });
+                }
+            });
+
+            if (typeSelect.value === 'PRODUCT') {
+                loadProductsForTargets().then(() => {
+                    const select = row.querySelector('.target-id');
+                    if (select) select.innerHTML = buildProductOptions(data?.targetId);
+                });
+            } else if (typeSelect.value === 'CATEGORY') {
+                loadCategoriesForTargets().then(() => {
+                    const select = row.querySelector('.target-id');
+                    if (select) select.innerHTML = buildCategoryOptions(data?.targetId);
+                });
             }
             container.appendChild(row);
+        }
+
+        function createProductSelect(className, selectedId) {
+            const select = document.createElement('select');
+            select.className = className;
+            select.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(selectedId)}`;
+            return select;
         }
 
         function addBundleRow(data) {
@@ -743,29 +914,66 @@
             const row = document.createElement('div');
             row.className = 'inline-row bundle';
             row.innerHTML = `
-                <input class="bundle-product" type="number" min="1" placeholder="Product ID">
-                <input class="bundle-qty" type="number" min="1" placeholder="Số lượng">
+                <div class="bundle-field"></div>
+                <div class="bundle-field"></div>
+                <input class="bundle-qty" type="number" min="1" placeholder="Số lượng" value="1">
                 <button type="button" class="btn btn-danger btn-sm">Xóa</button>
             `;
             row.querySelector('button').addEventListener('click', () => row.remove());
-            if (data) {
-                row.querySelector('.bundle-product').value = data.productId || '';
-                row.querySelector('.bundle-qty').value = data.quantity || '';
+            const selectA = createProductSelect('bundle-product-a', data?.productIdA || data?.productId || '');
+            const selectB = createProductSelect('bundle-product-b', data?.productIdB || '');
+            const fields = row.querySelectorAll('.bundle-field');
+            if (fields[0]) fields[0].appendChild(selectA);
+            if (fields[1]) fields[1].appendChild(selectB);
+            if (data?.quantity) {
+                row.querySelector('.bundle-qty').value = data.quantity;
             }
+            loadProductsForTargets().then(() => {
+                selectA.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(data?.productIdA || data?.productId)}`;
+                selectB.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(data?.productIdB)}`;
+            });
             container.appendChild(row);
+        }
+
+        function toBundleRowData(items) {
+            if (!Array.isArray(items) || !items.length) return [];
+            const rows = [];
+            for (let i = 0; i < items.length; i += 2) {
+                const first = items[i];
+                const second = items[i + 1];
+                if (!first) continue;
+                if (second && first.quantity !== second.quantity) {
+                    rows.push({ productIdA: first.productId, quantity: first.quantity });
+                    rows.push({ productIdA: second.productId, quantity: second.quantity });
+                    continue;
+                }
+                rows.push({
+                    productIdA: first.productId,
+                    productIdB: second ? second.productId : '',
+                    quantity: first.quantity || (second ? second.quantity : 1)
+                });
+            }
+            return rows;
         }
 
         function toggleBundleSection() {
             const type = document.getElementById('promoType').value;
-            const bundleNote = document.querySelector('.section-note');
+            const bundleNote = document.querySelector('#bundleSection .section-note');
             if (bundleNote) {
                 bundleNote.textContent = type === 'BUNDLE'
                     ? 'Bắt buộc ít nhất 1 combo khi chọn loại Combo.'
                     : 'Chỉ bắt buộc khi chọn loại Combo.';
             }
+            const bundleSection = document.getElementById('bundleSection');
+            if (bundleSection) {
+                const disable = type !== 'BUNDLE';
+                bundleSection.style.opacity = disable ? '0.6' : '1';
+                bundleSection.style.pointerEvents = disable ? 'none' : 'auto';
+            }
         }
         function buildPayload() {
             const id = document.getElementById('promotionId').value;
+            const promoType = document.getElementById('promoType').value;
             const payload = {
                 id: id ? Number(id) : undefined,
                 code: document.getElementById('promoCode').value.trim(),
@@ -785,12 +993,20 @@
                 return { targetType: type, targetId: idVal };
             }).filter(Boolean);
 
-            payload.bundleItems = Array.from(document.querySelectorAll('#bundleList .inline-row')).map(row => {
-                const productId = Number(row.querySelector('.bundle-product').value);
-                const quantity = Number(row.querySelector('.bundle-qty').value);
-                if (!productId || !quantity) return null;
-                return { productId, quantity };
-            }).filter(Boolean);
+            payload.bundleItems = [];
+            if (promoType === 'BUNDLE') {
+                Array.from(document.querySelectorAll('#bundleList .inline-row')).forEach(row => {
+                    const qtyVal = Number(row.querySelector('.bundle-qty')?.value) || 1;
+                    const productA = Number(row.querySelector('.bundle-product-a')?.value);
+                    const productB = Number(row.querySelector('.bundle-product-b')?.value);
+                    if (productA) {
+                        payload.bundleItems.push({ productId: productA, quantity: qtyVal });
+                    }
+                    if (productB) {
+                        payload.bundleItems.push({ productId: productB, quantity: qtyVal });
+                    }
+                });
+            }
 
             return payload;
         }

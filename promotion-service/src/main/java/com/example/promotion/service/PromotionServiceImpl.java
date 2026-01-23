@@ -268,6 +268,13 @@ public class PromotionServiceImpl implements PromotionService {
                 BundleItem item = new BundleItem();
                 item.setProductId(bdto.getProductId());
                 item.setQuantity(bdto.getQuantity());
+                item.setMainProductId(bdto.getProductId());
+                item.setMainQuantity(bdto.getQuantity());
+                item.setGiftProductId(bdto.getProductId());
+                item.setGiftQuantity(bdto.getQuantity());
+                item.setGiftDiscountType("FREE");
+                item.setGiftDiscountValue(0.0);
+                item.setStatus("ACTIVE");
                 item.setPromotion(promotion);
                 promotion.getBundleItems().add(item);
             }
