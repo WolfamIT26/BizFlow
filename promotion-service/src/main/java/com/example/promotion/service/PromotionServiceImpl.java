@@ -316,6 +316,12 @@ public class PromotionServiceImpl implements PromotionService {
                 && dto.getEndDate().isBefore(dto.getStartDate())) {
             throw new IllegalArgumentException("End date must be after start date");
         }
+        if (dto.getStartDate() == null) {
+            throw new IllegalArgumentException("Start date must be provided");
+        }
+        if (dto.getEndDate() == null) {
+            throw new IllegalArgumentException("End date must be provided");
+        }
 
         validateTargets(dto);
         validateBundleItems(dto);
