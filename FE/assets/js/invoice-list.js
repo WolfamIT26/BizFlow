@@ -884,7 +884,7 @@ async function loadPromotionIndex() {
     const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
 
     try {
-        const promoPromise = fetch(`${API_BASE}/promotions`, { headers })
+        const promoPromise = fetch(`${API_BASE}/v1/promotions`, { headers })
             .then(res => (res.ok ? res.json() : []));
         const productPromise = fetch(`${API_BASE}/products`, { headers })
             .then(res => (res.ok ? res.json() : []));

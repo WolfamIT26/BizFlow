@@ -17,6 +17,11 @@ RUN mvn -pl bizflow-app -am -DskipTests package
 # Stage 2: Create the final, lightweight image with the application JAR
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/bizflow-app/target/*.jar app.jar
+COPY --from=build /app/bizflow-app/target/*.jar /app/
+RUN set -eux; \
+    for f in /app/*.jar; do \
+      case "$f" in *.original) ;; *) mv "$f" /app/app.jar ;; esac; \
+    done; \
+    rm -f /app/*.jar.original
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

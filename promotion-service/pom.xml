@@ -71,6 +71,8 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.example.promotion.PromotionServiceApplication</mainClass>
+                    <!-- Keep the plain jar as the main artifact so other modules can compile against it -->
+                    <classifier>exec</classifier>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

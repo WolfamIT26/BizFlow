@@ -2,14 +2,12 @@ package com.example.bizflow.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products")
 @Data
-@NoArgsConstructor
 public class Product {
 
     @Id
@@ -55,6 +53,10 @@ public class Product {
 
     @Column(name = "stock")
     private Integer stock;
+
+    public Product() {
+        // Required by JPA and for builds without Lombok annotation processing
+    }
 
     public Product(String code, String name, BigDecimal price) {
         this.code = code;

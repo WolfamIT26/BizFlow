@@ -78,7 +78,7 @@ async function loadPromotions() {
     try {
         const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
         const [promoRes, productRes] = await Promise.all([
-            fetch(`${API_BASE}/promotions`, { headers }),
+            fetch(`${API_BASE}/v1/promotions`, { headers }),
             fetch(`${API_BASE}/products`, { headers })
         ]);
         
