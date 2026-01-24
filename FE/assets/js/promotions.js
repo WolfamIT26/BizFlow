@@ -3,8 +3,19 @@ const API_BASE = resolveApiBase();
 let promotions = [];
 let products = [];
 let promoProducts = [];
+let productMap = new Map();
 let searchTerm = '';
 let filterType = 'ALL';
+const PRODUCT_IMAGE_LIST_URL = '/assets/data/product-image-files.json';
+const productImageMap = new Map();
+let productImageMapReady = false;
+
+const PRODUCT_ICON = `
+    <svg viewBox="0 0 24 24" class="icon-svg" aria-hidden="true">
+        <path d="M6 8h12l-1.2 11H7.2L6 8Z" />
+        <path d="M9 8V6a3 3 0 0 1 6 0v2" />
+    </svg>
+`;
 
 window.addEventListener('DOMContentLoaded', () => {
     checkAuth();
@@ -13,27 +24,19 @@ window.addEventListener('DOMContentLoaded', () => {
     loadPromotions();
 });
 
+// --- Khởi tạo & Auth ---
 function resolveApiBase() {
     const configured = window.API_BASE_URL || window.API_BASE;
-    if (configured) {
-        return configured.replace(/\/$/, '');
-    }
-
-    if (window.location.protocol === 'file:') {
+    if (configured) return configured.replace(/\/$/, '');
+    if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port === '3000')) {
         return 'http://localhost:8080/api';
     }
-
-    if (window.location.hostname === 'localhost' && window.location.port === '3000') {
-        return 'http://localhost:8080/api';
-    }
-
     return `${window.location.origin}/api`;
 }
 
 function checkAuth() {
     const token = sessionStorage.getItem('accessToken');
     const role = sessionStorage.getItem('role');
-
     if (!token || role !== 'EMPLOYEE') {
         window.location.href = '/pages/login.html';
     }
@@ -45,7 +48,7 @@ function loadUserInfo() {
     const initialEl = document.getElementById('userInitial');
     if (initialEl) initialEl.textContent = userInitial;
     const nameEl = document.getElementById('userName');
-    if (nameEl) nameEl.textContent = username || 'Nhan vien';
+    if (nameEl) nameEl.textContent = username || 'Nhân viên';
 }
 
 function setupActions() {
@@ -63,25 +66,24 @@ function setupActions() {
         applyFilters();
     });
 
-    reloadBtn?.addEventListener('click', () => {
-        loadPromotions();
-    });
+    reloadBtn?.addEventListener('click', () => loadPromotions());
 }
 
+// --- Xử lý dữ liệu ---
 async function loadPromotions() {
     const grid = document.getElementById('promoGrid');
     const empty = document.getElementById('promoEmpty');
-    if (grid) {
-        grid.innerHTML = '<div class="promo-empty">Dang tai du lieu khuyen mai...</div>';
-    }
+    if (grid) grid.innerHTML = '<div class="promo-empty">Đang tải dữ liệu khuyến mãi...</div>';
     if (empty) empty.hidden = true;
 
     try {
         const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
         const [promoRes, productRes] = await Promise.all([
-            fetch(`${API_BASE}/promotions`, { headers }),
+            fetch(`${API_BASE}/v1/promotions`, { headers }),
             fetch(`${API_BASE}/products`, { headers })
         ]);
+        
+        await loadProductImageMap();
 
         if (promoRes.status === 401 || productRes.status === 401) {
             sessionStorage.clear();
@@ -89,62 +91,45 @@ async function loadPromotions() {
             return;
         }
 
-        if (!promoRes.ok || !productRes.ok) {
-            throw new Error('Failed to load promotions');
-        }
+        if (!promoRes.ok || !productRes.ok) throw new Error('Failed to load');
 
         const allPromotions = await promoRes.json();
         promotions = (allPromotions || []).filter(isPromotionActive);
         products = await productRes.json();
+        productMap = new Map((Array.isArray(products) ? products : []).map(p => [p.id, p]));
         promoProducts = buildPromoProducts(promotions, products);
+        
         updateSummary();
         applyFilters();
     } catch (err) {
-        if (grid) {
-            grid.innerHTML = '';
-        }
+        if (grid) grid.innerHTML = '';
         if (empty) {
             empty.hidden = false;
-            empty.textContent = 'Khong the tai danh sach khuyen mai.';
+            empty.textContent = 'Không thể tải danh sách khuyến mãi.';
         }
     }
 }
 
 function buildPromoProducts(activePromos, productList) {
-    const productMap = new Map((productList || []).map((p) => [p.id, p]));
+    const safeProducts = Array.isArray(productList) ? productList : [];
+    const safePromos = Array.isArray(activePromos) ? activePromos : [];
+    const productMap = new Map(safeProducts.map((p) => [p.id, p]));
     const results = new Map();
 
-    (activePromos || []).forEach((promo) => {
+    safePromos.forEach((promo) => {
         const targetIds = new Set();
-        const targets = promo.targets || [];
-        const bundles = promo.bundleItems || [];
-
-        targets.forEach((target) => {
-            if (!target || target.targetId == null) return;
-            if (target.targetType === 'PRODUCT') {
-                targetIds.add(target.targetId);
-            }
-            if (target.targetType === 'CATEGORY') {
-                (productList || []).forEach((product) => {
-                    if (product.categoryId === target.targetId) {
-                        targetIds.add(product.id);
-                    }
-                });
+        (promo.targets || []).forEach((t) => {
+            if (t.targetType === 'PRODUCT') targetIds.add(t.targetId);
+            if (t.targetType === 'CATEGORY') {
+                safeProducts.forEach(p => { if (p.categoryId === t.targetId) targetIds.add(p.id); });
             }
         });
-
-        bundles.forEach((item) => {
-            if (item?.productId != null) {
-                targetIds.add(item.productId);
-            }
-        });
+        (promo.bundleItems || []).forEach(bi => { if (bi.productId) targetIds.add(bi.productId); });
 
         targetIds.forEach((id) => {
             const product = productMap.get(id);
             if (!product) return;
-            if (!results.has(id)) {
-                results.set(id, { product, promotions: [] });
-            }
+            if (!results.has(id)) results.set(id, { product, promotions: [] });
             results.get(id).promotions.push(promo);
         });
     });
@@ -162,107 +147,20 @@ function buildPromoProducts(activePromos, productList) {
 }
 
 function selectBestPromotion(product, promos) {
+    if (!Array.isArray(promos) || promos.length === 0) {
+        return { promo: null, price: NaN, label: '-' };
+    }
     const basePrice = Number(product?.price);
-    const candidates = (promos || []).map((promo) => {
-        const price = getPromoPrice(basePrice, promo);
-        return { promo, price };
-    });
+    const candidates = promos.map(promo => ({ promo, price: getPromoPrice(basePrice, promo) }));
+    const priced = candidates.filter(c => Number.isFinite(c.price)).sort((a, b) => a.price - b.price);
 
-    const priced = candidates.filter((c) => Number.isFinite(c.price));
     if (priced.length > 0) {
-        priced.sort((a, b) => a.price - b.price);
         return { promo: priced[0].promo, price: priced[0].price, label: getDiscountLabel(priced[0].promo) };
     }
-
-    const fallback = candidates[0]?.promo || null;
-    return { promo: fallback, price: NaN, label: fallback ? getDiscountLabel(fallback) : '-' };
+    return { promo: promos[0], price: NaN, label: getDiscountLabel(promos[0]) };
 }
 
-function getPromoPrice(basePrice, promo) {
-    if (!Number.isFinite(basePrice) || !promo) return NaN;
-    const value = Number(promo.discountValue);
-    switch (promo.discountType) {
-        case 'PERCENT':
-            if (!Number.isFinite(value)) return NaN;
-            return Math.max(0, basePrice * (1 - value / 100));
-        case 'FIXED':
-        case 'FIXED_AMOUNT':
-            if (!Number.isFinite(value)) return NaN;
-            return Math.max(0, basePrice - value);
-        case 'BUNDLE':
-            if (!Number.isFinite(value)) return NaN;
-            return Math.max(0, value);
-        case 'FREE_GIFT':
-            return basePrice;
-        default:
-            return NaN;
-    }
-}
-
-function getDiscountLabel(promo) {
-    if (!promo) return '-';
-    const value = Number(promo.discountValue);
-    if (promo.discountType === 'PERCENT' && Number.isFinite(value)) {
-        return `-${value}%`;
-    }
-    if ((promo.discountType === 'FIXED' || promo.discountType === 'FIXED_AMOUNT') && Number.isFinite(value)) {
-        return `-${formatPrice(value)}`;
-    }
-    if (promo.discountType === 'BUNDLE') {
-        return 'Combo';
-    }
-    if (promo.discountType === 'FREE_GIFT') {
-        return 'Tang kem';
-    }
-    return promo.discountType || '-';
-}
-
-function formatBundleItems(promo) {
-    if (!promo || !Array.isArray(promo.bundleItems) || promo.bundleItems.length === 0) {
-        return '';
-    }
-
-    return promo.bundleItems.map((item) => {
-        if (!item) return '';
-        const product = products.find(p => p.id === item.productId) || {};
-        const name = product.name || product.code || product.barcode || `SP ${item.productId}`;
-        const qty = Number(item.quantity) || 1;
-        return `${name} x${qty}`;
-    }).filter(Boolean).join(', ');
-}
-
-function applyFilters() {
-    const grid = document.getElementById('promoGrid');
-    const empty = document.getElementById('promoEmpty');
-    if (!grid) return;
-
-    const keyword = normalizeKeyword(searchTerm);
-    const filtered = promoProducts.filter((entry) => {
-        const matchesType = filterType === 'ALL' || entry.promotions.some((promo) => {
-            if (promo.discountType === filterType) return true;
-            if (filterType === 'FIXED' && promo.discountType === 'FIXED_AMOUNT') return true;
-            if (filterType === 'BUNDLE' && promo.discountType === 'FREE_GIFT') return true;
-            return false;
-        });
-        if (!matchesType) return false;
-        if (!keyword) return true;
-
-        const product = entry.product || {};
-        const productText = `${product.name || ''} ${product.code || ''} ${product.barcode || ''}`;
-        if (normalizeKeyword(productText).includes(keyword)) return true;
-
-        return entry.promotions.some((promo) => {
-            const promoText = `${promo.name || ''} ${promo.code || ''}`;
-            return normalizeKeyword(promoText).includes(keyword);
-        });
-    });
-
-    renderPromoGrid(filtered);
-    if (empty) {
-        empty.hidden = filtered.length > 0;
-    }
-}
-
+// --- Hiển thị (Render) ---
 function renderPromoGrid(list) {
     const grid = document.getElementById('promoGrid');
     if (!grid) return;
@@ -276,120 +174,205 @@ function renderPromoGrid(list) {
         const product = entry.product || {};
         const promo = entry.bestPromotion || {};
         const basePrice = Number(product.price);
-        const promoPrice = entry.promoPrice;
-        const priceOld = Number.isFinite(basePrice) ? formatPrice(basePrice) : '-';
-        const priceNew = Number.isFinite(promoPrice) ? formatPrice(promoPrice) : '-';
-        const promoName = promo.name || promo.code || 'Khuyen mai';
-        const promoCode = promo.code || '-';
-        const promoType = promo.discountType || '-';
+        const promoPrice = Number(entry.promoPrice);
+        const imageMarkup = buildProductImageMarkup(product);
+        const discountLabel = entry.promoLabel || '-';
         const promoDates = formatPromoDates(promo.startDate, promo.endDate);
-        const bundleLine = formatBundleItems(promo);
+        const bundleInfo = promo.discountType === 'BUNDLE'
+            ? getBundleInfo(promo, product.id)
+            : null;
 
         return `
             <div class="promo-card">
-                <div class="promo-header">
-                    <div>
-                        <div class="promo-title">${escapeHtml(product.name || 'San pham')}</div>
-                        <div class="promo-sku">SKU: ${escapeHtml(product.code || product.barcode || '-')}</div>
+                <div class="promo-badge-km">KM</div>
+                
+                <div class="promo-image">
+                    ${imageMarkup}
+                </div>
+
+                <div class="promo-info">
+                    <div class="promo-title">${escapeHtml(product.name || 'Sản phẩm')}</div>
+                    <div class="promo-sku">SKU: ${escapeHtml(product.code || product.barcode || '-')}</div>
+                    
+                    <div class="promo-prices">
+                        <span class="promo-price-new">${Number.isFinite(promoPrice) ? formatPrice(promoPrice) : formatPrice(basePrice)}</span>
+                        <span class="promo-price-old">${Number.isFinite(promoPrice) && promoPrice < basePrice ? formatPrice(basePrice) : ''}</span>
                     </div>
-                    <div class="promo-badge">${escapeHtml(entry.promoLabel)}</div>
-                </div>
-                <div class="promo-prices">
-                    <span class="promo-price-old">${priceOld}</span>
-                    <span class="promo-price-new">${priceNew}</span>
-                </div>
-                <div class="promo-meta">
-                    <span>Khuyen mai <strong>${escapeHtml(promoName)}</strong></span>
-                    <span>Ma <strong>${escapeHtml(promoCode)}</strong></span>
-                    <span>Loai <strong>${escapeHtml(promoType)}</strong></span>
-                    <span>Thoi gian <strong>${escapeHtml(promoDates)}</strong></span>
-                    ${bundleLine ? `<span>Combo <strong>${escapeHtml(bundleLine)}</strong></span>` : ''}
+
+                    <div class="promo-meta">
+                        <div>CT: <strong>${escapeHtml(promo.name || promo.code || 'Khuyến mãi')}</strong></div>
+                        <div class="promo-discount">Ưu đãi: ${discountLabel}</div>
+                        <div class="promo-expiry">Hạn: ${promoDates}</div>
+                        ${bundleInfo ? renderBundleInfo(bundleInfo) : ''}
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 }
 
-function updateSummary() {
-    const summary = document.getElementById('promoSummary');
-    if (!summary) return;
-    const promoCount = promotions.length;
-    const productCount = promoProducts.length;
-    summary.textContent = `${promoCount} khuyen mai dang ap dung | ${productCount} san pham giam gia`;
-}
+function applyFilters() {
+    const grid = document.getElementById('promoGrid');
+    const empty = document.getElementById('promoEmpty');
+    if (!grid) return;
 
-function formatPromoDates(startDate, endDate) {
-    const start = formatDate(startDate);
-    const end = formatDate(endDate);
-    if (start === '-' && end === '-') return '-';
-    return `${start} - ${end}`;
-}
+    const keyword = normalizeKeyword(searchTerm);
+    const filtered = promoProducts.filter((entry) => {
+        const matchesType = filterType === 'ALL' || entry.promotions.some(p => 
+            p.discountType === filterType || (filterType === 'FIXED' && p.discountType === 'FIXED_AMOUNT')
+        );
+        if (!matchesType) return false;
+        if (!keyword) return true;
 
-function formatDate(value) {
-    if (!value) return '-';
-    if (Array.isArray(value)) {
-        const [year, month, day, hour = 0, minute = 0, second = 0] = value;
-        const date = new Date(year, (month || 1) - 1, day || 1, hour, minute, second);
-        if (!Number.isNaN(date.getTime())) {
-            return date.toLocaleDateString('vi-VN');
-        }
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
-    return date.toLocaleDateString('vi-VN');
-}
-
-function isPromotionActive(promo) {
-    if (!promo) return false;
-    if (promo.active === false) return false;
-    const now = new Date();
-    const start = parsePromotionDate(promo.startDate);
-    const end = parsePromotionDate(promo.endDate);
-    if (start && now < start) return false;
-    if (end && now > end) return false;
-    return true;
-}
-
-function parsePromotionDate(value) {
-    if (!value) return null;
-    if (Array.isArray(value)) {
-        const [year, month, day, hour = 0, minute = 0, second = 0] = value;
-        const date = new Date(year, (month || 1) - 1, day || 1, hour, minute, second);
-        return Number.isNaN(date.getTime()) ? null : date;
-    }
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatPrice(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return '-';
-    return `${number.toLocaleString('vi-VN')}d`;
-}
-
-function stripDiacritics(value) {
-    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
-
-function normalizeKeyword(value) {
-    return stripDiacritics((value || '').toString().trim().toLowerCase());
-}
-
-function escapeHtml(value) {
-    return (value || '').replace(/[&<>"']/g, (char) => {
-        switch (char) {
-            case '&':
-                return '&amp;';
-            case '<':
-                return '&lt;';
-            case '>':
-                return '&gt;';
-            case '"':
-                return '&quot;';
-            case '\'':
-                return '&#39;';
-            default:
-                return char;
-        }
+        const text = `${entry.product.name} ${entry.product.code} ${entry.bestPromotion.name}`;
+        return normalizeKeyword(text).includes(keyword);
     });
+
+    renderPromoGrid(filtered);
+    if (empty) empty.hidden = filtered.length > 0;
 }
+
+// --- Helpers (Giữ nguyên các hàm bổ trợ) ---
+async function loadProductImageMap() {
+    if (productImageMapReady) return;
+    productImageMapReady = true;
+    try {
+        const response = await fetch(PRODUCT_IMAGE_LIST_URL, { cache: 'no-store' });
+        const files = await response.json();
+        if (Array.isArray(files)) {
+            files.forEach(filePath => {
+                const baseName = filePath.split('/').pop().replace(/\.[^.]+$/, '');
+                productImageMap.set(normalizeProductKey(baseName), filePath);
+            });
+        }
+    } catch (err) { console.error("Image map load failed"); }
+}
+
+function getProductImageSrc(product) {
+    const keys = [product?.name, product?.code, product?.barcode];
+    for (let k of keys) {
+        const normalized = normalizeProductKey(k);
+        if (normalized && productImageMap.has(normalized)) return productImageMap.get(normalized);
+    }
+    return '';
+}
+
+function buildProductImageMarkup(product) {
+    const src = getProductImageSrc(product);
+    return src ? `<img src="${encodeURI(src)}" alt="product" loading="lazy" />` : PRODUCT_ICON;
+}
+
+function buildTinyProductImageMarkup(product) {
+    const src = getProductImageSrc(product);
+    return src ? `<img src="${encodeURI(src)}" alt="product" loading="lazy" />` : PRODUCT_ICON;
+}
+
+function getBundleInfo(promo, productId) {
+    const items = Array.isArray(promo?.bundleItems) ? promo.bundleItems : [];
+    if (!items.length) return null;
+    const match = items.find(b => Number(b.mainProductId ?? b.productId) === Number(productId)) || items[0];
+    if (!match) return null;
+    const mainId = match.mainProductId ?? match.productId;
+    const giftId = match.giftProductId ?? match.productId;
+    const mainQty = match.mainQuantity ?? match.quantity ?? 1;
+    const giftQty = match.giftQuantity ?? 1;
+    const mainProduct = productMap.get(Number(mainId));
+    const giftProduct = productMap.get(Number(giftId)) || mainProduct;
+    return { mainProduct, giftProduct, mainQty, giftQty };
+}
+
+function renderBundleInfo(bundle) {
+    const main = bundle.mainProduct || {};
+    const gift = bundle.giftProduct || {};
+    const mainName = main.name || main.code || 'Sáº£n pháº©m';
+    const giftName = gift.name || gift.code || 'Sáº£n pháº©m';
+    return `
+        <div class="promo-bundle">
+            <div class="bundle-row">
+                <span class="bundle-label">Mua</span>
+                <div class="bundle-item">
+                    <div class="bundle-thumb">${buildTinyProductImageMarkup(main)}</div>
+                    <div class="bundle-text">x${bundle.mainQty} ${escapeHtml(mainName)}</div>
+                </div>
+            </div>
+            <div class="bundle-row">
+                <span class="bundle-label">Tặng</span>
+                <div class="bundle-item">
+                    <div class="bundle-thumb">${buildTinyProductImageMarkup(gift)}</div>
+                    <div class="bundle-text">x${bundle.giftQty} ${escapeHtml(giftName)}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function getPromoPrice(base, promo) {
+    const val = Number(promo.discountValue);
+    if (promo.discountType === 'PERCENT') return base * (1 - val / 100);
+    if (promo.discountType === 'FIXED' || promo.discountType === 'FIXED_AMOUNT') return Math.max(0, base - val);
+    if (promo.discountType === 'BUNDLE') return val;
+    return base;
+}
+
+function getDiscountLabel(promo) {
+    if (!promo) return '-';
+    const val = Number(promo.discountValue);
+    if (promo.discountType === 'PERCENT') return `-${val}%`;
+    if (promo.discountType === 'FIXED' || promo.discountType === 'FIXED_AMOUNT') return `-${formatPrice(val)}`;
+    if (promo.discountType === 'BUNDLE') return 'Combo';
+    return 'Tặng kèm';
+}
+
+function formatPrice(v) {
+    return Number.isFinite(Number(v)) ? `${Math.round(v).toLocaleString('vi-VN')}đ` : '-';
+}
+
+function formatPromoDates(s, e) {
+    const start = formatDate(s);
+    const end = formatDate(e);
+    return (start === '-' && end === '-') ? 'Không thời hạn' : `${start} - ${end}`;
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    let d = Array.isArray(val) ? new Date(val[0], val[1]-1, val[2]) : new Date(val);
+    return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('vi-VN');
+}
+
+function isPromotionActive(p) {
+    if (!p || p.active === false) return false;
+    const now = new Date();
+    const start = parsePromotionDate(p.startDate);
+    const end = parsePromotionDate(p.endDate);
+    return (!start || now >= start) && (!end || now <= end);
+}
+
+function parsePromotionDate(v) {
+    if (!v) return null;
+    let d = Array.isArray(v) ? new Date(v[0], v[1]-1, v[2], v[3]||0, v[4]||0) : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeProductKey(v) {
+    return v ? stripDiacritics(v.toString().toLowerCase().trim()).replace(/[^a-z0-9]+/g, '') : '';
+}
+
+function stripDiacritics(v) {
+    return v.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function normalizeKeyword(v) {
+    if (!v) return '';
+    return stripDiacritics(v.toString().toLowerCase().trim());
+}
+
+function escapeHtml(v) {
+    return (v || '').toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[m]));
+}
+
+function updateSummary() {
+    const el = document.getElementById('promoSummary');
+    if (el) el.textContent = `${promotions.length} khuyến mãi áp dụng | ${promoProducts.length} sản phẩm giảm giá`;
+}
+
+

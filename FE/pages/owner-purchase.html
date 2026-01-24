@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -16,26 +16,60 @@
             --bg-card: #374151;
             --text: #f9fafb;
         }
-        body { background: var(--bg-dark); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        body {
+            background: radial-gradient(1200px 800px at 20% -10%, rgba(79, 70, 229, 0.18), transparent 60%),
+                        radial-gradient(900px 700px at 100% 10%, rgba(16, 185, 129, 0.12), transparent 55%),
+                        var(--bg-dark);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
         .container { max-width: 1400px; margin: 0 auto; }
         h1 { color: var(--primary); margin-bottom: 20px; }
         
         .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab-btn { padding: 12px 24px; background: var(--bg-card); border: none; color: var(--text); cursor: pointer; border-radius: 8px 8px 0 0; font-size: 15px; }
-        .tab-btn.active { background: var(--primary); }
+        .tab-btn { padding: 12px 24px; background: rgba(55, 65, 81, 0.8); border: 1px solid rgba(148, 163, 184, 0.08); color: var(--text); cursor: pointer; border-radius: 10px 10px 0 0; font-size: 15px; transition: all 0.2s ease; }
+        .tab-btn.active { background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: rgba(99, 102, 241, 0.6); box-shadow: 0 10px 20px rgba(79, 70, 229, 0.35); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
 
-        .card { background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .card h2 { margin-top: 0; color: var(--success); font-size: 18px; }
+        .card {
+            background: linear-gradient(180deg, rgba(55, 65, 81, 0.95), rgba(31, 41, 55, 0.9));
+            border-radius: 14px;
+            padding: 22px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255,255,255,0.03);
+            border: 1px solid rgba(148, 163, 184, 0.08);
+        }
+        .card h2 { margin-top: 0; color: var(--success); font-size: 18px; letter-spacing: 0.2px; }
         
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 14px; }
+        .form-group label { display: block; margin-bottom: 6px; color: rgba(226, 232, 240, 0.8); font-size: 13px; letter-spacing: 0.2px; }
         .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 10px; border: 1px solid #4b5563; border-radius: 8px;
-            background: var(--bg-dark); color: var(--text); box-sizing: border-box;
+            width: 100%; padding: 11px 12px; border: 1px solid rgba(71, 85, 105, 0.9); border-radius: 10px;
+            background: rgba(15, 23, 42, 0.7); color: var(--text); box-sizing: border-box;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: rgba(79, 70, 229, 0.8);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.22);
+            background: rgba(15, 23, 42, 0.9);
+        }
+        .form-group.inline { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+        .checkbox-pill { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; background: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(99, 102, 241, 0.08)); border: 1px solid rgba(99, 102, 241, 0.35); cursor: pointer; user-select: none; transition: all 0.2s ease; }
+        .checkbox-pill:hover { background: linear-gradient(135deg, rgba(79, 70, 229, 0.22), rgba(99, 102, 241, 0.16)); border-color: rgba(99, 102, 241, 0.7); }
+        .checkbox-pill input { position: absolute; opacity: 0; pointer-events: none; }
+        .checkbox-box { width: 20px; height: 20px; border-radius: 7px; border: 2px solid rgba(148, 163, 184, 0.7); display: inline-flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.65); transition: all 0.2s ease; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2); }
+        .checkbox-box::after { content: ''; width: 8px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) scale(0); transition: transform 0.2s ease; }
+        .checkbox-text { color: rgba(226, 232, 240, 0.92); font-size: 14px; font-weight: 600; letter-spacing: 0.2px; }
+        .checkbox-pill input:checked + .checkbox-box { background: linear-gradient(135deg, #4f46e5, #6366f1); border-color: #6366f1; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.25), 0 6px 12px rgba(79, 70, 229, 0.35); }
+        .checkbox-pill input:checked + .checkbox-box::after { transform: rotate(-45deg) scale(1); }
+        .checkbox-pill input:checked ~ .checkbox-text { color: #e0e7ff; }
+        .checkbox-pill:has(input:checked) { border-color: rgba(99, 102, 241, 0.8); background: linear-gradient(135deg, rgba(79, 70, 229, 0.28), rgba(99, 102, 241, 0.2)); box-shadow: 0 8px 16px rgba(15, 23, 42, 0.3), inset 0 0 0 1px rgba(255,255,255,0.05); }
+        .checkbox-pill input:focus-visible + .checkbox-box { outline: 2px solid rgba(245, 158, 11, 0.8); outline-offset: 2px; }
         
         .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
@@ -69,12 +103,196 @@
 
         .back-link { color: var(--primary); text-decoration: none; display: inline-block; margin-bottom: 20px; }
         .back-link:hover { text-decoration: underline; }
-    </style>
+            body.in-drawer .sidebar {
+            display: none;
+        }
+        body.in-drawer .layout {
+            grid-template-columns: 1fr;
+        }
+        body.in-drawer .purchase-backdrop,
+        body.in-drawer .purchase-drawer {
+            display: none;
+        }        body.in-drawer {
+            --primary: #2f3a8f;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --muted: #6b7280;
+            --bg-light: #f3f4f8;
+            --card: #ffffff;
+            --border: #e5e7eb;
+            --text: #1f2937;
+            background: var(--bg-light);
+            color: var(--text);
+        }
+        body.in-drawer .container { max-width: 1200px; }
+        body.in-drawer h1 { color: var(--primary); }
+        body.in-drawer .tab-btn {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            color: var(--text);
+            box-shadow: none;
+        }
+        body.in-drawer .tab-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 10px 24px rgba(47, 58, 143, 0.2);
+        }
+        body.in-drawer .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 25px rgba(31, 41, 55, 0.08);
+        }
+        body.in-drawer .card h2 { color: var(--primary); }
+        body.in-drawer .form-group label { color: var(--muted); }
+        body.in-drawer .form-group input,
+        body.in-drawer .form-group select,
+        body.in-drawer .form-group textarea {
+            background: #ffffff;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        body.in-drawer .form-group input:focus,
+        body.in-drawer .form-group select:focus,
+        body.in-drawer .form-group textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(47, 58, 143, 0.18);
+        }
+        body.in-drawer table { background: transparent; }
+        body.in-drawer th { background: #f9fafb; border-bottom: 1px solid var(--border); color: var(--muted); }
+        body.in-drawer td { border-bottom: 1px solid var(--border); }
+        body.in-drawer tr:hover { background: #f3f4f6; }
+        body.in-drawer .summary-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
+        }
+        body.in-drawer .cost-preview {
+            background: #eef2ff;
+            border: 1px solid #e0e7ff;
+        }
+        body.in-drawer .checkbox-pill {
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+        }
+        body.in-drawer .checkbox-text { color: var(--text); }
+        body.in-drawer .checkbox-box {
+            background: #ffffff;
+            border: 2px solid #c7d2fe;
+        }
+        body.in-drawer .checkbox-pill input:checked + .checkbox-box {
+            background: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(47, 58, 143, 0.18);
+        }
+        body.in-drawer .checkbox-pill input:checked ~ .checkbox-text { color: var(--text); }
+        body.in-drawer .back-link { color: var(--primary); }        body.in-drawer.ui-refresh {
+            background: #f4f6fb;
+            color: #1f2937;
+        }
+        body.in-drawer.ui-refresh .container {
+            max-width: 1040px;
+            margin: 0 auto;
+        }
+        body.in-drawer.ui-refresh h1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #1f2a66;
+            font-weight: 700;
+            font-size: 28px;
+            margin: 8px 0 22px;
+        }
+        body.in-drawer.ui-refresh h1::before {
+            content: "📦";
+            font-size: 24px;
+        }
+        body.in-drawer.ui-refresh .tabs {
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+        body.in-drawer.ui-refresh .tab-btn {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+            border-radius: 12px;
+            padding: 10px 18px;
+            box-shadow: 0 8px 16px rgba(31, 41, 55, 0.06);
+        }
+        body.in-drawer.ui-refresh .tab-btn.active {
+            background: #2f3a8f;
+            border-color: #2f3a8f;
+            color: #ffffff;
+            box-shadow: 0 12px 24px rgba(47, 58, 143, 0.25);
+        }
+        body.in-drawer.ui-refresh .card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 22px 24px;
+            box-shadow: 0 18px 30px rgba(31, 41, 55, 0.08);
+        }
+        body.in-drawer.ui-refresh .card h2 {
+            color: #2f3a8f;
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+        body.in-drawer.ui-refresh .form-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+        body.in-drawer.ui-refresh .form-group label {
+            color: #6b7280;
+            font-weight: 600;
+        }
+        body.in-drawer.ui-refresh .form-group input,
+        body.in-drawer.ui-refresh .form-group select,
+        body.in-drawer.ui-refresh .form-group textarea {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+        }
+        body.in-drawer.ui-refresh .form-group input:focus,
+        body.in-drawer.ui-refresh .form-group select:focus,
+        body.in-drawer.ui-refresh .form-group textarea:focus {
+            border-color: #2f3a8f;
+            box-shadow: 0 0 0 3px rgba(47, 58, 143, 0.15);
+        }
+        body.in-drawer.ui-refresh .checkbox-pill {
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 999px;
+        }
+        body.in-drawer.ui-refresh .checkbox-text {
+            color: #1f2937;
+        }
+        body.in-drawer.ui-refresh .btn-success {
+            background: #16a34a;
+            border-radius: 12px;
+            padding: 10px 18px;
+            box-shadow: 0 10px 20px rgba(22, 163, 74, 0.2);
+        }
+        body.in-drawer.ui-refresh .summary-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+        }
+        body.in-drawer.ui-refresh th {
+            background: #f8fafc;
+            color: #6b7280;
+        }
+        body.in-drawer.ui-refresh tr:hover {
+            background: #f3f4f6;
+        }
+        @media (max-width: 900px) {
+            body.in-drawer.ui-refresh .form-grid { grid-template-columns: 1fr; }
+            body.in-drawer.ui-refresh h1 { font-size: 24px; }
+        }</style>
 </head>
 <body>
     <div class="container">
-        <a href="owner-dashboard.html" class="back-link">← Quay lại Dashboard</a>
-        <h1>📦 Nhập Hàng & Quản Lý Giá Vốn</h1>
+<h1>📦 Nhập Hàng & Quản Lý Giá Vốn</h1>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('purchase')">Nhập Hàng Mới</button>
@@ -93,6 +311,13 @@
                             <select id="purchaseProduct" required onchange="updateCostPreview()">
                                 <option value="">-- Chọn sản phẩm --</option>
                             </select>
+                            <div class="form-group inline">
+                                <label class="checkbox-pill" for="isNewProduct">
+                                    <input type="checkbox" id="isNewProduct" onchange="toggleNewProduct(this.checked)">
+                                    <span class="checkbox-box" aria-hidden="true"></span>
+                                    <span class="checkbox-text">San pham moi (chua co trong cua hang)</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Giá vốn mới (VNĐ) *</label>
@@ -101,6 +326,46 @@
                         <div class="form-group">
                             <label>Số lượng nhập *</label>
                             <input type="number" id="purchaseQuantity" required min="1" value="1" oninput="updateCostPreview()">
+                        </div>
+                    </div>
+                    <div id="newProductFields" style="display:none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Ten san pham *</label>
+                                <input type="text" id="newProductName" placeholder="VD: Sua tuoi Vinamilk 1L">
+                            </div>
+                            <div class="form-group">
+                                <label>Ma san pham (SKU) *</label>
+                                <input type="text" id="newProductCode" placeholder="VD: VM-1L">
+                            </div>
+                            <div class="form-group">
+                                <label>Gia ban *</label>
+                                <input type="number" id="newProductPrice" min="0" step="100" placeholder="VD: 25000">
+                            </div>
+                            <div class="form-group">
+                                <label>Gia von nhap *</label>
+                                <input type="number" id="newProductCostPrice" min="0" step="100" placeholder="VD: 15000" oninput="syncCostPrice('newProductCostPrice','purchaseCostPrice'); updateCostPreview()">
+                            </div>
+                            <div class="form-group">
+                                <label>Don vi</label>
+                                <input type="text" id="newProductUnit" placeholder="VD: chai, hop, goi">
+                            </div>
+                            <div class="form-group">
+                                <label>Barcode</label>
+                                <input type="text" id="newProductBarcode" placeholder="VD: 893...">
+                            </div>
+                            <div class="form-group">
+                                <label>Category ID</label>
+                                <input type="number" id="newProductCategory" min="1" step="1" placeholder="VD: 1">
+                            </div>
+                            <div class="form-group">
+                                <label>Anh san pham *</label>
+                                <input type="file" id="newProductImage" accept=".jpg,.jpeg,.png,.webp">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Mo ta</label>
+                                <textarea id="newProductDescription" rows="2" placeholder="Mo ta ngan ve san pham"></textarea>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
@@ -223,15 +488,28 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8080/api';
+        const API_BASE = resolveApiBase();
         let allProducts = [];
         let productCosts = {};
 
+        function resolveApiBase() {
+            const configured = window.API_BASE_URL || window.API_BASE;
+            if (configured) return configured.replace(/\/$/, '');
+            if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && window.location.port === '3000')) {
+                return 'http://localhost:8080/api';
+            }
+            return `${window.location.origin}/api`;
+        }
+
+        function getAuthToken() {
+            return sessionStorage.getItem('accessToken') || localStorage.getItem('token');
+        }
+
         function getAuthHeaders() {
-            const token = localStorage.getItem('token');
+            const token = getAuthToken();
             return {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': token ? `Bearer ${token}` : ''
             };
         }
 
@@ -262,35 +540,182 @@
                 if (res.ok) {
                     allProducts = await res.json();
                     populateProductSelects();
+                } else {
+                    populateProductSelects(true);
                 }
             } catch (e) {
                 console.error('Error loading products:', e);
+                populateProductSelects(true);
             }
         }
 
-        function populateProductSelects() {
+        function populateProductSelects(hasError) {
             const purchaseSelect = document.getElementById('purchaseProduct');
             const historySelect = document.getElementById('historyProduct');
-            
-            const options = allProducts.map(p => 
-                `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.code} - ${p.name}</option>`
+            const fallback = hasError ? '<option value="">-- Không tải được sản phẩm --</option>' : '<option value="">-- Chọn sản phẩm --</option>';
+            const options = (allProducts || []).map(p =>
+                `<option value="${p.id}" data-cost="${p.costPrice || 0}">${p.code || p.id} - ${p.name || 'Sản phẩm'}</option>`
             ).join('');
-            
-            purchaseSelect.innerHTML = '<option value="">-- Chọn sản phẩm --</option>' + options;
-            historySelect.innerHTML = '<option value="">-- Tất cả --</option>' + options;
+
+            purchaseSelect.innerHTML = fallback + options;
+            historySelect.innerHTML = (hasError ? '<option value="">-- Không tải được sản phẩm --</option>' : '<option value="">-- Tất cả --</option>') + options;
+        }
+
+        function isNewProductMode() {
+            const toggle = document.getElementById('isNewProduct');
+            return !!(toggle && toggle.checked);
+        }
+
+        function syncCostPrice(fromId, toId) {
+            const from = document.getElementById(fromId);
+            const to = document.getElementById(toId);
+            if (!from || !to) {
+                return;
+            }
+            to.value = from.value;
+        }
+
+        function generateUniqueSku() {
+            const existing = new Set((allProducts || []).map(p => (p.code || '').toString().trim().toUpperCase()));
+            for (let i = 0; i < 50; i++) {
+                const candidate = `SP${Math.floor(10000 + Math.random() * 90000)}`;
+                if (!existing.has(candidate)) {
+                    return candidate;
+                }
+            }
+            return `SP${Date.now().toString().slice(-6)}`;
+        }
+
+        function generateUniqueBarcode() {
+            const existing = new Set((allProducts || []).map(p => (p.barcode || '').toString().trim()));
+            for (let i = 0; i < 50; i++) {
+                let barcode = '';
+                for (let j = 0; j < 13; j++) {
+                    barcode += Math.floor(Math.random() * 10).toString();
+                }
+                if (!existing.has(barcode)) {
+                    return barcode;
+                }
+            }
+            return Date.now().toString().slice(-13);
+        }
+
+        function pickRandomCategoryId() {
+            const categoryIds = (allProducts || [])
+                .map(p => p.categoryId)
+                .filter(id => Number.isFinite(Number(id)))
+                .map(id => Number(id));
+            const unique = Array.from(new Set(categoryIds));
+            if (unique.length === 0) {
+                return '';
+            }
+            const randomIndex = Math.floor(Math.random() * unique.length);
+            return unique[randomIndex].toString();
+        }
+
+        function applyAutoCodesIfEmpty() {
+            const codeInput = document.getElementById('newProductCode');
+            const barcodeInput = document.getElementById('newProductBarcode');
+            const categoryInput = document.getElementById('newProductCategory');
+            if (codeInput && !codeInput.value.trim()) {
+                codeInput.value = generateUniqueSku();
+            }
+            if (barcodeInput && !barcodeInput.value.trim()) {
+                barcodeInput.value = generateUniqueBarcode();
+            }
+            if (categoryInput && !categoryInput.value.trim()) {
+                const picked = pickRandomCategoryId();
+                if (picked) {
+                    categoryInput.value = picked;
+                }
+            }
+        }
+
+        function toggleNewProduct(isNew) {
+            const purchaseSelect = document.getElementById('purchaseProduct');
+            const newFields = document.getElementById('newProductFields');
+            const purchaseCostGroup = document.getElementById('purchaseCostGroup');
+            const newCostField = document.getElementById('newProductCostPrice');
+            if (newFields) {
+                newFields.style.display = isNew ? 'block' : 'none';
+            }
+            if (purchaseSelect) {
+                purchaseSelect.disabled = isNew;
+                purchaseSelect.required = !isNew;
+                if (isNew) {
+                    purchaseSelect.value = '';
+                }
+            }
+
+            const requiredFields = [
+                'newProductName',
+                'newProductCode',
+                'newProductPrice',
+                'newProductImage',
+                'newProductCostPrice'
+            ];
+            requiredFields.forEach((id) => {
+                const field = document.getElementById(id);
+                if (field) {
+                    field.required = isNew;
+                }
+            });
+
+            if (purchaseCostGroup) {
+                purchaseCostGroup.style.display = isNew ? 'none' : 'block';
+            }
+            if (newCostField) {
+                if (isNew) {
+                    newCostField.value = document.getElementById('purchaseCostPrice')?.value || '';
+                }
+            }
+
+            if (isNew) {
+                applyAutoCodesIfEmpty();
+            }
+
+            updateCostPreview();
+        }
+
+        async function uploadProductImage(productName, file) {
+            const token = getAuthToken();
+            const formData = new FormData();
+            formData.append('productName', productName);
+            formData.append('file', file);
+
+            const res = await fetch(`${API_BASE}/product-images`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: formData
+            });
+
+            if (!res.ok) {
+                let message = 'Khong the tai anh san pham';
+                try {
+                    const data = await res.json();
+                    if (data && data.error) message = data.error;
+                } catch (e) {
+                }
+                throw new Error(message);
+            }
+
+            return res.json();
         }
 
         function updateCostPreview() {
             const select = document.getElementById('purchaseProduct');
-            const productId = select.value;
+            const productId = select ? select.value : '';
             const preview = document.getElementById('costPreview');
+            const isNew = isNewProductMode();
             
-            if (!productId) {
+            if (!productId && !isNew) {
                 preview.style.display = 'none';
                 return;
             }
 
-            const product = allProducts.find(p => p.id == productId);
+            const product = !isNew ? allProducts.find(p => p.id == productId) : null;
             const oldCost = product ? (product.costPrice || 0) : 0;
             const currentStock = product ? (product.stock || 0) : 0;
             const newCost = parseFloat(document.getElementById('purchaseCostPrice').value) || 0;
@@ -307,39 +732,97 @@
 
             preview.style.display = 'block';
         }
-
         async function submitPurchase(event) {
             event.preventDefault();
-            
-            const productId = document.getElementById('purchaseProduct').value;
+
             const costPrice = parseFloat(document.getElementById('purchaseCostPrice').value);
             const quantity = parseInt(document.getElementById('purchaseQuantity').value);
             const note = document.getElementById('purchaseNote').value;
+            const isNew = isNewProductMode();
 
-            if (!productId || !costPrice || !quantity) {
-                alert('Vui lòng điền đầy đủ thông tin');
+            if (!costPrice || !quantity) {
+                alert('Vui long nhap day du thong tin');
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/product-costs/purchase`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ productId, costPrice, quantity, note })
-                });
+                if (isNew) {
+                    applyAutoCodesIfEmpty();
+                    const name = (document.getElementById('newProductName').value || '').trim();
+                    const code = (document.getElementById('newProductCode').value || '').trim();
+                    const barcode = (document.getElementById('newProductBarcode').value || '').trim();
+                    const unit = (document.getElementById('newProductUnit').value || '').trim();
+                    const description = (document.getElementById('newProductDescription').value || '').trim();
+                    const price = parseFloat(document.getElementById('newProductPrice').value);
+                    const categoryRaw = document.getElementById('newProductCategory').value;
+                    const categoryId = categoryRaw ? parseInt(categoryRaw, 10) : null;
+                    const imageInput = document.getElementById('newProductImage');
+                    const imageFile = imageInput && imageInput.files ? imageInput.files[0] : null;
 
-                if (res.ok) {
-                    alert('✅ Nhập hàng thành công! Giá vốn đã được cập nhật.');
-                    document.getElementById('purchaseForm').reset();
-                    document.getElementById('costPreview').style.display = 'none';
-                    loadProducts(); // Reload để cập nhật giá vốn mới
+                    if (!name || !code || !Number.isFinite(price) || price <= 0) {
+                        alert('Vui long nhap day du thong tin san pham moi');
+                        return;
+                    }
+                    if (!imageFile) {
+                        alert('Vui long chon anh san pham');
+                        return;
+                    }
+
+                    await uploadProductImage(name, imageFile);
+
+                    const payload = {
+                        code,
+                        name,
+                        barcode: barcode || null,
+                        price,
+                        costPrice,
+                        quantity,
+                        unit: unit || null,
+                        description: description || null,
+                        categoryId,
+                        note: note || null
+                    };
+
+                    const res = await fetch(`${API_BASE}/product-costs/purchase/new-product`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Khong the nhap hang san pham moi');
+                    }
                 } else {
-                    const error = await res.json();
-                    alert('Lỗi: ' + (error.error || 'Không thể nhập hàng'));
+                    const productId = document.getElementById('purchaseProduct').value;
+                    if (!productId) {
+                        alert('Vui long chon san pham');
+                        return;
+                    }
+                    const res = await fetch(`${API_BASE}/product-costs/purchase`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ productId, costPrice, quantity, note })
+                    });
+
+                    if (!res.ok) {
+                        const error = await res.json();
+                        throw new Error(error.error || 'Khong the nhap hang');
+                    }
                 }
+
+                alert('Da nhap hang thanh cong! Gia von da duoc cap nhat.');
+                document.getElementById('purchaseForm').reset();
+                const newToggle = document.getElementById('isNewProduct');
+                if (newToggle) {
+                    newToggle.checked = false;
+                }
+                toggleNewProduct(false);
+                document.getElementById('costPreview').style.display = 'none';
+                loadProducts();
             } catch (e) {
                 console.error('Error submitting purchase:', e);
-                alert('Lỗi kết nối server');
+                alert('Loi: ' + (e.message || 'Loi ket noi server'));
             }
         }
 
@@ -466,5 +949,17 @@
             loadProducts();
         });
     </script>
-</body>
+    <script>
+        if (window.self !== window.top) {
+            document.body.classList.add('in-drawer');
+        }
+    </script></body>
 </html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,13 @@
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\PromotionServiceApplication.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\dto\PromotionDTO.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\entity\Promotion.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\repository\BundleItemRepository.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\service\PromotionServiceImpl.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\dto\BundleItemDTO.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\entity\PromotionTarget.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\repository\PromotionRepository.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\repository\PromotionTargetRepository.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\controller\PromotionController.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\entity\BundleItem.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\dto\PromotionTargetDTO.java
+E:\bít_lao_3\BizFlow\promotion-service\src\main\java\com\example\promotion\service\PromotionService.java
