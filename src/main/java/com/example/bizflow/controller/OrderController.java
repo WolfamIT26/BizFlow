@@ -338,13 +338,7 @@ public class OrderController {
             return new DiscountResult(BigDecimal.ZERO, 0);
         }
 
-        CustomerTier tier = customer.getTier();
-        if (tier == null) {
-            tier = resolveTierByPoints(points);
-        }
-        if (tier == null) {
-            return new DiscountResult(BigDecimal.ZERO, 0);
-        }
+        CustomerTier tier = CustomerTier.resolveTierByPoints(points);
 
         int rate = tier.discountValue;
         if (rate <= 0) {
@@ -361,18 +355,6 @@ public class OrderController {
         BigDecimal discount = BigDecimal.valueOf((long) stepsUsed * rate);
         int pointsUsed = stepsUsed * 100;
         return new DiscountResult(discount, pointsUsed);
-    }
-
-    private CustomerTier resolveTierByPoints(int points) {
-        CustomerTier selected = null;
-        for (CustomerTier tier : CustomerTier.values()) {
-            if (points >= tier.monthlyLimit) {
-                if (selected == null || tier.monthlyLimit > selected.monthlyLimit) {
-                    selected = tier;
-                }
-            }
-        }
-        return selected;
     }
 
     private static class DiscountResult {

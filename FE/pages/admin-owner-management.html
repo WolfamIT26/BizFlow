@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Admin Owner Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1f2937;
+            --accent: #0f766e;
+            --accent-soft: #e6fffb;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --text: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+            --warn: #f59e0b;
+            --danger: #dc2626;
+            --success: #16a34a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .brand-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--accent);
+            display: grid;
+            place-items: center;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-title {
+            font-weight: 700;
+        }
+
+        .brand-subtitle {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+
+        .nav-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-title {
+            font-size: 12px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #6b7280;
+            padding: 0 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #e5e7eb;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .nav-item.active {
+            background: rgba(15, 118, 110, 0.2);
+            border-left-color: var(--accent);
+            color: #fff;
+        }
+
+        .nav-item .icon {
+            width: 18px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 12px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.06);
+            font-size: 12px;
+            color: #cbd5f5;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            min-width: 0;
+        }
+
+        .top-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .search {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            min-width: 320px;
+        }
+
+        .search input {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            width: 100%;
+        }
+
+        .top-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pill {
+            background: var(--accent-soft);
+            color: var(--accent);
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 12px;
+            border: 1px solid rgba(15, 118, 110, 0.2);
+        }
+
+        .main {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .grid.cols-4 {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        .grid.cols-2 {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .card-title {
+            font-size: 13px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .metric {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .metric-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .input, select {
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            background: #fff;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #f9fafb;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: #0a5a54;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .badge.active {
+            background: #ecfdf3;
+            color: var(--success);
+        }
+
+        .badge.pending {
+            background: #fffbeb;
+            color: var(--warn);
+        }
+
+        .badge.inactive {
+            background: #fef2f2;
+            color: var(--danger);
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chart {
+            height: 220px;
+            border-radius: 14px;
+            border: 1px dashed #cbd5f5;
+            background: linear-gradient(120deg, #f8fafc 0%, #eef2ff 100%);
+            display: grid;
+            place-items: center;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .note {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: var(--muted);
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 50;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(720px, 92vw);
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            border: none;
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .detail-item {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .detail-value {
+            font-weight: 600;
+        }
+
+        @media (max-width: 1100px) {
+            .grid.cols-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .layout { grid-template-columns: 1fr; }
+            .sidebar { position: relative; height: auto; }
+        }
+
+        @media (max-width: 720px) {
+            .grid.cols-2 { grid-template-columns: 1fr; }
+            .search { min-width: 0; width: 100%; }
+            .topbar { flex-direction: column; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BF</div>
+                <div>
+                    <div class="brand-title">BizFlow Admin</div>
+                    <div class="brand-subtitle">Platform Console</div>
+                </div>
+            </div>
+            <div class="nav-group">
+                <div class="nav-title">Tổng quan</div>
+                <a class="nav-item" href="admin-dashboard.html"><span class="icon">📊</span> Dashboard</a>
+                <a class="nav-item active" href="admin-owner-management.html"><span class="icon">🏪</span> Chủ cửa hàng</a>
+                <a class="nav-item" href="#"><span class="icon">📈</span> Analytics</a>
+                <a class="nav-item" href="#"><span class="icon">🧾</span> Reports</a>
+            </div>
+            <div class="nav-group">
+                <div class="nav-title">Hệ thống</div>
+                <a class="nav-item" href="#"><span class="icon">⚙️</span> Cài đặt</a>
+                <a class="nav-item" href="#"><span class="icon">🧑‍💼</span> Tài khoản</a>
+            </div>
+            <div class="sidebar-footer">
+                Quyền: Administrator<br>
+                Môi trường: Production
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="topbar">
+                <div class="top-left">
+                    <div class="page-title">Quản lý Chủ cửa hàng</div>
+                    <div class="pill">Global Admin</div>
+                </div>
+                <div class="search">
+                    🔍
+                    <input id="ownerSearch" type="text" placeholder="Tìm theo tên, SĐT, email, mã HKD...">
+                </div>
+                <div class="top-right">
+                    <button class="btn">Xuất báo cáo</button>
+                    <button class="btn primary">Tạo Owner mới</button>
+                </div>
+            </div>
+
+            <section class="main">
+                <div class="grid cols-4">
+                    <div class="card">
+                        <div class="card-title">Owner đang hoạt động</div>
+                        <div class="metric">1.284</div>
+                        <div class="metric-sub">+32 trong 7 ngày</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Đăng ký mới hôm nay</div>
+                        <div class="metric">48</div>
+                        <div class="metric-sub">Tỷ lệ duyệt: 86%</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Người dùng nền tảng</div>
+                        <div class="metric">18.902</div>
+                        <div class="metric-sub">Active 30 ngày: 62%</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Doanh thu nền tảng</div>
+                        <div class="metric">2,4 tỷ</div>
+                        <div class="metric-sub">So với tháng trước: +12%</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-header">
+                        <div>
+                            <div class="page-title" style="font-size:16px;">Owner Account Management</div>
+                            <div class="note">Xem, lọc, kích hoạt/hủy kích hoạt và truy cập hồ sơ chi tiết.</div>
+                        </div>
+                        <div class="filters">
+                            <select id="roleFilter">
+                                <option value="OWNER">Chủ cửa hàng</option>
+                                <option value="all">Tất cả vai trò</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="MANAGER">Quản lý</option>
+                                <option value="EMPLOYEE">Nhân viên</option>
+                            </select>
+                            <select id="statusFilter">
+                                <option value="all">Tất cả trạng thái</option>
+                                <option value="active">Đang hoạt động</option>
+                                <option value="pending">Chờ duyệt</option>
+                                <option value="inactive">Ngưng kích hoạt</option>
+                            </select>
+                            <select id="sortFilter">
+                                <option value="name">Sắp xếp: Tên</option>
+                                <option value="recent">Sắp xếp: Mới nhất</option>
+                                <option value="revenue">Sắp xếp: Doanh thu</option>
+                            </select>
+                            <button class="btn">Lọc nâng cao</button>
+                        </div>
+                    </div>
+                    <table id="ownerTable">
+                        <thead>
+                            <tr>
+                                <th>Chủ cửa hàng</th>
+                                <th>SĐT / Email</th>
+                                <th>Gói</th>
+                                <th>Trạng thái</th>
+                                <th>Doanh thu</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ownerTableBody"></tbody>
+                    </table>
+                    <div class="empty-state" id="ownerEmptyState" style="display:none;">Không tìm thấy kết quả phù hợp.</div>
+                </div>
+
+                <div class="card">
+                    <div class="section-header">
+                        <div>
+                            <div class="page-title" style="font-size:16px;">Platform Analytics & Reporting</div>
+                            <div class="note">Tổng quan hoạt động, tăng trưởng người dùng và doanh thu toàn nền tảng.</div>
+                        </div>
+                        <div class="filters">
+                            <select>
+                                <option>7 ngày gần nhất</option>
+                                <option>30 ngày gần nhất</option>
+                                <option>90 ngày</option>
+                            </select>
+                            <button class="btn">Xuất báo cáo</button>
+                        </div>
+                    </div>
+                    <div class="grid cols-4">
+                        <div class="card" style="box-shadow:none;">
+                            <div class="card-title">Người dùng đang hoạt động</div>
+                            <div class="metric">12.480</div>
+                            <div class="metric-sub">+8.2% vs tuần trước</div>
+                        </div>
+                        <div class="card" style="box-shadow:none;">
+                            <div class="card-title">Đăng ký mới</div>
+                            <div class="metric">1.920</div>
+                            <div class="metric-sub">+14.5% vs tuần trước</div>
+                        </div>
+                        <div class="card" style="box-shadow:none;">
+                            <div class="card-title">Tỷ lệ kích hoạt</div>
+                            <div class="metric">86%</div>
+                            <div class="metric-sub">Mục tiêu ≥ 80%</div>
+                        </div>
+                        <div class="card" style="box-shadow:none;">
+                            <div class="card-title">Doanh thu nền tảng</div>
+                            <div class="metric">3,1 tỷ</div>
+                            <div class="metric-sub">+11.8% vs tuần trước</div>
+                        </div>
+                    </div>
+                    <div class="grid cols-2" style="margin-top:12px;">
+                        <div class="card" style="box-shadow:none;">
+                            <div class="section-header">
+                                <div>
+                                    <div class="page-title" style="font-size:16px;">Hoạt động người dùng</div>
+                                    <div class="note">DAU/WAU và lượng truy cập theo ngày.</div>
+                                </div>
+                                <span class="pill">Global</span>
+                            </div>
+                            <div class="chart">Biểu đồ hoạt động người dùng (30 ngày)</div>
+                        </div>
+                        <div class="card" style="box-shadow:none;">
+                            <div class="section-header">
+                                <div>
+                                    <div class="page-title" style="font-size:16px;">Doanh thu & tăng trưởng</div>
+                                    <div class="note">So sánh theo tuần/tháng/quý.</div>
+                                </div>
+                                <span class="pill">Revenue</span>
+                            </div>
+                            <div class="chart">Biểu đồ doanh thu & tăng trưởng</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="modal" id="ownerDetailModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Hồ sơ Chủ cửa hàng</div>
+                <button class="modal-close" type="button" id="closeOwnerModal">Đóng</button>
+            </div>
+            <div class="detail-grid" id="ownerDetailGrid"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        const searchInput = document.getElementById('ownerSearch');
+        const statusFilter = document.getElementById('statusFilter');
+        const roleFilter = document.getElementById('roleFilter');
+        const sortFilter = document.getElementById('sortFilter');
+        const tableBody = document.getElementById('ownerTableBody');
+        const emptyState = document.getElementById('ownerEmptyState');
+        const ownerDetailModal = document.getElementById('ownerDetailModal');
+        const ownerDetailGrid = document.getElementById('ownerDetailGrid');
+        const closeOwnerModal = document.getElementById('closeOwnerModal');
+
+        let allOwners = [];
+
+        function normalizeText(value) {
+            return (value || '')
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        function formatStatus(user) {
+            if (user.enabled === false) return { label: 'Inactive', cls: 'inactive', action: 'activate', actionLabel: 'Kích hoạt' };
+            return { label: 'Active', cls: 'active', action: 'deactivate', actionLabel: 'Ngưng' };
+        }
+
+        function formatDate(value) {
+            if (!value) return '-';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '-';
+            return date.toLocaleDateString('vi-VN');
+        }
+
+        function renderOwnersTable(list) {
+            if (!list || list.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+            emptyState.style.display = 'none';
+            tableBody.innerHTML = list.map(user => {
+                const status = formatStatus(user);
+                const name = user.fullName || user.username || 'Chủ cửa hàng';
+                const code = user.id ? `BF-${String(user.id).padStart(5, '0')}` : '-';
+                const phone = user.phoneNumber || '-';
+                const email = user.email || '-';
+                return `
+                    <tr data-status="${status.cls}">
+                        <td><strong>${name}</strong><br><span class="note">Mã: ${code}</span></td>
+                        <td>${phone}<br><span class="note">${email}</span></td>
+                        <td>${user.plan || 'Standard'}</td>
+                        <td><span class="badge ${status.cls}">● ${status.label}</span></td>
+                        <td>${user.revenue || '—'}</td>
+                        <td>
+                            <div class="row-actions">
+                                <button class="btn" data-action="detail" data-id="${user.id}">Xem</button>
+                                <button class="btn ${status.action === 'activate' ? 'primary' : ''}" data-action="${status.action}" data-id="${user.id}">
+                                    ${status.actionLabel}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function applyFilters() {
+            const keyword = normalizeText(searchInput.value);
+            const status = statusFilter.value;
+            const roleValue = roleFilter.value;
+            const sorted = [...allOwners].sort((a, b) => {
+                if (sortFilter.value === 'recent') {
+                    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                }
+                if (sortFilter.value === 'revenue') {
+                    return (b.revenueValue || 0) - (a.revenueValue || 0);
+                }
+                return (a.fullName || a.username || '').localeCompare(b.fullName || b.username || '');
+            });
+
+            const filtered = sorted.filter(user => {
+                const text = normalizeText([
+                    user.fullName,
+                    user.username,
+                    user.email,
+                    user.phoneNumber,
+                    user.id
+                ].join(' '));
+                const matchText = !keyword || text.includes(keyword);
+                const userRole = getRoleValue(user);
+                const matchRole = roleValue === 'all' || userRole === roleValue;
+                const rowStatus = user.enabled === false ? 'inactive' : 'active';
+                const matchStatus = status === 'all' || rowStatus === status;
+                return matchText && matchStatus && matchRole;
+            });
+
+            renderOwnersTable(filtered);
+        }
+
+        function getRoleValue(user) {
+            if (!user) return '';
+            if (typeof user.role === 'string') return user.role;
+            if (typeof user.role === 'object') {
+                return user.role.name || user.role.code || user.role.role || '';
+            }
+            return '';
+        }
+
+        async function loadOwners() {
+            try {
+                const token = sessionStorage.getItem('accessToken') || '';
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const users = await response.json();
+                allOwners = Array.isArray(users) ? users : [];
+                applyFilters();
+            } catch (err) {
+                allOwners = [];
+                renderOwnersTable([]);
+            }
+        }
+
+        function openOwnerDetail(user) {
+            if (!user) return;
+            ownerDetailGrid.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Tên chủ cửa hàng</div>
+                    <div class="detail-value">${user.fullName || user.username || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Username</div>
+                    <div class="detail-value">${user.username || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">${user.email || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">SĐT</div>
+                    <div class="detail-value">${user.phoneNumber || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Trạng thái</div>
+                    <div class="detail-value">${user.enabled ? 'Đang hoạt động' : 'Ngưng kích hoạt'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Ngày tạo</div>
+                    <div class="detail-value">${formatDate(user.createdAt)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Ghi chú</div>
+                    <div class="detail-value">${user.note || '-'}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Chi nhánh</div>
+                    <div class="detail-value">${user.branch?.name || '-'}</div>
+                </div>
+            `;
+            ownerDetailModal.classList.add('show');
+            ownerDetailModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeOwnerDetail() {
+            ownerDetailModal.classList.remove('show');
+            ownerDetailModal.setAttribute('aria-hidden', 'true');
+        }
+
+        async function toggleOwnerStatus(id, action) {
+            try {
+                const token = sessionStorage.getItem('accessToken') || '';
+                const endpoint = action === 'activate' ? 'enable' : 'disable';
+                await fetch(`${API_BASE}/users/${id}/${endpoint}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                await loadOwners();
+            } catch (err) {
+            }
+        }
+
+        tableBody.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            const id = btn.dataset.id;
+            if (!action || !id) return;
+            const owner = allOwners.find(u => String(u.id) === String(id));
+            if (action === 'detail') {
+                openOwnerDetail(owner);
+            } else if (action === 'activate' || action === 'deactivate') {
+                toggleOwnerStatus(id, action);
+            }
+        });
+
+        ownerDetailModal.addEventListener('click', (e) => {
+            if (e.target === ownerDetailModal) closeOwnerDetail();
+        });
+        closeOwnerModal.addEventListener('click', closeOwnerDetail);
+
+        searchInput.addEventListener('input', applyFilters);
+        statusFilter.addEventListener('change', applyFilters);
+        roleFilter.addEventListener('change', applyFilters);
+        sortFilter.addEventListener('change', applyFilters);
+
+        loadOwners();
+    </script>
+</body>
+</html>

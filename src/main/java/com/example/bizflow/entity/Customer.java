@@ -60,6 +60,12 @@ public class Customer {
 
         totalPoints += points;
         monthlyPoints += points;
+        updateTierByPoints();
+    }
+
+    public void updateTierByPoints() {
+        int points = totalPoints == null ? 0 : totalPoints;
+        this.tier = CustomerTier.resolveTierByPoints(points);
     }
 
     @PrePersist

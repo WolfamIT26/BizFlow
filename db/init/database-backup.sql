@@ -39,6 +39,98 @@ UNLOCK TABLES;
 DROP TABLE IF EXISTS `categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+-- phpMyAdmin SQL Dump
+-- version 5.2.3
+-- https://www.phpmyadmin.net/
+--
+-- Host: mysql:3306
+-- Generation Time: Jan 21, 2026 at 04:16 PM
+-- Server version: 8.0.44
+-- PHP Version: 8.3.26
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `bizflow_db`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `id` bigint NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `full_name` varchar(100) DEFAULT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `role` varchar(20) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `branch_id` bigint DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `note` text
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `password`, `email`, `full_name`, `phone_number`, `role`, `enabled`, `branch_id`, `created_at`, `updated_at`, `note`) VALUES
+(1, 'admin', '$2a$10$7gz3idM0iA0ikYyibDutqe31yrWDdVh2NIRa1gCj0QXVNw9723f0G', 'admin@bizflow.com', 'Administrator', NULL, 'ADMIN', 1, NULL, '2025-12-21 10:47:36', '2025-12-21 10:47:36', NULL),
+(2, 'owner', '$2a$10$iDS5.CarVV4hxkD1P5oVYePzl/M8gs3jse7bGOAjhQBZ6iefSllWy', 'owner@bizflow.com', 'Store Owner', NULL, 'OWNER', 1, NULL, '2025-12-21 10:47:36', '2025-12-21 10:47:36', NULL),
+(3, 'test', '$2a$10$iDS5.CarVV4hxkD1P5oVYePzl/M8gs3jse7bGOAjhQBZ6iefSllWy', 'test@bizflow.com', 'Test User', NULL, 'EMPLOYEE', 1, NULL, '2025-12-21 10:47:36', '2025-12-21 10:47:36', NULL),
+(4, 'vietphd', '$2a$10$hTmAfVr7LjuSr5AxSKrpJeleoHtsiZn1RuVH9jub038t4C5SAIhiq', 'nhanvien1@gmail.com', 'viet', '0902313141', 'EMPLOYEE', 1, NULL, '2025-12-24 16:44:38', '2025-12-24 16:44:38', NULL);
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `fk_user_branch` (`branch_id`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` bigint NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `users`
+--
+ALTER TABLE `users`
+  ADD CONSTRAINT `FK9o70sp9ku40077y38fk4wieyk` FOREIGN KEY (`branch_id`) REFERENCES `branches` (`id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
 CREATE TABLE `categories` (
   `category_id` int NOT NULL AUTO_INCREMENT,
   `category_name` varchar(255) NOT NULL,
@@ -73,16 +165,42 @@ CREATE TABLE `customers` (
   `email` varchar(255) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `phone` varchar(255) DEFAULT NULL,
+  `cccd` varchar(255) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `monthly_points` int NOT NULL DEFAULT 0,
+  `tier` enum('BAC','BACH_KIM','DONG','KIM_CUONG','VANG') DEFAULT 'DONG',
+  `total_points` int NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 LOCK TABLES `customers` WRITE;
 /*!40000 ALTER TABLE `customers` DISABLE KEYS */;
-INSERT INTO `customers` VALUES (1,'tân bình',NULL,'Pham viet','0866066042');
-INSERT INTO `customers` VALUES (2,'tân bình',NULL,'Anh thái','0866066043');
-INSERT INTO `customers` VALUES (5,'chung cư',NULL,'Anh Tứ','0866066044');
+INSERT INTO `customers` (`id`, `address`, `email`, `name`, `phone`, `cccd`, `dob`, `monthly_points`, `tier`, `total_points`) VALUES
+(1,'tA?n bA?nh',NULL,'Pham viet','0866066042',NULL,NULL,0,'DONG',0),
+(2,'tA?n bA?nh',NULL,'Anh thA?i','0866066043',NULL,NULL,0,'DONG',0),
+(5,'chung c??',NULL,'Anh T??c','0866066044',NULL,NULL,0,'DONG',0);
 /*!40000 ALTER TABLE `customers` ENABLE KEYS */;
+UNLOCK TABLES;
+
+DROP TABLE IF EXISTS `point_history`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `point_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `created_at` datetime(6) DEFAULT NULL,
+  `points` int DEFAULT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `customer_id` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `FKoykoexosmdcwsmph7ubqmq22` (`customer_id`),
+  CONSTRAINT `FKoykoexosmdcwsmph7ubqmq22` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `point_history` WRITE;
+/*!40000 ALTER TABLE `point_history` DISABLE KEYS */;
+/*!40000 ALTER TABLE `point_history` ENABLE KEYS */;
 UNLOCK TABLES;
 DROP TABLE IF EXISTS `inventory_transactions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

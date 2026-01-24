@@ -3,6 +3,7 @@ package com.example.bizflow.controller;
 import com.example.bizflow.entity.Customer;
 import com.example.bizflow.repository.CustomerRepository;
 import com.example.bizflow.service.OrderService;
+import com.example.bizflow.service.PointService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -18,11 +20,14 @@ public class CustomerController {
 
     private final CustomerRepository customerRepository;
     private final OrderService orderService;
+    private final PointService pointService;
 
     public CustomerController(CustomerRepository customerRepository,
-            OrderService orderService) {
+            OrderService orderService,
+            PointService pointService) {
         this.customerRepository = customerRepository;
         this.orderService = orderService;
+        this.pointService = pointService;
     }
 
     @GetMapping
@@ -81,7 +86,14 @@ public class CustomerController {
     @GetMapping("/{id}/orders")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<Object> getCustomerOrderHistory(@PathVariable @NonNull Long id) {
-        return ResponseEntity.ok(orderService.getCustomerOrderHistory(id));
+        return ResponseEntity.ok(orderService.getCustomerOrderHistorySummary(id));
+    }
+
+    @PostMapping("/sync-tiers")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<?> syncCustomerTiers() {
+        int updated = pointService.syncCustomerTiers();
+        return ResponseEntity.ok(Map.of("updated", updated));
     }
 
     private static String trimToNull(String value) {

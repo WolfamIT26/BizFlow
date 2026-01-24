@@ -2660,7 +2660,7 @@ function sortProducts(sortBy) {
 function getBestSellerProducts() {
     return [...products]
         .sort((a, b) => (a.id || 0) - (b.id || 0))
-        .slice(0, 10);
+        .slice(0, 16);
 }
 
 function applySort(list) {

@@ -168,7 +168,7 @@
             background: #f9fafb;
             border: 1px solid var(--border);
             border-radius: 12px;
-            min-width: 320px;
+            min-width: 320px;            position: relative;
         }
 
         .search input {
@@ -177,6 +177,58 @@
             outline: none;
             font-size: 14px;
             width: 100%;
+        }
+
+        .search-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .search select {
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 6px;
+            display: none;
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 20;
+        }
+
+        .search-dropdown .item {
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .search-dropdown .item:hover {
+            background: #f3f4f6;
+        }
+
+        .search-dropdown .item-title {
+            font-weight: 600;
+        }
+
+        .search-dropdown .item-sub {
+            font-size: 12px;
+            color: var(--muted);
         }
 
         .top-right {
@@ -306,6 +358,93 @@
             text-align: center;
             color: var(--muted);
             background: #f8fafc;
+        }
+
+        .search-card {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .search-meta {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .action-btn.danger {
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.5);
+            z-index: 50;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-card {
+            width: min(640px, 92vw);
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .modal-close {
+            border: none;
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .detail-item {
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .detail-value {
+            font-weight: 600;
         }
 
         .actions {
@@ -501,9 +640,20 @@
             <header class="topbar">
                 <div class="top-left">
                     <div class="page-title">Quản trị hệ thống</div>
-                    <div class="search">
-                        <span>🔍</span>
-                        <input type="text" placeholder="Tìm nhanh người dùng, chi nhánh, cấu hình..." />
+                                        <div class="search-tools">
+                        <div class="search">
+                            <span>🔍</span>
+                            <input id="adminSearchInput" type="text" placeholder="Tìm nhanh người dùng..." />
+                            <select id="adminRoleFilter" aria-label="Lọc vai trò">
+                                <option value="all">Tất cả</option>
+                                <option value="OWNER">Owner</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="MANAGER">Manager</option>
+                                <option value="EMPLOYEE">Employee</option>
+                            </select>
+                            <div class="search-dropdown" id="searchDropdown"></div>
+                        </div>
+                        <button class="action-btn" type="button" id="clearSearchBtn">Xóa lọc</button>
                     </div>
                 </div>
                 <div class="top-right">
@@ -519,7 +669,53 @@
                 </div>
             </header>
 
-            <main class="main">
+                        <main class="main">
+                <section class="card search-card" id="userSearchCard" style="display:none;">
+                    <div class="card-title">Tìm kiếm tài khoản</div>
+                    <div class="search-meta" id="searchMeta">Nhập từ khóa để bắt đầu tìm kiếm.</div>
+                    <div id="userTableWrap" style="display:none;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tài khoản</th>
+                                    <th>Liên hệ</th>
+                                    <th>Vai trò</th>
+                                    <th>Trạng thái</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchUsersBody">
+                                <tr>
+                                    <td colspan="5" class="empty-box">Chưa có kết quả.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="card search-card" id="customerSearchCard" style="display:none;" data-allow-show="false">
+                    <div class="card-title">Tìm kiếm khách hàng</div>
+                    <div class="search-meta" id="customerSearchMeta">Nhập từ khóa để tìm kiếm khách hàng.</div>
+                    <div id="customerTableWrap" style="display:none;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Khách hàng</th>
+                                    <th>Liên hệ</th>
+                                    <th>Điểm / Hạng</th>
+                                    <th>Trạng thái</th>
+                                    <th>Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchCustomersBody">
+                                <tr>
+                                    <td colspan="5" class="empty-box">Chưa có kết quả.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
                 <section class="cards">
                     <div class="card">
                         <div class="card-title">Tổng quan người dùng</div>
@@ -557,14 +753,7 @@
                             <strong id="totalCustomers">--</strong>
                         </div>
                     </div>
-                    <div class="card">
-                        <div class="card-title">Thao tác nhanh</div>
-                        <div class="card-subtitle">Quản lý cấu hình quan trọng</div>
-                        <div class="actions">
-                            <button class="action-btn primary" type="button" onclick="document.getElementById('createUserCard').scrollIntoView({behavior: 'smooth'})">Tạo tài khoản</button>
-                            <button class="action-btn">Xem báo cáo</button>
-                        </div>
-                    </div>
+
                 </section>
 
                 <section class="grid-2">
@@ -616,7 +805,6 @@
 
                 <section class="card" id="createUserCard">
                     <div class="card-title">Tạo tài khoản nhân sự</div>
-                    <div class="card-subtitle">Admin tạo tài khoản cho Owner/Manager/Employee</div>
                     <form id="adminCreateUserForm">
                         <div class="form-grid">
                             <div class="form-group">
@@ -673,11 +861,16 @@
 
     <script>
         const apiEndpoints = {
+            
             adminSummary: '/api/dashboard/admin-summary',
             recentUsers: '/api/dashboard/recent-users',
             branches: '/api/dashboard/branches',
-            createUser: '/api/users'
+            createUser: '/api/users',
+            users: '/api/users',
+            customers: '/api/customers'
         };
+
+        let allUsers = [];
 
         window.addEventListener('load', () => {
             enforceAuth();
@@ -687,6 +880,9 @@
             loadBranches();
             wireCreateUserForm();
             wirePasswordToggle('adminPassword', 'toggleAdminPassword');
+            wireUserSearch();
+            wireCustomerSearch();
+            loadCustomersForSearch();
         });
 
         function enforceAuth() {
@@ -714,7 +910,9 @@
 
         async function loadAdminSummary() {
             try {
-                const response = await fetch(apiEndpoints.adminSummary);
+                const response = await fetch(apiEndpoints.adminSummary, {
+                headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+            });
                 if (!response.ok) {
                     throw new Error('Không thể tải dữ liệu tổng quan');
                 }
@@ -738,7 +936,9 @@
         async function loadRecentUsers() {
             const body = document.getElementById('recentUsersBody');
             try {
-                const response = await fetch(apiEndpoints.recentUsers);
+                const response = await fetch(apiEndpoints.recentUsers, {
+                headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+            });
                 if (!response.ok) {
                     throw new Error('Không thể tải dữ liệu người dùng');
                 }
@@ -766,7 +966,9 @@
         async function loadBranches() {
             const body = document.getElementById('branchTableBody');
             try {
-                const response = await fetch(apiEndpoints.branches);
+                const response = await fetch(apiEndpoints.branches, {
+                headers: { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` }
+            });
                 if (!response.ok) {
                     throw new Error('Không thể tải dữ liệu chi nhánh');
                 }
@@ -792,6 +994,597 @@
             }
         }
 
+        function wireUserSearch() {
+            const input = document.getElementById('adminSearchInput');
+            const roleFilter = document.getElementById('adminRoleFilter');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            const tbody = document.getElementById('searchUsersBody');
+            const meta = document.getElementById('searchMeta');
+            const dropdown = document.getElementById('searchDropdown');
+
+            const normalize = value => (value || '')
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+
+            const getRoleValue = user => {
+                if (!user) return '';
+                if (typeof user.role === 'string') return user.role;
+                if (typeof user.role === 'object') {
+                    return user.role.name || user.role.code || user.role.role || '';
+                }
+                return '';
+            };
+
+            const renderRows = list => {
+                const card = document.getElementById('userSearchCard');
+                const tableWrap = document.getElementById('userTableWrap');
+                const customerCard = document.getElementById('customerSearchCard');
+                if (customerCard) { customerCard.dataset.allowShow = 'false'; customerCard.style.display = 'none'; }
+                if (card) card.style.display = list.length ? 'block' : 'none';
+                if (tableWrap) tableWrap.style.display = list.length ? 'block' : 'none';
+                if (!list.length) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-box">Không tìm thấy tài khoản phù hợp.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = list.map(user => {
+                    const name = user.fullName || user.username || '-';
+                    const email = user.email || '-';
+                    const phone = user.phoneNumber || '-';
+                    const role = getRoleValue(user) || '-';
+                    const status = user.enabled === false ? 'Ngưng' : 'Hoạt động';
+                    return `
+                        <tr>
+                            <td>
+                                <strong>${escapeHtml(name)}</strong><br>
+                                <span class="card-subtitle">${escapeHtml(user.username || '-')}</span>
+                            </td>
+                            <td>${escapeHtml(email)}<br><span class="card-subtitle">${escapeHtml(phone)}</span></td>
+                            <td>${escapeHtml(role)}</td>
+                            <td>${status}</td>
+                            <td class="actions">
+                                <button class="action-btn" data-action="view" data-id="${user.id}">Xem</button>
+                                <button class="action-btn" data-action="edit" data-id="${user.id}">Sửa</button>
+                                <button class="action-btn" data-action="toggle" data-id="${user.id}">${user.enabled === false ? "Kích hoạt" : "Ngưng"}</button>
+                                <button class="action-btn danger" data-action="delete" data-id="${user.id}">Xóa</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+            const renderDropdownCombined = (usersList, customersList) => {
+                if (!dropdown) return;
+                const items = [];
+                (usersList || []).slice(0, 5).forEach(user => {
+                    const name = user.fullName || user.username || "-";
+                    const email = user.email || "-";
+                    const role = getRoleValue(user) || "-";
+                    items.push(`<div class="item" data-type="user" data-id="${user.id}">` +
+                        `<div class="item-title">${escapeHtml(name)}</div>` +
+                        `<div class="item-sub">${escapeHtml(email)} • ${escapeHtml(role)}</div>` +
+                        `</div>`);
+                });
+                (customersList || []).slice(0, 5).forEach(c => {
+                    const name = c.name || "Khách hàng";
+                    const phone = c.phone || "-";
+                    items.push(`<div class="item" data-type="customer" data-id="${c.id}">` +
+                        `<div class="item-title">${escapeHtml(name)}</div>` +
+                        `<div class="item-sub">${escapeHtml(phone)} • Khách hàng</div>` +
+                        `</div>`);
+                });
+                if (!items.length) {
+                    dropdown.innerHTML = "<div class=\"item\"><div class=\"item-title\">Không tìm thấy kết quả</div></div>";
+                } else {
+                    dropdown.innerHTML = items.join("");
+                }
+                dropdown.style.display = "block";
+            };
+
+            const renderDropdown = list => {
+                if (!dropdown) return;
+                if (!list.length) {
+                    dropdown.innerHTML = '<div class="item"><div class="item-title">Không tìm thấy tải khoản</div></div>';
+                    dropdown.style.display = 'block';
+                    return;
+                }
+                dropdown.innerHTML = list.slice(0, 8).map(user => {
+                    const name = user.fullName || user.username || '-';
+                    const email = user.email || '-';
+                    const role = getRoleValue(user) || '-';
+                    return `
+                        <div class="item" data-id="${user.id}">
+                            <div class="item-title">${escapeHtml(name)}</div>
+                            <div class="item-sub">${escapeHtml(email)} • ${escapeHtml(role)}</div>
+                        </div>
+                    `;
+                }).join('');
+                dropdown.style.display = 'block';
+            };
+
+                        const applySearch = () => {
+                const keyword = normalize(input.value);
+                const roleValue = roleFilter.value;
+                const source = allUsers || [];
+                const filteredUsers = source.filter(user => {
+                    const text = normalize([
+                        user.fullName,
+                        user.username,
+                        user.email,
+                        user.phoneNumber,
+                        user.id
+                    ].join(' '));
+                    const matchText = !keyword || text.includes(keyword);
+                    const userRole = getRoleValue(user);
+                    const matchRole = roleValue === 'all' || userRole === roleValue;
+                    return matchText && matchRole;
+                });
+
+                const customersSource = Array.isArray(allCustomers) ? allCustomers : [];
+                const filteredCustomers = customersSource.filter(c => {
+                    const text = normalize([
+                        c.name,
+                        c.phone,
+                        c.email,
+                        c.id
+                    ].join(' '));
+                    return !keyword ? false : text.includes(keyword);
+                });
+
+                const userCard = document.getElementById('userSearchCard');
+                const customerCard = document.getElementById('customerSearchCard');
+                if (userCard) userCard.style.display = 'none';
+                if (customerCard) { customerCard.dataset.allowShow = 'false'; customerCard.style.display = 'none'; }
+
+                if (!keyword) {
+                    meta.textContent = 'Nhập từ khóa để tìm kiếm tài khoản.';
+                    renderRows([]);
+                    if (dropdown) dropdown.style.display = 'none';
+                    return;
+                }
+
+                meta.textContent = `Tìm thấy ${filteredUsers.length + filteredCustomers.length} kết quả. Chọn 1 để xem.`;
+                renderDropdownCombined(filteredUsers, filteredCustomers);
+            };
+
+                        const loadUsersForSearch = async () => {
+                try {
+                    const token = sessionStorage.getItem('accessToken') || '';
+                    const response = await fetch(apiEndpoints.users, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!response.ok) {
+                        allUsers = [];
+                        meta.textContent = 'Không tải được dữ liệu tài khoản. Vui lòng đăng nhập lại.';
+                        renderRows([]);
+                        if (dropdown) dropdown.style.display = 'none';
+                        return;
+                    }
+                    allUsers = await response.json();
+                    if (!Array.isArray(allUsers)) {
+                        allUsers = [];
+                    }
+                } catch (error) {
+                    allUsers = [];
+                    meta.textContent = 'Khong tim duoc tai khoan.';
+                }
+                applySearch();
+            };
+
+            tbody.addEventListener('click', async (event) => {
+                const button = event.target.closest('button');
+                if (!button) return;
+                const action = button.dataset.action;
+                const id = button.dataset.id;
+                const user = allUsers.find(u => String(u.id) === String(id));
+                if (!user) return;
+
+                if (action === 'view') {
+                    openUserDetail(user);
+                }
+                if (action === 'edit') {
+                    openEditUser(user);
+                }
+                if (action === 'toggle') {
+                    const token = sessionStorage.getItem('accessToken') || '';
+                    const endpoint = user.enabled === false ? 'enable' : 'disable';
+                    try {
+                        await fetch(`${apiEndpoints.users}/${id}/${endpoint}`, {
+                            method: 'PATCH',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        await loadUsersForSearch();
+                        await loadAdminSummary();
+                        await loadRecentUsers();
+                    } catch (error) {
+                        alert('Kh?ng th? c?p nh?t tr?ng th?i t?i kho?n.');
+                    }
+                }
+                if (action === 'delete') {
+                    if (!confirm('Bạn có chắc muốn xóa tài khoản này?')) return;
+                    try {
+                        const token = sessionStorage.getItem('accessToken') || '';
+                        await fetch(`${apiEndpoints.users}/${id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        await loadUsersForSearch();
+                        await loadAdminSummary();
+                        await loadRecentUsers();
+                    } catch (error) {
+                        alert('Không thể xóa tài khoản.');
+                    }
+                }
+            });
+
+            if (dropdown) {
+                dropdown.addEventListener('click', (event) => {
+                    const item = event.target.closest('.item');
+                    if (!item) return;
+                    const type = item.dataset.type;
+                    if (type === 'user') {
+                        const user = allUsers.find(u => String(u.id) === String(item.dataset.id));
+                        if (user) {
+                            const userCard = document.getElementById('userSearchCard');
+                            const customerCard = document.getElementById('customerSearchCard');
+                            if (userCard) userCard.style.display = 'block';
+                            if (customerCard) { customerCard.dataset.allowShow = 'false'; customerCard.style.display = 'none'; }
+                            const tableWrap = document.getElementById('userTableWrap');
+                            if (tableWrap) tableWrap.style.display = 'block';
+                            renderRows([user]);
+                            meta.textContent = 'Đã chọn 1 tài khoản. Bạn có thể xem, sửa, kích hoạt hoặc xóa bên dưới.';
+                        }
+                    } else if (type === 'customer') {
+                        const customer = (allCustomers || []).find(c => String(c.id) === String(item.dataset.id));
+                        if (customer) {
+                            const userCard = document.getElementById('userSearchCard');
+                            const customerCard = document.getElementById('customerSearchCard');
+                            if (userCard) userCard.style.display = 'none';
+                            if (customerCard) { customerCard.dataset.allowShow = 'true'; customerCard.style.display = 'block'; }
+                            if (typeof renderCustomerRows === 'function') {
+                                renderCustomerRows([customer]);
+                            }
+                            const customerMeta = document.getElementById('customerSearchMeta');
+                            if (customerMeta) {
+                                customerMeta.textContent = 'Đã chọn 1 khách hàng. Bạn có thể xem chi tiết bên dưới.';
+                            }
+                        }
+                    }
+                    dropdown.style.display = 'none';
+                });
+            }
+
+            document.addEventListener('click', (event) => {
+                if (!dropdown) return;
+                if (!event.target.closest('.search')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+
+            input.addEventListener('input', applySearch);
+            input.addEventListener('focus', applySearch);
+            roleFilter.addEventListener('change', applySearch);
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                roleFilter.value = 'all';
+                const userCard = document.getElementById('userSearchCard');
+                const customerCard = document.getElementById('customerSearchCard');
+                if (userCard) userCard.style.display = 'none';
+                if (customerCard) customerCard.style.display = 'none';
+                applySearch();
+            });
+
+            loadUsersForSearch();
+        }
+
+        function openUserDetail(user) {
+            const modal = document.getElementById('userDetailModal');
+            const grid = document.getElementById('userDetailGrid');
+            const roleValue = typeof user.role === 'object' ? (user.role.name || user.role.code || '') : (user.role || '-');
+            grid.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Họ tên</div>
+                    <div class="detail-value">${escapeHtml(user.fullName || '-')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Username</div>
+                    <div class="detail-value">${escapeHtml(user.username || '-')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">${escapeHtml(user.email || '-')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">SĐT</div>
+                    <div class="detail-value">${escapeHtml(user.phoneNumber || '-')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Vai trò</div>
+                    <div class="detail-value">${escapeHtml(roleValue || '-')}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Trạng thái</div>
+                    <div class="detail-value">${user.enabled === false ? 'Ngưng kích hoạt' : 'Đang hoạt động'}</div>
+                </div>
+            `;
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function openEditUser(user) {
+            const modal = document.getElementById('editUserModal');
+            document.getElementById('editUsername').value = user.username || '';
+            document.getElementById('editFullName').value = user.fullName || '';
+            document.getElementById('editEmail').value = user.email || '';
+            document.getElementById('editPhone').value = user.phoneNumber || '';
+            const roleValue = typeof user.role === 'object' ? (user.role.name || user.role.code || '') : (user.role || '');
+            document.getElementById('editRole').value = roleValue || 'EMPLOYEE';
+            document.getElementById('editEnabled').value = user.enabled === false ? 'false' : 'true';
+            document.getElementById('editUserForm').dataset.userId = user.id;
+            document.getElementById('editUserStatus').textContent = '';
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeEditUser() {
+            const modal = document.getElementById('editUserModal');
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        document.getElementById('editUserForm')?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const status = document.getElementById('editUserStatus');
+            const userId = event.currentTarget.dataset.userId;
+            const payload = {
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                fullName: document.getElementById('editFullName').value,
+                phoneNumber: document.getElementById('editPhone').value,
+                role: document.getElementById('editRole').value
+            };
+            try {
+                const token = sessionStorage.getItem('accessToken') || '';
+                const response = await fetch(`${apiEndpoints.users}/${userId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const message = await response.text();
+                    throw new Error(message || 'Khong the cap nhat tai khoan.');
+                }
+                const enabledValue = document.getElementById('editEnabled').value;
+                await fetch(`${apiEndpoints.users}/${userId}/${enabledValue === 'true' ? 'enable' : 'disable'}`, {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                status.textContent = 'Cập nhật thành công.';
+                status.classList.add('status-success');
+                await loadUsersForSearch();
+                await loadRecentUsers();
+                await loadAdminSummary();
+            } catch (error) {
+                status.textContent = error.message || 'Co loi xay ra.';
+                status.classList.add('status-error');
+            }
+        });
+
+        function wireCustomerSearch() {
+            const input = document.getElementById('customerSearchInput');
+            const customerBody = document.getElementById('searchCustomersBody');
+            const meta = document.getElementById('customerSearchMeta');
+            const customerDropdown = document.getElementById('customerSearchDropdown');
+
+            if (!customerBody || !meta) {
+                return;
+            }
+
+            const normalize = value => (value || '')
+                .toString()
+                .trim()
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '');
+
+            const renderCustomerRows = list => {
+                const card = document.getElementById('customerSearchCard');
+                const tableWrap = document.getElementById('customerTableWrap');
+                if (card && card.dataset.allowShow === 'true') {
+                    card.style.display = 'block';
+                    if (tableWrap) tableWrap.style.display = list.length ? 'block' : 'none';
+                }
+                if (!list.length) {
+                    customerBody.innerHTML = '<tr><td colspan="5" class="empty-box">Không tìm thấy khách hàng.</td></tr>';
+                    return;
+                }
+                customerBody.innerHTML = list.map(c => {
+                    const name = c.name || 'Khách hàng';
+                    const phone = c.phone || '-';
+                    const email = c.email || '-';
+                    const points = c.totalPoints ?? c.total_points ?? 0;
+                    const tier = c.tier || '-';
+                    const status = 'Hoạt động';
+                    return `
+                        <tr>
+                            <td>
+                                <strong>${escapeHtml(name)}</strong><br>
+                                <span class="card-subtitle">ID: ${c.id ?? '-'}</span>
+                            </td>
+                            <td>${escapeHtml(phone)}<br><span class="card-subtitle">${escapeHtml(email)}</span></td>
+                            <td>${escapeHtml(points)} / ${escapeHtml(tier)}</td>
+                            <td>${status}</td>
+                            <td class="actions">
+                                <button class="action-btn" data-action="view" data-id="${c.id}">Xem</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            };
+
+            window.renderCustomerRows = renderCustomerRows;
+
+            customerBody.addEventListener('click', (event) => {
+                const button = event.target.closest('button');
+                if (!button) return;
+                const id = button.dataset.id;
+                const customer = allCustomers.find(c => String(c.id) === String(id));
+                if (!customer) return;
+                openCustomerDetail(customer);
+            });
+
+            if (!input || !customerDropdown) {
+                return;
+            }
+
+            const applyCustomerSearch = () => {
+                const keyword = normalize(input.value);
+                const userCard = document.getElementById('userSearchCard');
+                const customerCard = document.getElementById('customerSearchCard');
+                if (userCard) userCard.style.display = 'none';
+                if (customerCard) customerCard.style.display = 'none';
+
+                if (!keyword) {
+                    meta.textContent = 'Nhập từ khóa để tìm kiếm khách hàng.';
+                    if (customerDropdown) customerDropdown.style.display = 'none';
+                    return;
+                }
+                const filtered = allCustomers.filter(c => {
+                    const text = normalize([
+                        c.name,
+                        c.phone,
+                        c.email,
+                        c.id
+                    ].join(' '));
+                    return text.includes(keyword);
+                });
+                meta.textContent = `Tìm thấy ${filtered.length} khách hàng. Chọn 1 để xem chi tiết.`;
+            };
+
+            customerDropdown.addEventListener('click', (event) => {
+                const item = event.target.closest('.item');
+                if (!item) return;
+                const customer = allCustomers.find(c => String(c.id) === String(item.dataset.id));
+                if (customer) {
+                    const userCard = document.getElementById('userSearchCard');
+                    const customerCard = document.getElementById('customerSearchCard');
+                    if (userCard) userCard.style.display = 'none';
+                    if (customerCard) {
+                        customerCard.dataset.allowShow = 'true';
+                        customerCard.style.display = 'block';
+                        const tableWrap = document.getElementById('customerTableWrap');
+                        if (tableWrap) tableWrap.style.display = 'block';
+                    }
+                    renderCustomerRows([customer]);
+                }
+                customerDropdown.style.display = 'none';
+            });
+
+            input.addEventListener('input', applyCustomerSearch);
+            input.addEventListener('focus', applyCustomerSearch);
+        }
+
+        async function loadCustomersForSearch() {
+            try {
+                const token = sessionStorage.getItem('accessToken') || '';
+                const response = await fetch(apiEndpoints.customers, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    allCustomers = [];
+                    return;
+                }
+                allCustomers = await response.json();
+                if (!Array.isArray(allCustomers)) {
+                    allCustomers = [];
+                }
+            } catch (error) {
+                allCustomers = [];
+            }
+        }
+
+        async function openCustomerDetail(customer) {
+            const modal = document.getElementById('customerDetailModal');
+            const grid = document.getElementById('customerDetailGrid');
+            const ordersBody = document.getElementById('customerOrdersBody');
+            const points = customer.totalPoints ?? customer.total_points ?? 0;
+            const tier = customer.tier || '-';
+            grid.innerHTML = `
+                <div class="detail-item">
+                    <div class="detail-label">Tên khách hàng</div>
+                    <div class="detail-value">${escapeHtml(customer.name || '-') }</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">SĐT</div>
+                    <div class="detail-value">${escapeHtml(customer.phone || '-') }</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Email</div>
+                    <div class="detail-value">${escapeHtml(customer.email || '-') }</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Điểm tích lũy</div>
+                    <div class="detail-value">${escapeHtml(points)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Hạng</div>
+                    <div class="detail-value">${escapeHtml(tier)}</div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">Trạng thái</div>
+                    <div class="detail-value">Hoạt động</div>
+                </div>
+            `;
+
+            ordersBody.innerHTML = '<tr><td colspan="4" class="empty-box">Đang tải...</td></tr>';
+            try {
+                const token = sessionStorage.getItem('accessToken') || '';
+                const response = await fetch(`${apiEndpoints.customers}/${customer.id}/orders`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) {
+                    ordersBody.innerHTML = '<tr><td colspan="4" class="empty-box">Không tải được lịch sử mua hàng.</td></tr>';
+                } else {
+                    const orders = await response.json();
+                    if (!orders.length) {
+                        ordersBody.innerHTML = '<tr><td colspan="4" class="empty-box">Chưa có đơn hàng.</td></tr>';
+                    } else {
+                        ordersBody.innerHTML = orders.map(o => {
+                            const total = o.totalAmount || o.total || 0;
+                            const items = o.itemCount || (o.items ? o.items.length : 0);
+                            return `
+                                <tr>
+                                    <td>${escapeHtml(o.invoiceNumber || o.id)}</td>
+                                    <td>${formatTimestamp(o.createdAt)}</td>
+                                    <td>${items}</td>
+                                    <td>${formatNumber(total)}</td>
+                                </tr>
+                            `;
+                        }).join('');
+                    }
+                }
+            } catch (error) {
+                ordersBody.innerHTML = '<tr><td colspan="4" class="empty-box">Không tải được lịch sử mua hàng.</td></tr>';
+            }
+
+            modal.classList.add('show');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeCustomerDetail() {
+            const modal = document.getElementById('customerDetailModal');
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        let allCustomers = [];
+
+function closeUserDetail() {
+            const modal = document.getElementById('userDetailModal');
+            modal.classList.remove('show');
+            modal.setAttribute('aria-hidden', 'true');
+        }
         function wireCreateUserForm() {
             const form = document.getElementById('adminCreateUserForm');
             const status = document.getElementById('adminUserStatus');
@@ -812,7 +1605,7 @@
                 try {
                     const response = await fetch(apiEndpoints.createUser, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` },
                         body: JSON.stringify(payload)
                     });
                     if (!response.ok) {
@@ -824,7 +1617,7 @@
                     form.reset();
                     await loadAdminSummary();
                     await loadRecentUsers();
-                    await loadOwnerOptions();
+                    if (typeof loadOwnerOptions === 'function') {                        await loadOwnerOptions();                    }
                 } catch (error) {
                     status.textContent = error.message || 'Có lỗi xảy ra.';
                     status.classList.add('status-error');
@@ -896,5 +1689,111 @@
             }[match]));
         }
     </script>
+    <div class="modal" id="userDetailModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Hồ sơ tài khoản</div>
+                <button class="modal-close" type="button" onclick="closeUserDetail()">Đóng</button>
+            </div>
+            <div class="detail-grid" id="userDetailGrid"></div>
+        </div>
+    </div>
+    <div class="modal" id="editUserModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Sửa tài khoản</div>
+                <button class="modal-close" type="button" onclick="closeEditUser()">Đóng</button>
+            </div>
+            <form id="editUserForm">
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Username</div>
+                        <input id="editUsername" type="text" readonly />
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Họ tên</div>
+                        <input id="editFullName" type="text" />
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email</div>
+                        <input id="editEmail" type="email" />
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">SĐT</div>
+                        <input id="editPhone" type="tel" />
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Vai trò</div>
+                        <select id="editRole">
+                            <option value="ADMIN">Admin</option>
+                            <option value="OWNER">Owner</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="EMPLOYEE">Employee</option>
+                        </select>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Trạng thái</div>
+                        <select id="editEnabled">
+                            <option value="true">Hoạt động</option>
+                            <option value="false">Ngừng kích hoạt</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions" style="margin-top:12px;">
+                    <button class="action-btn primary" type="submit">Lưu thay đổi</button>
+                    <span id="editUserStatus" class="status-message"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="customerDetailModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">Hồ sơ khách hàng</div>
+                <button class="modal-close" type="button" onclick="closeCustomerDetail()">Đóng</button>
+            </div>
+            <div class="detail-grid" id="customerDetailGrid"></div>
+            <div style="margin-top:12px;">
+                <div class="card-title" style="font-size:14px;">Lịch sử mua hàng</div>
+                <table class="table" style="margin-top:8px;">
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Ngày</th>
+                            <th>Số mặt hàng</th>
+                            <th>Tổng tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerOrdersBody">
+                        <tr><td colspan="4" class="empty-box">Chưa có đơn hàng.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

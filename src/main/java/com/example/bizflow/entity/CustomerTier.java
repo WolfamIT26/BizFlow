@@ -21,6 +21,18 @@ public enum CustomerTier {
         this.discountValue = discountValue;
     }
 
+    public static CustomerTier resolveTierByPoints(int points) {
+        CustomerTier selected = null;
+        for (CustomerTier tier : CustomerTier.values()) {
+            if (points >= tier.monthlyLimit) {
+                if (selected == null || tier.monthlyLimit > selected.monthlyLimit) {
+                    selected = tier;
+                }
+            }
+        }
+        return selected != null ? selected : CustomerTier.DONG;
+    }
+
     public int discountForPoints(int points) {
         if (points < 100) {
             return 0;

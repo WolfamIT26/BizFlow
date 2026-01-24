@@ -6,6 +6,8 @@
 package com.example.bizflow.service;
 
 import com.example.bizflow.entity.Order;
+import com.example.bizflow.entity.User;
+import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
@@ -56,6 +59,20 @@ public class OrderService {
         }
 
         return invoiceNumber;
+    }
+    public List<OrderSummaryResponse> getCustomerOrderHistorySummary(Long id) {
+        if (id == null) {
+            return Collections.emptyList();
+        }
+
+        List<Order> orders = orderRepository.findByCustomerIdOrderByCreatedAtDesc(id);
+        if (orders == null) {
+            return Collections.emptyList();
+        }
+
+        return orders.stream()
+                .map(this::toSummaryResponse)
+                .collect(Collectors.toList());
     }
 
     public Object getCustomerOrderHistory(Long id) {

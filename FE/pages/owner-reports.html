@@ -523,7 +523,7 @@
 
         async function loadTopProducts() {
             try {
-                const res = await fetch(`${API_BASE}/reports/top-products/monthly?limit=20`, {
+            const res = await fetch(`${API_BASE}/reports/top-products/monthly?limit=16`, {
                     headers: getAuthHeaders()
                 });
                 if (res.ok) {

@@ -1,10 +1,14 @@
 package com.example.bizflow.service;
 
+import com.example.bizflow.entity.Customer;
+import com.example.bizflow.entity.CustomerTier;
 import com.example.bizflow.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class PointService {
@@ -27,6 +31,7 @@ public class PointService {
 
         customerRepository.findByIdForUpdate(customerId).ifPresent(customer -> {
             customer.addPoints(points);
+            customer.updateTierByPoints();
             customerRepository.save(customer);
         });
     }
@@ -46,8 +51,31 @@ public class PointService {
             customer.setTotalPoints(current - redeem);
             Integer monthly = customer.getMonthlyPoints() == null ? 0 : customer.getMonthlyPoints();
             customer.setMonthlyPoints(Math.max(0, monthly - redeem));
+            customer.updateTierByPoints();
             customerRepository.save(customer);
             return redeem;
         }).orElse(0);
+    }
+
+    @Transactional
+    public int syncCustomerTiers() {
+        List<Customer> customers = customerRepository.findAll();
+        if (customers.isEmpty()) {
+            return 0;
+        }
+
+        List<Customer> changed = new ArrayList<>();
+        for (Customer customer : customers) {
+            CustomerTier before = customer.getTier();
+            customer.updateTierByPoints();
+            if (before != customer.getTier()) {
+                changed.add(customer);
+            }
+        }
+
+        if (!changed.isEmpty()) {
+            customerRepository.saveAll(changed);
+        }
+        return changed.size();
     }
 }
