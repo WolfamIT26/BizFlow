@@ -64,6 +64,38 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     @Override
+    public List<PromotionDTO> searchPromotions(String query, String discountType, String targetType, Long targetId, Boolean active) {
+        Promotion.DiscountType parsedDiscountType = parseDiscountType(discountType);
+        PromotionTarget.TargetType parsedTargetType = parseTargetType(targetType);
+        String q = query != null && !query.isBlank() ? query.trim() : null;
+
+        return promotionRepository.searchPromotions(q, parsedDiscountType, active, parsedTargetType, targetId)
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public String generatePromotionCode(String name) {
+        String prefix = buildPromoPrefixFromName(name);
+        if (prefix == null || prefix.isBlank()) {
+            prefix = "KM";
+        }
+        List<String> existing = promotionRepository.findCodesByPrefix(prefix);
+        java.util.Set<String> used = existing == null
+                ? java.util.Collections.emptySet()
+                : existing.stream().map(code -> code.toUpperCase()).collect(Collectors.toSet());
+        for (int i = 1; i < 1000; i++) {
+            String suffix = String.format("%03d", i);
+            String candidate = prefix + "-" + suffix;
+            if (!used.contains(candidate.toUpperCase())) {
+                return candidate;
+            }
+        }
+        return prefix + "-" + String.format("%03d", (int) (Math.random() * 900 + 100));
+    }
+
+    @Override
     @Cacheable(cacheNames = "activePromotions", key = "'active'")
     public List<PromotionDTO> getActivePromotions() {
         return promotionRepository.findActivePromotions(LocalDateTime.now())
@@ -229,8 +261,15 @@ public class PromotionServiceImpl implements PromotionService {
     private BundleItemDTO toBundleItemDTO(BundleItem item) {
         BundleItemDTO dto = new BundleItemDTO();
         dto.setId(item.getId());
-        dto.setProductId(item.getProductId());
-        dto.setQuantity(item.getQuantity());
+        dto.setMainProductId(item.getMainProductId());
+        dto.setMainQuantity(item.getMainQuantity());
+        dto.setGiftProductId(item.getGiftProductId());
+        dto.setGiftQuantity(item.getGiftQuantity());
+        dto.setGiftDiscountType(item.getGiftDiscountType());
+        dto.setGiftDiscountValue(item.getGiftDiscountValue());
+        dto.setStatus(item.getStatus());
+        dto.setProductId(item.getMainProductId());
+        dto.setQuantity(item.getMainQuantity());
         return dto;
     }
 
@@ -266,15 +305,23 @@ public class PromotionServiceImpl implements PromotionService {
             }
             for (BundleItemDTO bdto : dto.getBundleItems()) {
                 BundleItem item = new BundleItem();
-                item.setProductId(bdto.getProductId());
-                item.setQuantity(bdto.getQuantity());
-                item.setMainProductId(bdto.getProductId());
-                item.setMainQuantity(bdto.getQuantity());
-                item.setGiftProductId(bdto.getProductId());
-                item.setGiftQuantity(bdto.getQuantity());
-                item.setGiftDiscountType("FREE");
-                item.setGiftDiscountValue(0.0);
-                item.setStatus("ACTIVE");
+                Long mainProductId = bdto.getMainProductId() != null ? bdto.getMainProductId() : bdto.getProductId();
+                Integer mainQty = bdto.getMainQuantity() != null ? bdto.getMainQuantity() : bdto.getQuantity();
+                Long giftProductId = bdto.getGiftProductId() != null ? bdto.getGiftProductId() : bdto.getProductId();
+                Integer giftQty = bdto.getGiftQuantity() != null ? bdto.getGiftQuantity() : bdto.getQuantity();
+                String giftDiscountType = bdto.getGiftDiscountType() != null ? bdto.getGiftDiscountType() : "FREE";
+                Double giftDiscountValue = bdto.getGiftDiscountValue() != null ? bdto.getGiftDiscountValue() : 0.0;
+                String status = bdto.getStatus() != null ? bdto.getStatus() : "ACTIVE";
+
+                item.setProductId(mainProductId);
+                item.setQuantity(mainQty);
+                item.setMainProductId(mainProductId);
+                item.setMainQuantity(mainQty);
+                item.setGiftProductId(giftProductId);
+                item.setGiftQuantity(giftQty);
+                item.setGiftDiscountType(giftDiscountType);
+                item.setGiftDiscountValue(giftDiscountValue);
+                item.setStatus(status);
                 item.setPromotion(promotion);
                 promotion.getBundleItems().add(item);
             }
@@ -354,6 +401,10 @@ public class PromotionServiceImpl implements PromotionService {
         if (dto.getBundleItems() == null) {
             return;
         }
+        if (dto.getDiscountType() != null && dto.getDiscountType() != Promotion.DiscountType.BUNDLE
+                && !dto.getBundleItems().isEmpty()) {
+            throw new IllegalArgumentException("Only bundle promotions may include bundle items");
+        }
         if (dto.getDiscountType() == Promotion.DiscountType.BUNDLE && dto.getBundleItems().isEmpty()) {
             throw new IllegalArgumentException("Bundle promotions must include at least one bundle item");
         }
@@ -361,11 +412,22 @@ public class PromotionServiceImpl implements PromotionService {
             if (item == null) {
                 throw new IllegalArgumentException("Bundle item must not be null");
             }
-            if (item.getProductId() == null || item.getProductId() <= 0) {
-                throw new IllegalArgumentException("Bundle item productId must be a positive number");
+            Long mainProductId = item.getMainProductId() != null ? item.getMainProductId() : item.getProductId();
+            Long giftProductId = item.getGiftProductId() != null ? item.getGiftProductId() : item.getProductId();
+            Integer mainQty = item.getMainQuantity() != null ? item.getMainQuantity() : item.getQuantity();
+            Integer giftQty = item.getGiftQuantity() != null ? item.getGiftQuantity() : item.getQuantity();
+
+            if (mainProductId == null || mainProductId <= 0) {
+                throw new IllegalArgumentException("Bundle mainProductId must be a positive number");
             }
-            if (item.getQuantity() == null || item.getQuantity() <= 0) {
-                throw new IllegalArgumentException("Bundle item quantity must be a positive number");
+            if (giftProductId == null || giftProductId <= 0) {
+                throw new IllegalArgumentException("Bundle giftProductId must be a positive number");
+            }
+            if (mainQty == null || mainQty <= 0) {
+                throw new IllegalArgumentException("Bundle mainQuantity must be a positive number");
+            }
+            if (giftQty == null || giftQty <= 0) {
+                throw new IllegalArgumentException("Bundle giftQuantity must be a positive number");
             }
         }
     }
@@ -406,6 +468,58 @@ public class PromotionServiceImpl implements PromotionService {
             case "FREE_GIFT", "BUNDLE" -> Promotion.DiscountType.BUNDLE;
             default -> null;
         };
+    }
+
+    private Promotion.DiscountType parseDiscountType(String discountType) {
+        if (discountType == null || discountType.isBlank()) {
+            return null;
+        }
+        try {
+            return Promotion.DiscountType.valueOf(discountType.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String buildPromoPrefixFromName(String name) {
+        String base = normalizePromotionName(name);
+        if (base.isBlank()) {
+            return "KM";
+        }
+        String[] words = base.split("\\s+");
+        StringBuilder initials = new StringBuilder();
+        for (String word : words) {
+            if (!word.isBlank()) {
+                initials.append(Character.toUpperCase(word.charAt(0)));
+            }
+        }
+        String shortCode = initials.length() >= 2
+                ? initials.toString()
+                : base.replace(" ", "").substring(0, Math.min(4, base.length())).toUpperCase();
+        return "KM" + shortCode;
+    }
+
+    private String normalizePromotionName(String name) {
+        String value = name == null ? "" : name.trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        String normalized = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD);
+        normalized = normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "");
+        normalized = normalized.replaceAll("[^a-zA-Z0-9\\s]", " ");
+        normalized = normalized.replaceAll("\\s+", " ").trim();
+        return normalized;
+    }
+
+    private PromotionTarget.TargetType parseTargetType(String targetType) {
+        if (targetType == null || targetType.isBlank()) {
+            return null;
+        }
+        try {
+            return PromotionTarget.TargetType.valueOf(targetType.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
     }
 
     private String mapPromotionTypeFromDiscount(Promotion.DiscountType discountType) {

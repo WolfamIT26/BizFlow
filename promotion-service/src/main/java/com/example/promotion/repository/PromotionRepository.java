@@ -1,8 +1,10 @@
 package com.example.promotion.repository;
 
 import com.example.promotion.entity.Promotion;
+import com.example.promotion.entity.PromotionTarget;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -30,4 +32,28 @@ public interface PromotionRepository extends JpaRepository<Promotion, Long> {
           AND (p.endDate IS NULL OR p.endDate >= :now)
     """)
     Optional<Promotion> findActivePromotionByCode(String code, LocalDateTime now);
+
+    @Query("""
+        SELECT DISTINCT p FROM Promotion p
+        LEFT JOIN p.targets t
+        WHERE (:q IS NULL OR :q = '' OR LOWER(p.code) LIKE LOWER(CONCAT('%', :q, '%'))
+           OR LOWER(p.name) LIKE LOWER(CONCAT('%', :q, '%')))
+          AND (:discountType IS NULL OR p.discountType = :discountType)
+          AND (:active IS NULL OR p.active = :active)
+          AND (:targetType IS NULL OR t.targetType = :targetType)
+          AND (:targetId IS NULL OR t.targetId = :targetId)
+    """)
+    List<Promotion> searchPromotions(
+            @Param("q") String q,
+            @Param("discountType") Promotion.DiscountType discountType,
+            @Param("active") Boolean active,
+            @Param("targetType") PromotionTarget.TargetType targetType,
+            @Param("targetId") Long targetId
+    );
+
+    @Query("""
+        SELECT p.code FROM Promotion p
+        WHERE LOWER(p.code) LIKE LOWER(CONCAT(:prefix, '-%'))
+    """)
+    List<String> findCodesByPrefix(@Param("prefix") String prefix);
 }

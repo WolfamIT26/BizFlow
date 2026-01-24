@@ -25,20 +25,32 @@ public class ProductController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
-    public ResponseEntity<?> getAllProducts() {
+    public ResponseEntity<?> getAllProducts(@RequestParam(value = "search", required = false) String search) {
         try {
-            List<Product> products = productRepository.findByStatus("active");
+            List<Product> products;
+            String query = search != null ? search.trim() : "";
+            if (!query.isEmpty()) {
+                products = productRepository.searchByStatusAndQuery("active", query);
+            } else {
+                products = productRepository.findByStatus("active");
+            }
             applyInventoryStocks(products);
-            boolean showCostPrice = true; // <--- Ép hiện luôn để test cho sướng;
+            boolean showCostPrice = true; // <--- �p hi?n lu�n d? test cho su?ng;
             List<ProductDTO> dtos = products.stream()
                     .map(p -> ProductDTO.fromEntity(p, showCostPrice))
                     .collect(Collectors.toList());
             return ResponseEntity.ok(dtos);
         } catch (Exception e) {
             try {
-                List<Product> products = productRepository.findAll();
+                List<Product> products;
+                String query = search != null ? search.trim() : "";
+                if (!query.isEmpty()) {
+                    products = productRepository.searchByStatusAndQuery(null, query);
+                } else {
+                    products = productRepository.findAll();
+                }
                 applyInventoryStocks(products);
-                boolean showCostPrice = true; // <--- Ép hiện luôn để test cho sướng;
+                boolean showCostPrice = true; // <--- �p hi?n lu�n d? test cho su?ng;
                 List<ProductDTO> dtos = products.stream()
                         .map(p -> ProductDTO.fromEntity(p, showCostPrice))
                         .collect(Collectors.toList());
@@ -176,3 +188,5 @@ public class ProductController {
         }
     }
 }
+
+

@@ -10,6 +10,10 @@ public interface PromotionService {
 
     List<PromotionDTO> getActivePromotions();
 
+    List<PromotionDTO> searchPromotions(String query, String discountType, String targetType, Long targetId, Boolean active);
+
+    String generatePromotionCode(String name);
+
     PromotionDTO getPromotionByCode(String code);
 
     PromotionDTO getActivePromotionByCode(String code);
