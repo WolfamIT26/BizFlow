@@ -1,5 +1,7 @@
 package com.example.promotion.controller;
 
+import com.example.promotion.dto.CartItemPriceRequest;
+import com.example.promotion.dto.CartItemPriceResponse;
 import com.example.promotion.dto.PromotionDTO;
 import com.example.promotion.service.PromotionService;
 import org.springframework.http.HttpStatus;
@@ -112,6 +114,19 @@ public class PromotionController {
     @PostMapping("/sync")
     public ResponseEntity<?> syncPromotion(@RequestBody PromotionDTO dto) {
         return ResponseEntity.ok(promotionService.createPromotion(dto));
+    }
+
+    // POST /api/v1/promotions/calculate-prices
+    @PostMapping("/calculate-prices")
+    public ResponseEntity<List<CartItemPriceResponse>> calculateCartPrices(
+            @RequestBody CartItemPriceRequest request
+    ) {
+        try {
+            List<CartItemPriceResponse> prices = promotionService.calculateCartItemPrices(request);
+            return ResponseEntity.ok(prices);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // GET /api/v1/promotions/validate/{code}

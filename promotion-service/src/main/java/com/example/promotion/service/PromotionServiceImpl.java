@@ -1,6 +1,8 @@
 package com.example.promotion.service;
 
 import com.example.promotion.dto.BundleItemDTO;
+import com.example.promotion.dto.CartItemPriceRequest;
+import com.example.promotion.dto.CartItemPriceResponse;
 import com.example.promotion.dto.PromotionDTO;
 import com.example.promotion.dto.PromotionTargetDTO;
 import com.example.promotion.entity.BundleItem;
@@ -597,6 +599,125 @@ public class PromotionServiceImpl implements PromotionService {
 
     private boolean isNifiSignalEnabled() {
         return nifiSignalUrl != null && !nifiSignalUrl.isBlank();
+    }
+
+    @Override
+    public List<CartItemPriceResponse> calculateCartItemPrices(CartItemPriceRequest request) {
+        List<CartItemPriceResponse> responses = new ArrayList<>();
+        
+        // Load all active promotions
+        List<PromotionDTO> activePromos = getActivePromotions();
+        
+        for (CartItemPriceRequest.CartItem item : request.getItems()) {
+            CartItemPriceResponse response = calculateSingleItemPrice(item, activePromos);
+            responses.add(response);
+        }
+        
+        return responses;
+    }
+    
+    private CartItemPriceResponse calculateSingleItemPrice(CartItemPriceRequest.CartItem item, List<PromotionDTO> promotions) {
+        // Find best promotion for this product
+        PromotionDTO bestPromo = findBestPromotionForProduct(item.getProductId(), promotions);
+        
+        if (bestPromo == null) {
+            // No promotion, return base price
+            return new CartItemPriceResponse(
+                item.getProductId(),
+                item.getBasePrice(),
+                item.getBasePrice(),
+                java.math.BigDecimal.ZERO,
+                null,
+                null,
+                null,
+                item.getQuantity()
+            );
+        }
+        
+        // Calculate discounted price based on promotion type
+        java.math.BigDecimal finalPrice = calculatePromotionalPrice(item.getBasePrice(), item.getQuantity(), bestPromo);
+        java.math.BigDecimal discount = item.getBasePrice().subtract(finalPrice);
+        
+        return new CartItemPriceResponse(
+            item.getProductId(),
+            item.getBasePrice(),
+            finalPrice,
+            discount,
+            bestPromo.getCode(),
+            bestPromo.getName(),
+            bestPromo.getDiscountType().name(),
+            item.getQuantity()
+        );
+    }
+    
+    private PromotionDTO findBestPromotionForProduct(Long productId, List<PromotionDTO> promotions) {
+        // Prioritize BUNDLE promotions
+        for (PromotionDTO promo : promotions) {
+            if ("BUNDLE".equals(promo.getDiscountType())) {
+                for (PromotionTargetDTO target : promo.getTargets()) {
+                    if (target.getTargetId().equals(productId)) {
+                        return promo;
+                    }
+                }
+            }
+        }
+        
+        // Then find best discount from other types
+        PromotionDTO best = null;
+        java.math.BigDecimal bestDiscount = java.math.BigDecimal.ZERO;
+        
+        for (PromotionDTO promo : promotions) {
+            for (PromotionTargetDTO target : promo.getTargets()) {
+                if (target.getTargetId().equals(productId)) {
+                    java.math.BigDecimal discount = java.math.BigDecimal.valueOf(promo.getDiscountValue());
+                    if (discount.compareTo(bestDiscount) > 0) {
+                        bestDiscount = discount;
+                        best = promo;
+                    }
+                }
+            }
+        }
+        
+        return best;
+    }
+    
+    private java.math.BigDecimal calculatePromotionalPrice(java.math.BigDecimal basePrice, Integer quantity, PromotionDTO promo) {
+        String discountType = promo.getDiscountType().name();
+        
+        if ("PERCENT".equals(discountType)) {
+            // Discount by percentage
+            java.math.BigDecimal percent = java.math.BigDecimal.valueOf(promo.getDiscountValue());
+            return basePrice.multiply(java.math.BigDecimal.ONE.subtract(percent.divide(java.math.BigDecimal.valueOf(100))));
+        } else if ("FIXED".equals(discountType) || "FIXED_AMOUNT".equals(discountType)) {
+            // Fixed amount discount
+            java.math.BigDecimal discount = java.math.BigDecimal.valueOf(promo.getDiscountValue());
+            return basePrice.subtract(discount).max(java.math.BigDecimal.ZERO);
+        } else if ("BUNDLE".equals(discountType)) {
+            // Bundle: "Buy X get Y free"
+            if (promo.getBundleItems() == null || promo.getBundleItems().isEmpty()) {
+                return basePrice;
+            }
+            
+            BundleItemDTO bundle = promo.getBundleItems().get(0);
+            int mainQty = bundle.getMainQuantity() != null ? bundle.getMainQuantity() : 3;
+            int giftQty = bundle.getGiftQuantity() != null ? bundle.getGiftQuantity() : 1;
+            int setSize = mainQty + giftQty;
+            
+            // Calculate number of complete sets
+            int completeSets = quantity / setSize;
+            int remainingQty = quantity % setSize;
+            
+            // Total price = (complete sets * price of main quantity) + (remaining * full price)
+            java.math.BigDecimal bundlePrice = basePrice.multiply(java.math.BigDecimal.valueOf(completeSets * mainQty + remainingQty));
+            
+            // Return unit price
+            return bundlePrice.divide(java.math.BigDecimal.valueOf(quantity), 2, java.math.RoundingMode.HALF_UP);
+        } else if ("FREE_GIFT".equals(discountType)) {
+            // No price change for main product
+            return basePrice;
+        } else {
+            return basePrice;
+        }
     }
 
     private void sendNifiSignal(String eventType, PromotionDTO dto) {

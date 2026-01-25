@@ -570,16 +570,55 @@ function addToCart(productId, productName, productPrice) {
     const splitLine = document.getElementById('splitLine')?.checked;
     const product = products.find(p => p.id === productId) || {};
     const stock = getStockValue(product);
-    const pricing = getProductPricing(product);
-    const effectivePrice = pricing.hasPromo ? pricing.promoPrice : pricing.basePrice;
+    const basePrice = Number(product.price) || productPrice || 0;
+    
+    console.log('[addToCart] Input:', { productId, productName, productPrice, qty, basePrice, product });
+    
+    // Check if product has promotion
+    let effectivePrice = basePrice;
+    let promoId = null;
+    
+    if (promotionIndex && product.id != null) {
+        const promoInfo = promotionIndex.get(product.id);
+        console.log('[addToCart] promoInfo:', promoInfo);
+        
+        if (promoInfo?.promo) {
+            promoId = promoInfo.promo.id;
+            // For BUNDLE, must calculate with actual quantity
+            if (normalizeDiscountType(promoInfo.promo.discountType) === 'BUNDLE') {
+                effectivePrice = getPromoPrice(basePrice, promoInfo.promo, qty);
+                console.log('[addToCart] BUNDLE effectivePrice:', effectivePrice);
+            } else {
+                // For other promo types (PERCENT, FIXED), quantity doesn't matter
+                effectivePrice = getPromoPrice(basePrice, promoInfo.promo, 1);
+                console.log('[addToCart] Non-BUNDLE effectivePrice:', effectivePrice);
+            }
+        }
+    }
+    
     const resolvedPrice = Number.isFinite(effectivePrice) ? effectivePrice : (productPrice || 0);
+    console.log('[addToCart] Final resolvedPrice:', resolvedPrice);
 
     if (!splitLine) {
         const existingItem = cart.find(item => item.productId === productId);
         if (existingItem) {
-            existingItem.quantity += qty;
+            const newQty = existingItem.quantity + qty;
+            existingItem.quantity = newQty;
             existingItem.stock = stock;
-            existingItem.productPrice = resolvedPrice;
+            
+            // Recalculate price for bundle promos
+            if (promotionIndex && product.id != null) {
+                const promoInfo = promotionIndex.get(product.id);
+                if (promoInfo?.promo && normalizeDiscountType(promoInfo.promo.discountType) === 'BUNDLE') {
+                    existingItem.productPrice = getPromoPrice(basePrice, promoInfo.promo, newQty);
+                } else {
+                    existingItem.productPrice = resolvedPrice;
+                }
+                existingItem.promoId = promoInfo?.promo?.id || null;
+            } else {
+                existingItem.productPrice = resolvedPrice;
+                existingItem.promoId = null;
+            }
         } else {
             cart.push({
                 productId,
@@ -588,7 +627,8 @@ function addToCart(productId, productName, productPrice) {
                 quantity: qty,
                 productCode: product.code || product.barcode || '',
                 unit: product.unit || '',
-                stock
+                stock,
+                promoId: promoId
             });
         }
     } else {
@@ -599,7 +639,8 @@ function addToCart(productId, productName, productPrice) {
             quantity: qty,
             productCode: product.code || product.barcode || '',
             unit: product.unit || '',
-            stock
+            stock,
+            promoId: promoId
         });
     }
 
@@ -1016,10 +1057,12 @@ function mapPaymentMethod(method) {
     }
 }
 
-async function loadPromotionIndex() {
-    if (promotionIndex) {
+async function loadPromotionIndex(forceRefresh = false) {
+    if (promotionIndex && !forceRefresh) {
         return promotionIndex;
     }
+
+    console.log('[loadPromotionIndex] Loading promotions...', { forceRefresh });
 
     const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}` };
 
@@ -1031,10 +1074,17 @@ async function loadPromotionIndex() {
             : fetch(`${API_BASE}/products`, { headers }).then(res => (res.ok ? res.json() : []));
 
         const [promoList, productList] = await Promise.all([promoPromise, productPromise]);
+        
+        console.log('[loadPromotionIndex] Loaded promotions:', promoList.length);
+        
         const activePromos = (promoList || []).filter(isPromotionActive);
         promotionIndex = buildPromotionIndex(activePromos, productList || []);
+        
+        console.log('[loadPromotionIndex] Built index size:', promotionIndex.size);
+        
         return promotionIndex;
     } catch (err) {
+        console.error('[loadPromotionIndex] Error:', err);
         promotionIndex = new Map();
         return promotionIndex;
     }
@@ -1095,6 +1145,15 @@ function buildPromotionIndex(promos, productList) {
 
 function selectBestPromotion(product, promos) {
     const basePrice = Number(product?.price);
+    
+    // Prioritize BUNDLE promotions since they depend on quantity
+    const bundlePromo = (promos || []).find(p => normalizeDiscountType(p.discountType) === 'BUNDLE');
+    if (bundlePromo) {
+        console.log('[selectBestPromotion] Found BUNDLE promo, prioritizing it');
+        return { promo: bundlePromo, price: basePrice }; // Return base price, will recalc with quantity later
+    }
+    
+    // For other promo types, select best price
     const candidates = (promos || []).map((promo) => {
         const price = getPromoPrice(basePrice, promo);
         return { promo, price };
@@ -1109,9 +1168,23 @@ function selectBestPromotion(product, promos) {
     return { promo: candidates[0]?.promo || null, price: NaN };
 }
 
-function getPromoPrice(basePrice, promo) {
-    if (!Number.isFinite(basePrice) || !promo) return NaN;
+function getPromoPrice(basePrice, promo, quantity = 1) {
+    console.log('[getPromoPrice] FULL INPUT:', JSON.stringify({ 
+        basePrice, 
+        promoType: promo?.discountType, 
+        promoCode: promo?.code,
+        promoName: promo?.name,
+        bundleItems: promo?.bundleItems,
+        quantity 
+    }, null, 2));
+    
+    if (!Number.isFinite(basePrice) || !promo) {
+        console.log('[getPromoPrice] Invalid input - basePrice:', basePrice, 'promo:', promo);
+        return NaN;
+    }
     const value = Number(promo.discountValue);
+    const qty = Math.max(1, Number(quantity) || 1);
+    
     switch (normalizeDiscountType(promo.discountType)) {
         case 'PERCENT':
             if (!Number.isFinite(value)) return NaN;
@@ -1120,8 +1193,40 @@ function getPromoPrice(basePrice, promo) {
             if (!Number.isFinite(value)) return NaN;
             return Math.max(0, basePrice - value);
         case 'BUNDLE':
-            if (!Number.isFinite(value)) return NaN;
-            return Math.max(0, value);
+            // Bundle logic: "Mua X tặng Y"
+            // Example: Mua 3 tặng 1 (value = 1)
+            // - mainQuantity: 3 (số lượng cần mua)
+            // - giftQuantity: 1 (số lượng được tặng)
+            console.log('[getPromoPrice BUNDLE] bundleItems:', promo.bundleItems);
+            
+            if (!promo.bundleItems || promo.bundleItems.length === 0) {
+                console.log('[getPromoPrice BUNDLE] No bundleItems, returning basePrice:', basePrice);
+                return basePrice;
+            }
+            // Get first bundle item (assume 1 bundle per promo)
+            const bundle = promo.bundleItems[0];
+            const mainQty = Number(bundle.mainQuantity) || 3;  // Mua 3
+            const giftQty = Number(bundle.giftQuantity) || 1;  // Tặng 1
+            const setSize = mainQty + giftQty;  // 1 set = 4 chai
+            
+            console.log('[getPromoPrice BUNDLE] bundle config:', { mainQty, giftQty, setSize, qty });
+            
+            // Calculate number of complete sets
+            const completeSets = Math.floor(qty / setSize);
+            const remainingQty = qty % setSize;
+            
+            // Price = (complete sets * price of mainQty) + (remaining * full price)
+            const bundlePrice = (completeSets * mainQty * basePrice) + (remainingQty * basePrice);
+            const unitPrice = bundlePrice / qty;
+            
+            console.log('[getPromoPrice BUNDLE] calculation:', { 
+                completeSets, 
+                remainingQty, 
+                bundlePrice, 
+                unitPrice 
+            });
+            
+            return Math.max(0, unitPrice);  // Return unit price
         case 'FREE_GIFT':
             return basePrice;
         default:
@@ -1253,6 +1358,21 @@ function renderCart() {
 function updateQty(idx, change) {
     if (cart[idx] && !cart[idx].isReturnItem) {
         cart[idx].quantity = Math.max(1, cart[idx].quantity + change);
+        
+        // Recalculate bundle price if this item has a bundle promotion
+        const item = cart[idx];
+        if (item.promoId) {
+            const promoInfo = promotionIndex.get(item.productId);
+            if (promoInfo?.promo && normalizeDiscountType(promoInfo.promo.discountType) === 'BUNDLE') {
+                // Get base price from product
+                const product = products.find(p => p.id === item.productId);
+                const basePrice = product ? Number(product.price) : item.productPrice;
+                console.log('[updateQty] Recalculating BUNDLE:', { productId: item.productId, basePrice, newQty: item.quantity });
+                // Recalculate price with new quantity
+                item.productPrice = getPromoPrice(basePrice, promoInfo.promo, item.quantity);
+            }
+        }
+        
         renderCart();
         updateTotal();
     }
@@ -1262,6 +1382,21 @@ function setQty(idx, value) {
     const qty = parseInt(value, 10) || 1;
     if (cart[idx] && !cart[idx].isReturnItem) {
         cart[idx].quantity = Math.max(1, qty);
+        
+        // Recalculate bundle price if this item has a bundle promotion
+        const item = cart[idx];
+        if (item.promoId) {
+            const promoInfo = promotionIndex.get(item.productId);
+            if (promoInfo?.promo && normalizeDiscountType(promoInfo.promo.discountType) === 'BUNDLE') {
+                // Get base price from product
+                const product = products.find(p => p.id === item.productId);
+                const basePrice = product ? Number(product.price) : item.productPrice;
+                console.log('[setQty] Recalculating BUNDLE:', { productId: item.productId, basePrice, newQty: item.quantity });
+                // Recalculate price with new quantity
+                item.productPrice = getPromoPrice(basePrice, promoInfo.promo, item.quantity);
+            }
+        }
+        
         renderCart();
         updateTotal();
     }
