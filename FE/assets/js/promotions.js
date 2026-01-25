@@ -124,7 +124,12 @@ function buildPromoProducts(activePromos, productList) {
                 safeProducts.forEach(p => { if (p.categoryId === t.targetId) targetIds.add(p.id); });
             }
         });
-        (promo.bundleItems || []).forEach(bi => { if (bi.productId) targetIds.add(bi.productId); });
+        (promo.bundleItems || []).forEach(bi => {
+            const mainId = bi.mainProductId ?? bi.productId;
+            const giftId = bi.giftProductId ?? null;
+            if (mainId) targetIds.add(mainId);
+            if (giftId) targetIds.add(giftId);
+        });
 
         targetIds.forEach((id) => {
             const product = productMap.get(id);
@@ -270,7 +275,11 @@ function buildTinyProductImageMarkup(product) {
 function getBundleInfo(promo, productId) {
     const items = Array.isArray(promo?.bundleItems) ? promo.bundleItems : [];
     if (!items.length) return null;
-    const match = items.find(b => Number(b.mainProductId ?? b.productId) === Number(productId)) || items[0];
+    const match = items.find(b => {
+        const mainId = b.mainProductId ?? b.productId;
+        const giftId = b.giftProductId ?? null;
+        return Number(mainId) === Number(productId) || Number(giftId) === Number(productId);
+    }) || items[0];
     if (!match) return null;
     const mainId = match.mainProductId ?? match.productId;
     const giftId = match.giftProductId ?? match.productId;

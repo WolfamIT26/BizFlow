@@ -1344,6 +1344,7 @@
             const bundlePattern = (document.getElementById('promoValueBundle').value || '1:1').split(':');
             const bundleMainQty = Number(bundlePattern[0]) || 1;
             const bundleGiftQty = Number(bundlePattern[1]) || 1;
+            const invalidBundleRows = [];
             const payload = {
                 id: id ? Number(id) : undefined,
                 code: document.getElementById('promoCode').value.trim(),
@@ -1370,26 +1371,42 @@
             payload.bundleItems = [];
             if (promoType === 'BUNDLE') {
                 Array.from(document.querySelectorAll('#bundleList .inline-row')).forEach(row => {
-                    const productA = Number(row.querySelector('.bundle-product-a')?.value);
-                    const productB = Number(row.querySelector('.bundle-product-b')?.value);
+                    const selectA = row.querySelector('.bundle-product-a');
+                    const selectB = row.querySelector('.bundle-product-b');
+                    let productA = Number(selectA?.value);
+                    let productB = Number(selectB?.value);
+                    if (!productA && selectA) {
+                        const inputA = selectA.closest('.product-picker')?.querySelector('.product-search');
+                        const resolvedA = resolveProductIdFromInput(inputA?.value, selectA.closest('.product-picker')?._products);
+                        productA = Number(resolvedA);
+                        if (productA) selectA.value = String(productA);
+                    }
+                    if (!productB && selectB) {
+                        const inputB = selectB.closest('.product-picker')?.querySelector('.product-search');
+                        const resolvedB = resolveProductIdFromInput(inputB?.value, selectB.closest('.product-picker')?._products);
+                        productB = Number(resolvedB);
+                        if (productB) selectB.value = String(productB);
+                    }
+                    if (!productA || !productB) {
+                        invalidBundleRows.push(row);
+                        return;
+                    }
                     const pattern = (row.querySelector('.bundle-pattern')?.value || '1:1').split(':');
                     const mainQty = Number(pattern[0]) || bundleMainQty;
                     const giftQty = Number(pattern[1]) || bundleGiftQty;
-                    if (productA && productB) {
-                        payload.bundleItems.push({
-                            mainProductId: productA,
-                            giftProductId: productB,
-                            mainQuantity: mainQty,
-                            giftQuantity: giftQty,
-                            giftDiscountType: 'FREE',
-                            giftDiscountValue: 0,
-                            status: 'ACTIVE'
-                        });
-                    }
+                    payload.bundleItems.push({
+                        mainProductId: productA,
+                        giftProductId: productB,
+                        mainQuantity: mainQty,
+                        giftQuantity: giftQty,
+                        giftDiscountType: 'FREE',
+                        giftDiscountValue: 0,
+                        status: 'ACTIVE'
+                    });
                 });
             }
 
-            return payload;
+            return { payload, invalidBundleRows };
         }
 
         async function savePromotion(event) {
@@ -1400,7 +1417,17 @@
                 form.reportValidity();
                 return;
             }
-            const payload = buildPayload();
+            await loadProductsForTargets();
+            const { payload, invalidBundleRows } = buildPayload();
+            if (payload.discountType === 'BUNDLE' && invalidBundleRows.length) {
+                setFormStatus('Combo thiếu sản phẩm mua hoặc quà tặng. Hãy chọn từ danh sách.', false);
+                invalidBundleRows[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            if (payload.discountType === 'BUNDLE' && (!Array.isArray(payload.bundleItems) || !payload.bundleItems.length)) {
+                setFormStatus('Combo cần ít nhất 1 sản phẩm mua và 1 quà tặng.', false);
+                return;
+            }
             const id = document.getElementById('promotionId').value;
             const url = id ? `${PROMOTION_API}/${id}` : PROMOTION_API;
             const method = id ? 'PUT' : 'POST';
