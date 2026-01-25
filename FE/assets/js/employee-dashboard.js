@@ -24,6 +24,8 @@ let employees = [];
 let exchangeDraft = null;
 let promotionIndex = null;
 let activeInventoryProductId = null;
+let allPromotions = []; // Lưu tất cả khuyến mãi cho AI combo
+let isAnalyzingCombo = false; // Flag để tránh vòng lặp vô hạn
 const TIER_DISCOUNT_BY_100 = {
     DONG: 10000,
     BAC: 12000,
@@ -565,7 +567,7 @@ function dedupeCustomers(list) {
     return Array.from(seen.values());
 }
 
-function addToCart(productId, productName, productPrice) {
+async function addToCart(productId, productName, productPrice) {
     const qty = getCurrentQty();
     const splitLine = document.getElementById('splitLine')?.checked;
     const product = products.find(p => p.id === productId) || {};
@@ -600,7 +602,7 @@ function addToCart(productId, productName, productPrice) {
     console.log('[addToCart] Final resolvedPrice:', resolvedPrice);
 
     if (!splitLine) {
-        const existingItem = cart.find(item => item.productId === productId);
+        const existingItem = cart.find(item => item.productId === productId && !item.isFreeGift);
         if (existingItem) {
             const newQty = existingItem.quantity + qty;
             existingItem.quantity = newQty;
@@ -628,7 +630,8 @@ function addToCart(productId, productName, productPrice) {
                 productCode: product.code || product.barcode || '',
                 unit: product.unit || '',
                 stock,
-                promoId: promoId
+                promoId: promoId,
+                isFreeGift: false
             });
         }
     } else {
@@ -640,12 +643,16 @@ function addToCart(productId, productName, productPrice) {
             productCode: product.code || product.barcode || '',
             unit: product.unit || '',
             stock,
-            promoId: promoId
+            promoId: promoId,
+            isFreeGift: false
         });
     }
 
     renderCart();
     updateTotal();
+    
+    // Phân tích combo sau khi thêm sản phẩm
+    await analyzeCartForCombo();
 
     const qtyInput = document.getElementById('qtyInput');
     if (qtyInput) {
@@ -670,7 +677,8 @@ async function createOrder(isPaid) {
         showPopup('Giỏ hàng trống!', { type: 'error' });
         return;
     }
-    const outOfStock = cart.find(item => !item.isReturnItem && (!Number.isFinite(Number(item.stock)) || Number(item.stock) < Number(item.quantity)));
+    // Bỏ qua gift items khi check tồn kho (vì gift items có stock = 0)
+    const outOfStock = cart.find(item => !item.isReturnItem && !item.isFreeGift && (!Number.isFinite(Number(item.stock)) || Number(item.stock) < Number(item.quantity)));
     if (outOfStock) {
         showPopup('Có sản phẩm hết hàng. Vui lòng kiểm tra số lượng tồn.', { type: 'error' });
         return;
@@ -1078,6 +1086,11 @@ async function loadPromotionIndex(forceRefresh = false) {
         console.log('[loadPromotionIndex] Loaded promotions:', promoList.length);
         
         const activePromos = (promoList || []).filter(isPromotionActive);
+        
+        // Lưu tất cả promotions cho AI combo
+        allPromotions = activePromos;
+        console.log('[loadPromotionIndex] Saved allPromotions for AI:', allPromotions.length);
+        
         promotionIndex = buildPromotionIndex(activePromos, productList || []);
         
         console.log('[loadPromotionIndex] Built index size:', promotionIndex.size);
@@ -1086,6 +1099,7 @@ async function loadPromotionIndex(forceRefresh = false) {
     } catch (err) {
         console.error('[loadPromotionIndex] Error:', err);
         promotionIndex = new Map();
+        allPromotions = [];
         return promotionIndex;
     }
 }
@@ -1337,6 +1351,24 @@ function renderCart() {
             </div>
         `;
         }
+        
+        // Kiểm tra nếu là quà tặng
+        if (item.isFreeGift) {
+            return `
+            <div class="cart-row gift-item">
+                <span>${idx + 1}</span>
+                <span class="gift-badge">🎁 TẶNG</span>
+                <span class="cart-name">${item.productName}</span>
+                <span class="cart-qty">
+                    <input type="number" class="qty-input" value="${item.quantity}" disabled>
+                </span>
+                <span>${item.unit || '-'}</span>
+                <span style="text-decoration: line-through; color: #999;">${formatPrice(item.productPrice)}</span>
+                <span style="color: #ff6b9d; font-weight: 600;">0đ</span>
+                <span class="gift-label" style="grid-column: span 2; text-align: right; color: #ff6b9d; font-size: 12px; font-style: italic;">${item.promoLabel || 'Quà tặng'}</span>
+            </div>
+        `;
+        }
 
         return `
         <div class="cart-row">
@@ -1399,6 +1431,9 @@ function setQty(idx, value) {
         
         renderCart();
         updateTotal();
+        
+        // Phân tích lại combo sau khi thay đổi số lượng
+        setTimeout(() => analyzeCartForCombo(), 100);
     }
 }
 
@@ -1407,6 +1442,9 @@ function removeFromCart(idx) {
     cart.splice(idx, 1);
     renderCart();
     updateTotal();
+    
+    // Phân tích lại combo sau khi xóa sản phẩm
+    setTimeout(() => analyzeCartForCombo(), 100);
 }
 
 function removeReturnItem(idx) {
@@ -3599,4 +3637,397 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
     if (row) row.classList.add('active');
 }
 
+// ==================== AI COMBO PROMOTION FUNCTIONS ====================
+
+// Inline ComboPromotionAI để đảm bảo luôn có sẵn
+const ComboPromotionAI = {
+    API_BASE_URL: 'http://localhost:5000',
+    
+    async analyzeCart(cartItems, promotions) {
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/api/analyze-cart-promotions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cart_items: cartItems, promotions: promotions })
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        } catch (error) {
+            console.error('[ComboAI] Error:', error);
+            return { suggestions: [], auto_add_gifts: [] };
+        }
+    },
+    
+    formatPromotions(promotions) {
+        console.log('[formatPromotions] Products available:', products?.length || 0);
+        if (products?.length > 0) {
+            console.log('[formatPromotions] Sample product:', products[0]);
+        }
+        
+        return promotions.map(promo => ({
+            id: promo.id,
+            code: promo.code,
+            name: promo.name,
+            discount_type: promo.discountType,
+            discount_value: promo.discountValue,
+            active: promo.active,
+            bundle_items: (promo.bundleItems || []).map(bundle => {
+                // Lookup tên sản phẩm từ products array
+                const mainProduct = products.find(p => 
+                    p.productId === bundle.mainProductId || 
+                    p.id === bundle.mainProductId ||
+                    String(p.productId) === String(bundle.mainProductId) ||
+                    String(p.id) === String(bundle.mainProductId)
+                );
+                const giftProduct = products.find(p => 
+                    p.productId === bundle.giftProductId || 
+                    p.id === bundle.giftProductId ||
+                    String(p.productId) === String(bundle.giftProductId) ||
+                    String(p.id) === String(bundle.giftProductId)
+                );
+                
+                const mainProductName = mainProduct?.name || mainProduct?.productName || bundle.mainProductName || `Sản phẩm #${bundle.mainProductId}`;
+                const giftProductName = giftProduct?.name || giftProduct?.productName || bundle.giftProductName || `Sản phẩm #${bundle.giftProductId}`;
+                
+                console.log('[formatPromotions] Bundle:', {
+                    mainProductId: bundle.mainProductId,
+                    mainProductName: mainProductName,
+                    giftProductId: bundle.giftProductId,
+                    giftProductName: giftProductName,
+                    foundMain: !!mainProduct,
+                    foundGift: !!giftProduct
+                });
+                
+                return {
+                    bundle_id: bundle.id,
+                    main_product_id: bundle.mainProductId,
+                    main_product_name: mainProductName,
+                    gift_product_id: bundle.giftProductId,
+                    gift_product_name: giftProductName,
+                    main_quantity: bundle.mainQuantity,
+                    gift_quantity: bundle.giftQuantity
+                };
+            })
+        }));
+    }
+};
+
+const ComboPromotionUI = {
+    showNotification(message, type = 'success') {
+        const oldNotif = document.querySelector('.combo-notification');
+        if (oldNotif) oldNotif.remove();
+        
+        const notification = document.createElement('div');
+        notification.className = `combo-notification ${type}`;
+        notification.innerHTML = `
+            <div class="combo-notification-content">
+                <i class="fas fa-gift"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.3);z-index:10000;animation:slideIn 0.3s';
+        
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
+    },
+    
+    showUpsellModal(suggestion, onAddMore) {
+        const oldModal = document.querySelector('.upsell-modal');
+        if (oldModal) oldModal.remove();
+        
+        const modal = document.createElement('div');
+        modal.className = 'upsell-modal';
+        modal.innerHTML = `
+            <div class="upsell-content" style="background:white;padding:30px;border-radius:15px;max-width:450px;text-align:center;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
+                <button class="close-btn" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:28px;cursor:pointer;color:#999">×</button>
+                <div style="font-size:56px;margin-bottom:15px">💡</div>
+                <h3 style="color:#333;margin-bottom:10px">Cơ hội tiết kiệm!</h3>
+                <p style="color:#666;margin-bottom:20px">${suggestion.message}</p>
+                <div style="background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);padding:15px;border-radius:10px;margin-bottom:20px">
+                    <div style="display:flex;justify-content:space-between;padding:8px 0">
+                        <span style="color:#555">Đang có:</span>
+                        <span style="color:#333;font-weight:600">${suggestion.current_quantity} sản phẩm</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 0">
+                        <span style="color:#555">Cần thêm:</span>
+                        <span style="color:#333;font-weight:600">${suggestion.required_quantity - suggestion.current_quantity} sản phẩm</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:8px 0">
+                        <span style="color:#555">Sẽ được tặng:</span>
+                        <span style="color:#333;font-weight:600">${suggestion.gift_quantity} ${suggestion.gift_product_name}</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:center">
+                    <button class="btn-secondary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:#e0e0e0;color:#666;font-weight:600">Để sau</button>
+                    <button class="btn-primary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-weight:600">Thêm ngay</button>
+                </div>
+            </div>
+        `;
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999';
+        
+        document.body.appendChild(modal);
+        
+        modal.querySelector('.close-btn').onclick = () => modal.remove();
+        modal.querySelector('.btn-secondary').onclick = () => modal.remove();
+        modal.querySelector('.btn-primary').onclick = () => {
+            onAddMore(suggestion);
+            modal.remove();
+        };
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+    }
+};
+
+/**
+ * Phân tích giỏ hàng và tự động thêm quà tặng combo
+ */
+async function analyzeCartForCombo() {
+    // Tránh vòng lặp vô hạn
+    if (isAnalyzingCombo) {
+        return;
+    }
+    
+    // Kiểm tra có promotions không
+    if (!allPromotions || allPromotions.length === 0) {
+        return;
+    }
+    
+    isAnalyzingCombo = true;
+    
+    try {
+        // Chuyển đổi giỏ hàng sang format cho AI (chỉ sản phẩm thật)
+        const cartItems = cart
+            .filter(item => !item.isFreeGift)
+            .map(item => ({
+                product_id: item.productId,
+                product_name: item.productName,
+                quantity: item.quantity,
+                price: item.productPrice
+            }));
+        
+        if (cartItems.length === 0) {
+            console.log('[analyzeCartForCombo] Cart is empty');
+            isAnalyzingCombo = false;
+            return;
+        }
+        
+        // Format promotions cho AI
+        const formattedPromotions = ComboPromotionAI.formatPromotions(allPromotions);
+        
+        console.log('[analyzeCartForCombo] 🔍 Analyzing:', {
+            cartItems: cartItems.length,
+            promotions: formattedPromotions.length,
+            cart: cartItems
+        });
+        
+        // Gọi AI phân tích
+        const result = await ComboPromotionAI.analyzeCart(cartItems, formattedPromotions);
+        
+        console.log('[analyzeCartForCombo] 📊 AI result:', result);
+        
+        // Hiển thị suggestions (ELIGIBLE hoặc UPSELL)
+        if (result.suggestions && result.suggestions.length > 0) {
+            displayComboSuggestions(result.suggestions);
+        }
+        
+        // Tự động thêm/cập nhật quà tặng
+        if (result.auto_add_gifts && result.auto_add_gifts.length > 0) {
+            result.auto_add_gifts.forEach(gift => {
+                autoAddGiftToCart(gift);
+            });
+        }
+        
+        // Xóa quà tặng không hợp lệ
+        await removeIneligibleGifts(result.auto_add_gifts || []);
+        
+    } catch (error) {
+        console.error('[analyzeCartForCombo] Error:', error);
+    } finally {
+        isAnalyzingCombo = false;
+    }
+}
+
+/**
+ * Hiển thị gợi ý combo
+ */
+function displayComboSuggestions(suggestions) {
+    suggestions.forEach(suggestion => {
+        if (suggestion.suggestion_type === 'ELIGIBLE') {
+            // Đủ điều kiện - Hiển thị thông báo thành công
+            ComboPromotionUI.showNotification(suggestion.message, 'success');
+        } else if (suggestion.suggestion_type === 'UPSELL') {
+            // Gần đủ - Hiển thị modal gợi ý (chỉ hiển thị 1 lần)
+            if (!document.querySelector('.upsell-modal')) {
+                ComboPromotionUI.showUpsellModal(suggestion, handleUpsellAddMore);
+            }
+        }
+    });
+}
+
+/**
+ * Xử lý khi người dùng nhấn "Thêm ngay" trong modal upsell
+ */
+function handleUpsellAddMore(suggestion) {
+    console.log('[handleUpsellAddMore] Adding more:', suggestion);
+    
+    // Tìm sản phẩm trong giỏ
+    const cartItem = cart.find(item => 
+        item.productId === suggestion.main_product_id && !item.isFreeGift
+    );
+    
+    if (cartItem) {
+        // Tăng số lượng lên đủ để nhận quà
+        const needed = suggestion.required_quantity - suggestion.current_quantity;
+        cartItem.quantity += needed;
+        
+        renderCart();
+        updateTotal();
+        
+        // Phân tích lại để tự động thêm quà
+        setTimeout(() => analyzeCartForCombo(), 300);
+    }
+}
+
+/**
+ * Tự động thêm quà tặng vào giỏ
+ */
+async function autoAddGiftToCart(gift) {
+    console.log('[autoAddGiftToCart] Adding gift:', gift);
+    console.log('[autoAddGiftToCart] Products cache:', products?.length || 0, 'items');
+    
+    // Lookup tên sản phẩm từ cache hoặc API
+    let productName = gift.product_name || null;
+    
+    if (!productName && gift.product_id) {
+        // Thử tìm trong cache products trước
+        const cachedProduct = products.find(p => 
+            p.productId === gift.product_id || 
+            p.id === gift.product_id || 
+            String(p.productId) === String(gift.product_id) ||
+            String(p.id) === String(gift.product_id)
+        );
+        
+        if (cachedProduct) {
+            productName = cachedProduct.name || cachedProduct.productName;
+            console.log('[autoAddGiftToCart] ✅ Found in cache:', productName);
+        } else {
+            console.log('[autoAddGiftToCart] ⚠️ Not found in cache, trying API...');
+            // Không có trong cache, gọi API
+            try {
+                const res = await fetch(`${API_BASE}/products/${gift.product_id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${sessionStorage.getItem('accessToken') || ''}`
+                    }
+                });
+                if (res.ok) {
+                    const product = await res.json();
+                    productName = product.name || product.productName;
+                    console.log('[autoAddGiftToCart] ✅ Fetched from API:', productName);
+                } else {
+                    console.error('[autoAddGiftToCart] ❌ API returned:', res.status);
+                }
+            } catch (err) {
+                console.error('[autoAddGiftToCart] ❌ Failed to fetch:', err);
+            }
+        }
+    }
+    
+    // Fallback cuối cùng
+    if (!productName) {
+        productName = `Sản phẩm #${gift.product_id}`;
+        console.warn('[autoAddGiftToCart] ⚠️ Using fallback name:', productName);
+    }
+    
+    // Kiểm tra xem quà đã có trong giỏ chưa
+    const existingGift = cart.find(item => 
+        item.productId === gift.product_id && 
+        item.isFreeGift === true &&
+        item.promoId === gift.promo_id
+    );
+    
+    if (existingGift) {
+        // Cập nhật số lượng và tên nếu khác
+        if (existingGift.quantity !== gift.quantity) {
+            console.log('[autoAddGiftToCart] Updating gift quantity:', gift.quantity);
+            existingGift.quantity = gift.quantity;
+        }
+        if (existingGift.productName !== productName) {
+            existingGift.productName = productName;
+        }
+        renderCart();
+        updateTotal();
+    } else {
+        // Thêm quà mới
+        console.log('[autoAddGiftToCart] Adding new gift');
+        cart.push({
+            productId: gift.product_id,
+            productName: productName,
+            productPrice: 0, // Miễn phí
+            quantity: gift.quantity,
+            productCode: '',
+            unit: '',
+            stock: 999, // Set stock cao để không bị check "out of stock"
+            isFreeGift: true,
+            promoId: gift.promo_id,
+            promoCode: gift.promo_code,
+            promoLabel: `🎁 ${gift.promo_name}`
+        });
+        
+        renderCart();
+        updateTotal();
+        
+        // Hiển thị thông báo
+        ComboPromotionUI.showNotification(
+            `🎉 Đã thêm ${gift.quantity} ${productName} (Quà tặng)`,
+            'success'
+        );
+    }
+}
+
+/**
+ * Xóa quà tặng không hợp lệ
+ */
+async function removeIneligibleGifts(validGifts) {
+    // Tạo Set các gift ID hợp lệ
+    const validGiftKeys = new Set(
+        validGifts.map(g => `${g.product_id}-${g.promo_id}`)
+    );
+    
+    // Lọc và xóa quà không hợp lệ
+    const initialLength = cart.length;
+    cart = cart.filter(item => {
+        if (item.isFreeGift) {
+            const key = `${item.productId}-${item.promoId}`;
+            return validGiftKeys.has(key);
+        }
+        return true; // Giữ lại sản phẩm thật
+    });
+    
+    // Nếu có thay đổi, render lại
+    if (cart.length < initialLength) {
+        console.log('[removeIneligibleGifts] Removed ineligible gifts');
+        renderCart();
+        updateTotal();
+    }
+}
+
+/**
+ * Xử lý khi thay đổi số lượng trong giỏ
+ */
+async function onCartItemQuantityChange() {
+    // Phân tích lại giỏ hàng
+    await analyzeCartForCombo();
+}
+
+// Gọi khi load trang để kiểm tra AI Service
+window.addEventListener('load', async () => {
+    try {
+        const response = await fetch('http://localhost:5000/health');
+        const data = await response.json();
+        if (data.status === 'ok') {
+            console.log('[AI Combo] ✅ Service ready');
+        }
+    } catch (error) {
+        console.log('[AI Combo] ⚠️ Service offline (combo features disabled)');
+    }
+});
 

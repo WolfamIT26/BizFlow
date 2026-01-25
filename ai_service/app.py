@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 
 app = FastAPI(title="BizFlow AI Service", version="1.0.0")
@@ -53,6 +53,55 @@ class GeneratePromotionResponse(BaseModel):
     description: str
     timestamp: str
 
+
+# Models for combo promotion suggestion
+class CartItem(BaseModel):
+    product_id: int
+    product_name: str
+    quantity: int
+    price: float
+
+class BundleItem(BaseModel):
+    bundle_id: int
+    main_product_id: int
+    main_product_name: str
+    gift_product_id: int
+    gift_product_name: str
+    main_quantity: int
+    gift_quantity: int
+
+class Promotion(BaseModel):
+    id: int
+    code: str
+    name: str
+    discount_type: str
+    discount_value: float
+    active: bool
+    bundle_items: Optional[List[BundleItem]] = []
+
+class ComboSuggestion(BaseModel):
+    promotion_id: int
+    promotion_code: str
+    promotion_name: str
+    main_product_id: int
+    main_product_name: str
+    gift_product_id: int
+    gift_product_name: str
+    required_quantity: int
+    current_quantity: int
+    gift_quantity: int
+    is_eligible: bool  # Đủ điều kiện nhận quà chưa
+    message: str
+    suggestion_type: str  # "ELIGIBLE" (đủ điều kiện), "UPSELL" (gần đủ), "INFO" (thông tin)
+
+class AnalyzeCartRequest(BaseModel):
+    cart_items: List[CartItem]
+    promotions: List[Promotion]
+
+class AnalyzeCartResponse(BaseModel):
+    suggestions: List[ComboSuggestion]
+    auto_add_gifts: List[Dict]  # Danh sách quà tặng cần tự động thêm
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -75,6 +124,157 @@ async def suggest_products(req: SuggestRequest):
             reason="Heuristic based on list proximity"
         ))
     return SuggestResponse(suggestions=suggestions)
+
+
+@app.post("/api/analyze-cart-promotions", response_model=AnalyzeCartResponse)
+async def analyze_cart_promotions(req: AnalyzeCartRequest):
+    """
+    Phân tích giỏ hàng và gợi ý combo khuyến mãi
+    
+    Chức năng:
+    1. Kiểm tra các sản phẩm trong giỏ có khuyến mãi combo không
+    2. Hiển thị thông báo về combo (ví dụ: Mua 3 tặng 1)
+    3. Xác định sản phẩm nào đủ điều kiện nhận quà tự động
+    4. Gợi ý mua thêm nếu gần đủ điều kiện
+    
+    Example:
+    - Giỏ có 3 chai Aquafina → Eligible: "Bạn được tặng 1 chai Aquafina!"
+    - Giỏ có 2 chai Aquafina (combo mua 3 tặng 1) → Upsell: "Mua thêm 1 để nhận quà!"
+    """
+    
+    suggestions: List[ComboSuggestion] = []
+    auto_add_gifts: List[Dict] = []
+    
+    # Lọc các khuyến mãi combo đang hoạt động
+    active_bundle_promos = [
+        p for p in req.promotions 
+        if p.active and p.discount_type == "BUNDLE" and p.bundle_items
+    ]
+    
+    # Phân tích từng khuyến mãi combo
+    for promo in active_bundle_promos:
+        for bundle in promo.bundle_items:
+            # Tìm sản phẩm chính trong giỏ
+            cart_item = next(
+                (item for item in req.cart_items if item.product_id == bundle.main_product_id),
+                None
+            )
+            
+            if cart_item:
+                # Có sản phẩm chính trong giỏ
+                current_qty = cart_item.quantity
+                required_qty = bundle.main_quantity
+                
+                if current_qty >= required_qty:
+                    # ĐỦ ĐIỀU KIỆN - Tự động thêm quà
+                    eligible_sets = current_qty // required_qty
+                    total_gift_qty = eligible_sets * bundle.gift_quantity
+                    
+                    suggestion = ComboSuggestion(
+                        promotion_id=promo.id,
+                        promotion_code=promo.code,
+                        promotion_name=promo.name,
+                        main_product_id=bundle.main_product_id,
+                        main_product_name=bundle.main_product_name,
+                        gift_product_id=bundle.gift_product_id,
+                        gift_product_name=bundle.gift_product_name,
+                        required_quantity=required_qty,
+                        current_quantity=current_qty,
+                        gift_quantity=total_gift_qty,
+                        is_eligible=True,
+                        message=f"🎉 Bạn được tặng {total_gift_qty} {bundle.gift_product_name}! (Mua {current_qty} tặng {total_gift_qty})",
+                        suggestion_type="ELIGIBLE"
+                    )
+                    suggestions.append(suggestion)
+                    
+                    # Thêm vào danh sách tự động thêm quà
+                    auto_add_gifts.append({
+                        "product_id": bundle.gift_product_id,
+                        "product_name": bundle.gift_product_name,
+                        "quantity": total_gift_qty,
+                        "price": 0,
+                        "is_free_gift": True,
+                        "promo_id": promo.id,
+                        "promo_code": promo.code,
+                        "promo_name": promo.name
+                    })
+                    
+                elif current_qty > 0 and current_qty < required_qty:
+                    # GẦN ĐỦ ĐIỀU KIỆN - Gợi ý mua thêm
+                    needed = required_qty - current_qty
+                    
+                    suggestion = ComboSuggestion(
+                        promotion_id=promo.id,
+                        promotion_code=promo.code,
+                        promotion_name=promo.name,
+                        main_product_id=bundle.main_product_id,
+                        main_product_name=bundle.main_product_name,
+                        gift_product_id=bundle.gift_product_id,
+                        gift_product_name=bundle.gift_product_name,
+                        required_quantity=required_qty,
+                        current_quantity=current_qty,
+                        gift_quantity=bundle.gift_quantity,
+                        is_eligible=False,
+                        message=f"💡 Mua thêm {needed} {bundle.main_product_name} để nhận {bundle.gift_quantity} {bundle.gift_product_name} miễn phí!",
+                        suggestion_type="UPSELL"
+                    )
+                    suggestions.append(suggestion)
+    
+    # Sắp xếp suggestions: ELIGIBLE trước, sau đó UPSELL
+    suggestions.sort(key=lambda x: (x.suggestion_type != "ELIGIBLE", -x.current_quantity))
+    
+    return AnalyzeCartResponse(
+        suggestions=suggestions,
+        auto_add_gifts=auto_add_gifts
+    )
+
+
+@app.post("/api/check-product-promotions")
+async def check_product_promotions(
+    product_id: int,
+    promotions: List[Promotion]
+):
+    """
+    Kiểm tra các khuyến mãi combo áp dụng cho 1 sản phẩm cụ thể
+    
+    Dùng khi người dùng click vào sản phẩm để xem có combo khuyến mãi gì không
+    
+    Example:
+    - Click vào "Aquafina 500ml"
+    - Trả về: "Mua 3 tặng 1 - Khuyến mãi combo nước suối"
+    """
+    
+    product_promos: List[Dict] = []
+    
+    # Lọc các khuyến mãi combo đang hoạt động cho sản phẩm này
+    active_bundle_promos = [
+        p for p in promotions 
+        if p.active and p.discount_type == "BUNDLE" and p.bundle_items
+    ]
+    
+    for promo in active_bundle_promos:
+        for bundle in promo.bundle_items:
+            if bundle.main_product_id == product_id:
+                # Sản phẩm này có trong combo
+                product_promos.append({
+                    "promotion_id": promo.id,
+                    "promotion_code": promo.code,
+                    "promotion_name": promo.name,
+                    "main_product_id": bundle.main_product_id,
+                    "main_product_name": bundle.main_product_name,
+                    "gift_product_id": bundle.gift_product_id,
+                    "gift_product_name": bundle.gift_product_name,
+                    "required_quantity": bundle.main_quantity,
+                    "gift_quantity": bundle.gift_quantity,
+                    "message": f"🎁 Mua {bundle.main_quantity} tặng {bundle.gift_quantity} {bundle.gift_product_name}",
+                    "display_label": f"Combo {bundle.main_quantity}+{bundle.gift_quantity}"
+                })
+    
+    return {
+        "product_id": product_id,
+        "has_combo": len(product_promos) > 0,
+        "combos": product_promos
+    }
 
 
 @app.post("/api/generate-promotion-details", response_model=GeneratePromotionResponse)
