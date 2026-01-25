@@ -161,6 +161,33 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-warning { background: var(--warning); color: #1f2937; }
         .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .btn-ai-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .btn-ai-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-ai-generate:active {
+            transform: translateY(0);
+        }
+        .btn-ai-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -590,7 +617,12 @@
                     </div>
                     <div class="form-group">
                         <label>Tên khuyến mãi *</label>
-                        <input type="text" id="promoName" required>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="promoName" required style="flex: 1;">
+                            <button type="button" class="btn-ai-generate" onclick="generatePromotionDetails()" title="AI tự động tạo tên & code">
+                                ✨ AI
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Loại giảm *</label>
@@ -1512,6 +1544,132 @@
             }
 
             return { payload, invalidBundleRows };
+        }
+
+        // ============ AI Auto-generate Promotion Name & Code ============
+        async function generatePromotionDetails() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            
+            try {
+                // Disable button
+                btn.disabled = true;
+                btn.innerHTML = '⏳ AI đang tạo...';
+                
+                // Get current form values
+                const discountType = document.getElementById('promoType').value;
+                
+                // Get discount value based on discount type
+                let discountValue = 0;
+                if (discountType === 'PERCENT') {
+                    // For percentage, read from promoValuePercent select
+                    discountValue = parseFloat(document.getElementById('promoValuePercent').value) || 0;
+                } else if (discountType === 'BUNDLE') {
+                    // For bundle, read from promoValueBundle select (1, 2, 3)
+                    discountValue = parseFloat(document.getElementById('promoValueBundle').value) || 0;
+                } else {
+                    // For FIXED, read from promoValue input
+                    discountValue = parseFloat(document.getElementById('promoValue').value) || 0;
+                }
+                
+                // Get selected targets
+                const targets = [];
+                const targetRows = document.querySelectorAll('#targetList .inline-row');
+                
+                for (const row of targetRows) {
+                    const typeSelect = row.querySelector('.target-type');
+                    const targetType = typeSelect?.value;
+                    
+                    if (targetType === 'PRODUCT') {
+                        const searchInput = row.querySelector('.product-search');
+                        const productName = searchInput?.value || '';
+                        
+                        // Extract ID from format "SP00123 - Coca Cola"
+                        const idMatch = productName.match(/SP(\d+)/);
+                        const productId = idMatch ? parseInt(idMatch[1]) : 0;
+                        
+                        if (productId && productName) {
+                            targets.push({
+                                id: productId,
+                                name: productName.replace(/SP\d+\s*-\s*/, '').trim(),
+                                type: 'PRODUCT'
+                            });
+                        }
+                    } else if (targetType === 'CATEGORY') {
+                        const categorySelect = row.querySelector('.target-id');
+                        const categoryId = parseInt(categorySelect?.value || 0);
+                        const categoryName = categorySelect?.options[categorySelect.selectedIndex]?.text || '';
+                        
+                        if (categoryId && categoryName) {
+                            targets.push({
+                                id: categoryId,
+                                name: categoryName,
+                                type: 'CATEGORY'
+                            });
+                        }
+                    }
+                }
+                
+                // Validate inputs
+                if (!discountType) {
+                    alert('⚠️ Vui lòng chọn loại giảm giá trước!');
+                    return;
+                }
+                
+                if (!discountValue || discountValue <= 0) {
+                    alert('⚠️ Vui lòng nhập giá trị giảm trước!');
+                    return;
+                }
+                
+                // Call AI Service
+                const now = new Date();
+                const response = await fetch('http://localhost:5000/api/generate-promotion-details', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        discount_type: discountType,
+                        discount_value: discountValue,
+                        targets: targets,
+                        month: now.getMonth() + 1,
+                        year: now.getFullYear()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`AI Service error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Fill form with AI-generated data
+                document.getElementById('promoCode').value = data.code;
+                document.getElementById('promoName').value = data.name;
+                document.getElementById('promoDescription').value = data.description;
+                
+                // Show success message
+                setFormStatus('✨ AI đã tạo tên & code thành công!', true);
+                
+                // Add animation effect
+                const nameInput = document.getElementById('promoName');
+                const codeInput = document.getElementById('promoCode');
+                [nameInput, codeInput].forEach(input => {
+                    input.style.transition = 'all 0.3s ease';
+                    input.style.backgroundColor = '#dcfce7';
+                    setTimeout(() => {
+                        input.style.backgroundColor = '';
+                    }, 1000);
+                });
+                
+            } catch (error) {
+                console.error('AI generation error:', error);
+                setFormStatus('❌ Không thể kết nối AI Service. Vui lòng kiểm tra service đang chạy.', false);
+            } finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
 
         async function savePromotion(event) {
