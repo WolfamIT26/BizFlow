@@ -1,5 +1,7 @@
 package com.example.promotion.service;
 
+import com.example.promotion.dto.CartItemPriceRequest;
+import com.example.promotion.dto.CartItemPriceResponse;
 import com.example.promotion.dto.PromotionDTO;
 
 import java.util.List;
@@ -25,4 +27,6 @@ public interface PromotionService {
     void deletePromotion(Long id);
 
     void deactivatePromotion(Long id);
+    
+    List<CartItemPriceResponse> calculateCartItemPrices(CartItemPriceRequest request);
 }

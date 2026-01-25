@@ -161,6 +161,33 @@
         .btn-danger { background: var(--danger); color: white; }
         .btn-warning { background: var(--warning); color: #1f2937; }
         .btn-sm { padding: 6px 10px; font-size: 12px; }
+        .btn-ai-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+        .btn-ai-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-ai-generate:active {
+            transform: translateY(0);
+        }
+        .btn-ai-generate:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -292,11 +319,58 @@
             display: flex;
             flex-direction: column;
             gap: 6px;
+            position: relative;
         }
         .product-search {
             padding: 8px 10px;
             border-radius: 8px;
             border: 1px solid var(--border);
+            font-size: 13px;
+        }
+        .product-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+            margin-top: 4px;
+        }
+        .product-dropdown.active {
+            display: block;
+        }
+        .product-dropdown-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .product-dropdown-item:hover {
+            background: #f8f9fa;
+        }
+        .product-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .product-dropdown-item-id {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .product-dropdown-item-name {
+            font-size: 13px;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .product-dropdown-empty {
+            padding: 16px;
+            text-align: center;
+            color: var(--muted);
             font-size: 13px;
         }
         .inline-row select {
@@ -543,7 +617,12 @@
                     </div>
                     <div class="form-group">
                         <label>Tên khuyến mãi *</label>
-                        <input type="text" id="promoName" required>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="promoName" required style="flex: 1;">
+                            <button type="button" class="btn-ai-generate" onclick="generatePromotionDetails()" title="AI tự động tạo tên & code">
+                                ✨ AI
+                            </button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Loại giảm *</label>
@@ -700,6 +779,8 @@
         }
 
         let filterTimer = null;
+        let renderTimer = null;
+        
         function buildPromotionQuery() {
             const keyword = (document.getElementById('searchInput').value || '').trim();
             const type = document.getElementById('typeFilter').value;
@@ -720,6 +801,9 @@
         }
 
         function renderTable(list) {
+            if (renderTimer) return; // Prevent duplicate renders
+            renderTimer = setTimeout(() => { renderTimer = null; }, 100);
+            
             const tbody = document.getElementById('promotionTableBody');
             const empty = document.getElementById('promoEmpty');
             if (!list.length) {
@@ -729,35 +813,38 @@
             }
             empty.style.display = 'none';
 
-            tbody.innerHTML = list.map(p => {
+            const rows = [];
+            for (let i = 0; i < list.length; i++) {
+                const p = list[i];
                 const typeLabel = getTypeLabel(p.discountType);
                 const targets = formatTargets(p.targets);
                 const bundles = formatBundles(p.bundleItems);
                 const statusBadge = p.active ? 'badge-active' : 'badge-inactive';
                 const statusText = p.active ? 'Đang chạy' : 'Tạm dừng';
-                return `
-                    <tr>
-                        <td><strong>${escapeHtml(p.code || '-')}</strong></td>
-                        <td>
-                            <div class="stack">
-                                <strong>${escapeHtml(p.name || '-')}</strong>
-                                <span class="muted">${escapeHtml(p.description || '')}</span>
-                            </div>
-                        </td>
-                        <td><span class="badge badge-type">${typeLabel}</span></td>
-                        <td>${formatValue(p.discountType, p.discountValue)}</td>
-                        <td>${targets}</td>
-                        <td>${bundles}</td>
-                        <td class="muted">${formatDateRange(p.startDate, p.endDate)}</td>
-                        <td><span class="badge ${statusBadge}">${statusText}</span></td>
-                        <td class="actions">
-                            <button class="btn btn-sm btn-primary" onclick="openEditModal(${p.id})">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.id})">🗑️</button>
-                            ${p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                const activeBtn = p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : '';
+                
+                rows.push(`<tr>
+                    <td><strong>${escapeHtml(p.code || '-')}</strong></td>
+                    <td>
+                        <div class="stack">
+                            <strong>${escapeHtml(p.name || '-')}</strong>
+                            <span class="muted">${escapeHtml(p.description || '')}</span>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-type">${typeLabel}</span></td>
+                    <td>${formatValue(p.discountType, p.discountValue)}</td>
+                    <td>${targets}</td>
+                    <td>${bundles}</td>
+                    <td class="muted">${formatDateRange(p.startDate, p.endDate)}</td>
+                    <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-sm btn-primary" onclick="openEditModal(${p.id})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.id})">🗑️</button>
+                        ${activeBtn}
+                    </td>
+                </tr>`);
+            }
+            tbody.innerHTML = rows.join('');
         }
 
         function openCreateModal() {
@@ -1102,87 +1189,101 @@
         function createProductSelect(className, selectedId) {
             const wrapper = document.createElement('div');
             wrapper.className = 'product-picker';
-            const listId = `product-list-${productPickerSeq++}`;
 
             const search = document.createElement('input');
             search.className = 'product-search';
             search.type = 'text';
             search.placeholder = 'Tìm sản phẩm...';
-            search.setAttribute('list', listId);
+            search.autocomplete = 'off';
 
-            const dataList = document.createElement('datalist');
-            dataList.id = listId;
-            dataList.innerHTML = buildProductDatalistOptions(cachedProducts);
+            const dropdown = document.createElement('div');
+            dropdown.className = 'product-dropdown';
 
             const select = document.createElement('select');
             select.className = className;
+            select.style.position = 'absolute';
+            select.style.opacity = '0';
+            select.style.pointerEvents = 'none';
+            select.style.height = '0';
+            select.style.width = '0';
             setProductOptions(select, selectedId, cachedProducts);
 
             let searchTimer = null;
-            const runSearch = async () => {
-                const query = search.value;
-                const list = await fetchProducts(query);
-                setProductOptions(select, select.value, list);
-                const exact = resolveExactMatch(query, list) || resolveExactMatch(query, cachedProducts);
-                if (exact) {
-                    select.value = String(exact.id);
-                    search.value = `${formatLabelId(exact.id)} - ${exact.name || exact.code || 'Sản phẩm'}`;
+            const showDropdown = (dropdownEl, products, inputEl, selectEl) => {
+                if (!Array.isArray(products) || products.length === 0) {
+                    dropdownEl.innerHTML = '<div class="product-dropdown-empty">Không tìm thấy sản phẩm</div>';
+                    dropdownEl.classList.add('active');
                     return;
                 }
-                const resolved = resolveProductIdFromInput(query, list) || resolveProductIdFromInput(query, cachedProducts);
-                if (resolved) select.value = resolved;
+                dropdownEl.innerHTML = products.slice(0, 10).map(p => `
+                    <div class="product-dropdown-item" data-id="${p.id}">
+                        <div class="product-dropdown-item-id">ID: ${formatLabelId(p.id)}</div>
+                        <div class="product-dropdown-item-name">${escapeHtml(p.name || p.code || 'Sản phẩm')}</div>
+                    </div>
+                `).join('');
+                dropdownEl.classList.add('active');
+                
+                dropdownEl.querySelectorAll('.product-dropdown-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const productId = item.dataset.id;
+                        const product = products.find(p => String(p.id) === String(productId));
+                        if (product) {
+                            // Đảm bảo option tồn tại trong select
+                            const existingOption = Array.from(selectEl.options).find(opt => opt.value === String(product.id));
+                            if (!existingOption) {
+                                const newOption = document.createElement('option');
+                                newOption.value = String(product.id);
+                                newOption.textContent = `${formatLabelId(product.id)} - ${product.name || product.code || 'Sản phẩm'}`;
+                                selectEl.appendChild(newOption);
+                            }
+                            selectEl.value = String(product.id);
+                            inputEl.value = `${formatLabelId(product.id)} - ${product.name || product.code || 'Sản phẩm'}`;
+                            dropdownEl.classList.remove('active');
+                            console.log('Selected product:', product.id, product.name, 'Select value:', selectEl.value, 'Select has value:', selectEl.value !== '');
+                        }
+                    });
+                });
+            };
+            
+            const runSearch = async () => {
+                const query = search.value.trim();
+                if (!query) {
+                    dropdown.classList.remove('active');
+                    return;
+                }
+                const list = await fetchProducts(query);
+                setProductOptions(select, select.value, list);
+                wrapper._products = list;
+                showDropdown(dropdown, list, search, select);
             };
             search.addEventListener('input', () => {
                 if (searchTimer) clearTimeout(searchTimer);
-                searchTimer = setTimeout(runSearch, 200);
-            });
-            search.addEventListener('blur', async () => {
-                if (select.value) {
-                    const products = select.closest('.product-picker')?._products || cachedProducts;
-                    const chosen = products.find(p => String(p.id) === String(select.value));
-                    if (chosen) {
-                        search.value = `${formatLabelId(chosen.id)} - ${chosen.name || chosen.code || 'Sản phẩm'}`;
-                    }
-                    return;
-                }
-                const query = search.value;
-                const list = await fetchProducts(query);
-                const exact = resolveExactMatch(query, list) || resolveExactMatch(query, cachedProducts);
-                if (exact) {
-                    select.value = String(exact.id);
-                    search.value = `${formatLabelId(exact.id)} - ${exact.name || exact.code || 'Sản phẩm'}`;
-                    return;
-                }
-                let resolved = resolveProductIdFromInput(query, list) || resolveProductIdFromInput(query, cachedProducts);
-                if (resolved) {
-                    select.value = resolved;
-                    const product = (list && list.length ? list : cachedProducts)
-                        .find(p => String(p.id) === String(resolved));
-                    if (product) {
-                        search.value = `${formatLabelId(product.id)} - ${product.name || product.code || 'Sản phẩm'}`;
-                    }
-                    return;
-                }
-                const single = resolveSingleMatch(query, list) || resolveSingleMatch(query, cachedProducts);
-                if (single) {
-                    select.value = String(single.id);
-                    search.value = `${formatLabelId(single.id)} - ${single.name || single.code || 'Sản phẩm'}`;
-                    return;
-                }
-                search.value = '';
-                select.value = '';
+                searchTimer = setTimeout(runSearch, 300);
             });
             search.addEventListener('focus', () => {
-                if (!productsLoaded) {
+                if (search.value.trim()) {
+                    runSearch();
+                } else if (!productsLoaded) {
                     loadProductsForTargets().then(() => {
                         setProductOptions(select, select.value, cachedProducts);
+                        wrapper._products = cachedProducts;
                     });
-                } else {
-                    setProductOptions(select, select.value, cachedProducts);
                 }
             });
+            search.addEventListener('blur', (e) => {
+                setTimeout(() => {
+                    dropdown.classList.remove('active');
+                    if (select.value) {
+                        const products = wrapper._products || cachedProducts;
+                        const chosen = products.find(p => String(p.id) === String(select.value));
+                        if (chosen) {
+                            search.value = `${formatLabelId(chosen.id)} - ${chosen.name || chosen.code || 'Sản phẩm'}`;
+                        }
+                    }
+                }, 200);
+            });
             select.addEventListener('change', () => {
-                const products = select.closest('.product-picker')?._products || cachedProducts;
+                const products = wrapper._products || cachedProducts;
                 const product = products.find(p => String(p.id) === String(select.value));
                 if (product) {
                     search.value = `${formatLabelId(product.id)} - ${product.name || product.code || 'Sản phẩm'}`;
@@ -1192,8 +1293,22 @@
             });
 
             wrapper.appendChild(search);
-            wrapper.appendChild(dataList);
+            wrapper.appendChild(dropdown);
             wrapper.appendChild(select);
+            wrapper._products = cachedProducts;
+            
+            if (selectedId) {
+                loadProductsForTargets().then(() => {
+                    const products = cachedProducts;
+                    const product = products.find(p => String(p.id) === String(selectedId));
+                    if (product) {
+                        search.value = `${formatLabelId(product.id)} - ${product.name || product.code || 'Sản phẩm'}`;
+                        select.value = String(product.id);
+                    }
+                    wrapper._products = products;
+                });
+            }
+            
             return wrapper;
         }
 
@@ -1344,6 +1459,7 @@
             const bundlePattern = (document.getElementById('promoValueBundle').value || '1:1').split(':');
             const bundleMainQty = Number(bundlePattern[0]) || 1;
             const bundleGiftQty = Number(bundlePattern[1]) || 1;
+            const invalidBundleRows = [];
             const payload = {
                 id: id ? Number(id) : undefined,
                 code: document.getElementById('promoCode').value.trim(),
@@ -1362,7 +1478,25 @@
 
             payload.targets = Array.from(document.querySelectorAll('#targetList .inline-row')).map(row => {
                 const type = row.querySelector('.target-type').value;
-                const idVal = Number(row.querySelector('.target-id').value);
+                const targetIdElement = row.querySelector('.target-id');
+                console.log('Target row:', { type, targetIdElement, value: targetIdElement?.value });
+                let idVal = Number(targetIdElement?.value || 0);
+                
+                // Nếu không có giá trị từ select box, thử lấy từ product-search input
+                if (!idVal && type === 'PRODUCT') {
+                    const searchInput = row.querySelector('.product-search');
+                    const picker = row.querySelector('.product-picker');
+                    console.log('Fallback search:', { searchInput: searchInput?.value, picker });
+                    if (searchInput && searchInput.value) {
+                        const resolved = resolveProductIdFromInput(searchInput.value, picker?._products);
+                        if (resolved && resolved !== '') {
+                            idVal = Number(resolved);
+                            console.log('Resolved from search:', resolved);
+                        }
+                    }
+                }
+                
+                console.log('Final idVal:', idVal);
                 if (!type || !idVal) return null;
                 return { targetType: type, targetId: idVal };
             }).filter(Boolean);
@@ -1370,26 +1504,180 @@
             payload.bundleItems = [];
             if (promoType === 'BUNDLE') {
                 Array.from(document.querySelectorAll('#bundleList .inline-row')).forEach(row => {
-                    const productA = Number(row.querySelector('.bundle-product-a')?.value);
-                    const productB = Number(row.querySelector('.bundle-product-b')?.value);
+                    const selectA = row.querySelector('.bundle-product-a');
+                    const selectB = row.querySelector('.bundle-product-b');
+                    let productA = selectA?.value ? Number(selectA.value) : 0;
+                    let productB = selectB?.value ? Number(selectB.value) : 0;
+                    
+                    // Nếu chưa có giá trị từ select, thử lấy từ product-search input
+                    if (!productA && selectA) {
+                        const inputA = selectA.closest('.product-picker')?.querySelector('.product-search');
+                        const productsA = selectA.closest('.product-picker')?._products || cachedProducts;
+                        if (inputA?.value) {
+                            const resolvedA = resolveProductIdFromInput(inputA.value, productsA);
+                            if (resolvedA && resolvedA !== '') {
+                                productA = Number(resolvedA);
+                            }
+                        }
+                    }
+                    
+                    if (!productB && selectB) {
+                        const inputB = selectB.closest('.product-picker')?.querySelector('.product-search');
+                        const productsB = selectB.closest('.product-picker')?._products || cachedProducts;
+                        if (inputB?.value) {
+                            const resolvedB = resolveProductIdFromInput(inputB.value, productsB);
+                            if (resolvedB && resolvedB !== '') {
+                                productB = Number(resolvedB);
+                            }
+                        }
+                    }
+                    
+                    if (!productA || !productB) {
+                        invalidBundleRows.push(row);
+                        return;
+                    }
                     const pattern = (row.querySelector('.bundle-pattern')?.value || '1:1').split(':');
                     const mainQty = Number(pattern[0]) || bundleMainQty;
                     const giftQty = Number(pattern[1]) || bundleGiftQty;
-                    if (productA && productB) {
-                        payload.bundleItems.push({
-                            mainProductId: productA,
-                            giftProductId: productB,
-                            mainQuantity: mainQty,
-                            giftQuantity: giftQty,
-                            giftDiscountType: 'FREE',
-                            giftDiscountValue: 0,
-                            status: 'ACTIVE'
-                        });
-                    }
+                    payload.bundleItems.push({
+                        mainProductId: productA,
+                        giftProductId: productB,
+                        mainQuantity: mainQty,
+                        giftQuantity: giftQty,
+                        giftDiscountType: 'FREE',
+                        giftDiscountValue: 0,
+                        status: 'ACTIVE'
+                    });
                 });
             }
 
-            return payload;
+            return { payload, invalidBundleRows };
+        }
+
+        // ============ AI Auto-generate Promotion Name & Code ============
+        async function generatePromotionDetails() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            
+            try {
+                // Disable button
+                btn.disabled = true;
+                btn.innerHTML = '⏳ AI đang tạo...';
+                
+                // Get current form values
+                const discountType = document.getElementById('promoType').value;
+                
+                // Get discount value based on discount type
+                let discountValue = 0;
+                if (discountType === 'PERCENT') {
+                    // For percentage, read from promoValuePercent select
+                    discountValue = parseFloat(document.getElementById('promoValuePercent').value) || 0;
+                } else if (discountType === 'BUNDLE') {
+                    // For bundle, read from promoValueBundle select (1, 2, 3)
+                    discountValue = parseFloat(document.getElementById('promoValueBundle').value) || 0;
+                } else {
+                    // For FIXED, read from promoValue input
+                    discountValue = parseFloat(document.getElementById('promoValue').value) || 0;
+                }
+                
+                // Get selected targets
+                const targets = [];
+                const targetRows = document.querySelectorAll('#targetList .inline-row');
+                
+                for (const row of targetRows) {
+                    const typeSelect = row.querySelector('.target-type');
+                    const targetType = typeSelect?.value;
+                    
+                    if (targetType === 'PRODUCT') {
+                        const searchInput = row.querySelector('.product-search');
+                        const productName = searchInput?.value || '';
+                        
+                        // Extract ID from format "SP00123 - Coca Cola"
+                        const idMatch = productName.match(/SP(\d+)/);
+                        const productId = idMatch ? parseInt(idMatch[1]) : 0;
+                        
+                        if (productId && productName) {
+                            targets.push({
+                                id: productId,
+                                name: productName.replace(/SP\d+\s*-\s*/, '').trim(),
+                                type: 'PRODUCT'
+                            });
+                        }
+                    } else if (targetType === 'CATEGORY') {
+                        const categorySelect = row.querySelector('.target-id');
+                        const categoryId = parseInt(categorySelect?.value || 0);
+                        const categoryName = categorySelect?.options[categorySelect.selectedIndex]?.text || '';
+                        
+                        if (categoryId && categoryName) {
+                            targets.push({
+                                id: categoryId,
+                                name: categoryName,
+                                type: 'CATEGORY'
+                            });
+                        }
+                    }
+                }
+                
+                // Validate inputs
+                if (!discountType) {
+                    alert('⚠️ Vui lòng chọn loại giảm giá trước!');
+                    return;
+                }
+                
+                if (!discountValue || discountValue <= 0) {
+                    alert('⚠️ Vui lòng nhập giá trị giảm trước!');
+                    return;
+                }
+                
+                // Call AI Service
+                const now = new Date();
+                const response = await fetch('http://localhost:5000/api/generate-promotion-details', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        discount_type: discountType,
+                        discount_value: discountValue,
+                        targets: targets,
+                        month: now.getMonth() + 1,
+                        year: now.getFullYear()
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`AI Service error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Fill form with AI-generated data
+                document.getElementById('promoCode').value = data.code;
+                document.getElementById('promoName').value = data.name;
+                document.getElementById('promoDescription').value = data.description;
+                
+                // Show success message
+                setFormStatus('✨ AI đã tạo tên & code thành công!', true);
+                
+                // Add animation effect
+                const nameInput = document.getElementById('promoName');
+                const codeInput = document.getElementById('promoCode');
+                [nameInput, codeInput].forEach(input => {
+                    input.style.transition = 'all 0.3s ease';
+                    input.style.backgroundColor = '#dcfce7';
+                    setTimeout(() => {
+                        input.style.backgroundColor = '';
+                    }, 1000);
+                });
+                
+            } catch (error) {
+                console.error('AI generation error:', error);
+                setFormStatus('❌ Không thể kết nối AI Service. Vui lòng kiểm tra service đang chạy.', false);
+            } finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
         }
 
         async function savePromotion(event) {
@@ -1400,7 +1688,17 @@
                 form.reportValidity();
                 return;
             }
-            const payload = buildPayload();
+            await loadProductsForTargets();
+            const { payload, invalidBundleRows } = buildPayload();
+            if (payload.discountType === 'BUNDLE' && invalidBundleRows.length) {
+                setFormStatus('Combo thiếu sản phẩm mua hoặc quà tặng. Hãy chọn từ danh sách.', false);
+                invalidBundleRows[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            if (payload.discountType === 'BUNDLE' && (!Array.isArray(payload.bundleItems) || !payload.bundleItems.length)) {
+                setFormStatus('Combo cần ít nhất 1 sản phẩm mua và 1 quà tặng.', false);
+                return;
+            }
             const id = document.getElementById('promotionId').value;
             const url = id ? `${PROMOTION_API}/${id}` : PROMOTION_API;
             const method = id ? 'PUT' : 'POST';
@@ -1488,19 +1786,59 @@
         }
 
         function formatTargets(targets) {
-            if (!Array.isArray(targets) || !targets.length) return '<span class="muted">Không có</span>';
-            return targets.map(t => `<span class="badge badge-target">${t.targetType}:${t.targetId}</span>`).join(' ');
+            if (!targets?.length) return 'Không có';
+            const results = [];
+            for (const t of targets) {
+                if (t.targetType === 'PRODUCT') {
+                    let name = null;
+                    for (const p of cachedProducts) {
+                        if (Number(p.id) === Number(t.targetId)) {
+                            name = p.name || p.code;
+                            break;
+                        }
+                    }
+                    if (!name) name = 'Sản phẩm #' + t.targetId;
+                    results.push(`<span class="badge badge-target">${escapeHtml(name)}</span>`);
+                } else if (t.targetType === 'CATEGORY') {
+                    let name = null;
+                    for (const c of cachedCategories) {
+                        if (Number(c.id) === Number(t.targetId) || Number(c.category_id) === Number(t.targetId)) {
+                            name = c.name;
+                            break;
+                        }
+                    }
+                    if (!name) {
+                        // Fallback to FALLBACK_CATEGORIES
+                        const fallback = FALLBACK_CATEGORIES.find(fc => Number(fc.id) === Number(t.targetId));
+                        name = fallback ? fallback.name : ('Danh mục #' + t.targetId);
+                    }
+                    results.push(`<span class="badge badge-target">${escapeHtml(name)}</span>`);
+                } else {
+                    results.push(`<span class="badge badge-target">${t.targetType}:${t.targetId}</span>`);
+                }
+            }
+            return results.join(' ');
         }
 
         function formatBundles(bundleItems) {
-            if (!Array.isArray(bundleItems) || !bundleItems.length) return '<span class="muted">-</span>';
-            return bundleItems.map(b => {
-                const mainId = b.mainProductId ?? b.productId ?? '-';
-                const giftId = b.giftProductId ?? '-';
-                const mainQty = b.mainQuantity ?? b.quantity ?? 1;
-                const giftQty = b.giftQuantity ?? 1;
-                return `<span class="badge badge-target">${mainId} x ${mainQty} → ${giftId} x ${giftQty}</span>`;
-            }).join(' ');
+            if (!bundleItems?.length) return '-';
+            const results = [];
+            for (const b of bundleItems) {
+                const mainId = Number(b.mainProductId || b.productId || 0);
+                const giftId = Number(b.giftProductId || 0);
+                let mainName = '#' + mainId;
+                let giftName = '#' + giftId;
+                
+                for (const p of cachedProducts) {
+                    if (Number(p.id) === mainId) mainName = p.name || p.code || mainName;
+                    if (Number(p.id) === giftId) giftName = p.name || p.code || giftName;
+                }
+                
+                const qty1 = b.mainQuantity || b.quantity || 1;
+                const qty2 = b.giftQuantity || 1;
+                results.push(`${qty1} × ${mainName} → ${qty2} × ${giftName}`);
+            }
+            return results.join('<br>');
         }
 
         function formatDateRange(start, end) {
@@ -1627,8 +1965,9 @@
             }
         })();
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             enforceAuth();
+            await Promise.all([loadProductsForTargets(), loadCategoriesForTargets()]);
             loadPromotions();
             const nameInput = document.getElementById('promoName');
             const codeInput = document.getElementById('promoCode');
