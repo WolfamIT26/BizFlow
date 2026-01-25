@@ -779,6 +779,8 @@
         }
 
         let filterTimer = null;
+        let renderTimer = null;
+        
         function buildPromotionQuery() {
             const keyword = (document.getElementById('searchInput').value || '').trim();
             const type = document.getElementById('typeFilter').value;
@@ -799,6 +801,9 @@
         }
 
         function renderTable(list) {
+            if (renderTimer) return; // Prevent duplicate renders
+            renderTimer = setTimeout(() => { renderTimer = null; }, 100);
+            
             const tbody = document.getElementById('promotionTableBody');
             const empty = document.getElementById('promoEmpty');
             if (!list.length) {
@@ -808,35 +813,38 @@
             }
             empty.style.display = 'none';
 
-            tbody.innerHTML = list.map(p => {
+            const rows = [];
+            for (let i = 0; i < list.length; i++) {
+                const p = list[i];
                 const typeLabel = getTypeLabel(p.discountType);
                 const targets = formatTargets(p.targets);
                 const bundles = formatBundles(p.bundleItems);
                 const statusBadge = p.active ? 'badge-active' : 'badge-inactive';
                 const statusText = p.active ? 'Đang chạy' : 'Tạm dừng';
-                return `
-                    <tr>
-                        <td><strong>${escapeHtml(p.code || '-')}</strong></td>
-                        <td>
-                            <div class="stack">
-                                <strong>${escapeHtml(p.name || '-')}</strong>
-                                <span class="muted">${escapeHtml(p.description || '')}</span>
-                            </div>
-                        </td>
-                        <td><span class="badge badge-type">${typeLabel}</span></td>
-                        <td>${formatValue(p.discountType, p.discountValue)}</td>
-                        <td>${targets}</td>
-                        <td>${bundles}</td>
-                        <td class="muted">${formatDateRange(p.startDate, p.endDate)}</td>
-                        <td><span class="badge ${statusBadge}">${statusText}</span></td>
-                        <td class="actions">
-                            <button class="btn btn-sm btn-primary" onclick="openEditModal(${p.id})">✏️</button>
-                            <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.id})">🗑️</button>
-                            ${p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : ''}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                const activeBtn = p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : '';
+                
+                rows.push(`<tr>
+                    <td><strong>${escapeHtml(p.code || '-')}</strong></td>
+                    <td>
+                        <div class="stack">
+                            <strong>${escapeHtml(p.name || '-')}</strong>
+                            <span class="muted">${escapeHtml(p.description || '')}</span>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-type">${typeLabel}</span></td>
+                    <td>${formatValue(p.discountType, p.discountValue)}</td>
+                    <td>${targets}</td>
+                    <td>${bundles}</td>
+                    <td class="muted">${formatDateRange(p.startDate, p.endDate)}</td>
+                    <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                    <td class="actions">
+                        <button class="btn btn-sm btn-primary" onclick="openEditModal(${p.id})">✏️</button>
+                        <button class="btn btn-sm btn-danger" onclick="deletePromotion(${p.id})">🗑️</button>
+                        ${activeBtn}
+                    </td>
+                </tr>`);
+            }
+            tbody.innerHTML = rows.join('');
         }
 
         function openCreateModal() {
@@ -1778,19 +1786,59 @@
         }
 
         function formatTargets(targets) {
-            if (!Array.isArray(targets) || !targets.length) return '<span class="muted">Không có</span>';
-            return targets.map(t => `<span class="badge badge-target">${t.targetType}:${t.targetId}</span>`).join(' ');
+            if (!targets?.length) return 'Không có';
+            const results = [];
+            for (const t of targets) {
+                if (t.targetType === 'PRODUCT') {
+                    let name = null;
+                    for (const p of cachedProducts) {
+                        if (Number(p.id) === Number(t.targetId)) {
+                            name = p.name || p.code;
+                            break;
+                        }
+                    }
+                    if (!name) name = 'Sản phẩm #' + t.targetId;
+                    results.push(`<span class="badge badge-target">${escapeHtml(name)}</span>`);
+                } else if (t.targetType === 'CATEGORY') {
+                    let name = null;
+                    for (const c of cachedCategories) {
+                        if (Number(c.id) === Number(t.targetId) || Number(c.category_id) === Number(t.targetId)) {
+                            name = c.name;
+                            break;
+                        }
+                    }
+                    if (!name) {
+                        // Fallback to FALLBACK_CATEGORIES
+                        const fallback = FALLBACK_CATEGORIES.find(fc => Number(fc.id) === Number(t.targetId));
+                        name = fallback ? fallback.name : ('Danh mục #' + t.targetId);
+                    }
+                    results.push(`<span class="badge badge-target">${escapeHtml(name)}</span>`);
+                } else {
+                    results.push(`<span class="badge badge-target">${t.targetType}:${t.targetId}</span>`);
+                }
+            }
+            return results.join(' ');
         }
 
         function formatBundles(bundleItems) {
-            if (!Array.isArray(bundleItems) || !bundleItems.length) return '<span class="muted">-</span>';
-            return bundleItems.map(b => {
-                const mainId = b.mainProductId ?? b.productId ?? '-';
-                const giftId = b.giftProductId ?? '-';
-                const mainQty = b.mainQuantity ?? b.quantity ?? 1;
-                const giftQty = b.giftQuantity ?? 1;
-                return `<span class="badge badge-target">${mainId} x ${mainQty} → ${giftId} x ${giftQty}</span>`;
-            }).join(' ');
+            if (!bundleItems?.length) return '-';
+            const results = [];
+            for (const b of bundleItems) {
+                const mainId = Number(b.mainProductId || b.productId || 0);
+                const giftId = Number(b.giftProductId || 0);
+                let mainName = '#' + mainId;
+                let giftName = '#' + giftId;
+                
+                for (const p of cachedProducts) {
+                    if (Number(p.id) === mainId) mainName = p.name || p.code || mainName;
+                    if (Number(p.id) === giftId) giftName = p.name || p.code || giftName;
+                }
+                
+                const qty1 = b.mainQuantity || b.quantity || 1;
+                const qty2 = b.giftQuantity || 1;
+                results.push(`${qty1} × ${mainName} → ${qty2} × ${giftName}`);
+            }
+            return results.join('<br>');
         }
 
         function formatDateRange(start, end) {
@@ -1917,8 +1965,9 @@
             }
         })();
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             enforceAuth();
+            await Promise.all([loadProductsForTargets(), loadCategoriesForTargets()]);
             loadPromotions();
             const nameInput = document.getElementById('promoName');
             const codeInput = document.getElementById('promoCode');
