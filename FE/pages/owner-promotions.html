@@ -1379,12 +1379,20 @@
                         const inputA = selectA.closest('.product-picker')?.querySelector('.product-search');
                         const resolvedA = resolveProductIdFromInput(inputA?.value, selectA.closest('.product-picker')?._products);
                         productA = Number(resolvedA);
+                        if (!productA && inputA?.value) {
+                            const match = String(inputA.value).match(/^\s*(\d+)/);
+                            if (match) productA = Number(match[1]);
+                        }
                         if (productA) selectA.value = String(productA);
                     }
                     if (!productB && selectB) {
                         const inputB = selectB.closest('.product-picker')?.querySelector('.product-search');
                         const resolvedB = resolveProductIdFromInput(inputB?.value, selectB.closest('.product-picker')?._products);
                         productB = Number(resolvedB);
+                        if (!productB && inputB?.value) {
+                            const match = String(inputB.value).match(/^\s*(\d+)/);
+                            if (match) productB = Number(match[1]);
+                        }
                         if (productB) selectB.value = String(productB);
                     }
                     if (!productA || !productB) {
