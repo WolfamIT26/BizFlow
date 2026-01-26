@@ -21,7 +21,7 @@ spring:
 
   # ================= REDIS CACHE =================
   cache:
-    type: none  # Disable cache tạm thời
+    type: redis  # Disable cache tạm thời
 
   # ✅ REDIS (NEW – SPRING BOOT 3.x)
   data:

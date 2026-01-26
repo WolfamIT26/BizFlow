@@ -3,6 +3,7 @@ package com.example.bizflow.service;
 import com.example.bizflow.entity.Customer;
 import com.example.bizflow.entity.CustomerTier;
 import com.example.bizflow.repository.CustomerRepository;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +14,13 @@ import java.util.List;
 @Service
 public class PointService {
     private final CustomerRepository customerRepository;
+    private final RedisTemplate<String, Integer> redisTemplate;
+    private static final String POINTS_KEY_PREFIX = "customer:points:";
 
-    public PointService(CustomerRepository customerRepository) {
+    public PointService(CustomerRepository customerRepository,
+                        RedisTemplate<String, Integer> redisTemplate) {
         this.customerRepository = customerRepository;
+        this.redisTemplate = redisTemplate;
     }
 
     @Transactional
@@ -33,6 +38,7 @@ public class PointService {
             customer.addPoints(points);
             customer.updateTierByPoints();
             customerRepository.save(customer);
+            cachePoints(customerId, customer.getTotalPoints());
         });
     }
 
@@ -53,8 +59,33 @@ public class PointService {
             customer.setMonthlyPoints(Math.max(0, monthly - redeem));
             customer.updateTierByPoints();
             customerRepository.save(customer);
+            cachePoints(customerId, customer.getTotalPoints());
             return redeem;
         }).orElse(0);
+    }
+
+    public int getAvailablePoints(Long customerId, Integer fallback) {
+        if (customerId == null) {
+            return fallback == null ? 0 : fallback;
+        }
+        try {
+            Integer cached = redisTemplate.opsForValue().get(pointsKey(customerId));
+            if (cached != null) {
+                return cached;
+            }
+        } catch (Exception ignored) {
+        }
+        if (fallback != null) {
+            cachePoints(customerId, fallback);
+            return fallback;
+        }
+        return customerRepository.findById(customerId)
+                .map(Customer::getTotalPoints)
+                .map(points -> {
+                    cachePoints(customerId, points);
+                    return points == null ? 0 : points;
+                })
+                .orElse(0);
     }
 
     @Transactional
@@ -77,5 +108,19 @@ public class PointService {
             customerRepository.saveAll(changed);
         }
         return changed.size();
+    }
+
+    private void cachePoints(Long customerId, Integer points) {
+        if (customerId == null || points == null) {
+            return;
+        }
+        try {
+            redisTemplate.opsForValue().set(pointsKey(customerId), points);
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String pointsKey(Long customerId) {
+        return POINTS_KEY_PREFIX + customerId;
     }
 }

@@ -333,7 +333,7 @@ public class OrderController {
         if (customer == null || total == null || total.compareTo(BigDecimal.ZERO) <= 0) {
             return new DiscountResult(BigDecimal.ZERO, 0);
         }
-        int points = customer.getTotalPoints() == null ? 0 : customer.getTotalPoints();
+        int points = pointService.getAvailablePoints(customer.getId(), customer.getTotalPoints());
         if (points < 100) {
             return new DiscountResult(BigDecimal.ZERO, 0);
         }

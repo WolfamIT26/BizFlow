@@ -56,6 +56,8 @@ services:
     restart: always
     ports:
       - "8000:8000"
+    environment:
+      BACKEND_URL: http://backend:8080
     depends_on:
       - backend
       - ai_service
@@ -94,6 +96,71 @@ services:
       - bizflow-net
 
   # =========================
+  # 3B. KAFKA (EVENT STREAMING)
+  # =========================
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: bizflow-zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - bizflow-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: bizflow-kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - bizflow-net
+  # =========================
+  # 5B. ADMIN SERVICE (JAVA SPRING BOOT)
+  # =========================
+  admin-service:
+    build:
+      context: ./admin-service
+      dockerfile: Dockerfile
+    container_name: bizflow-admin
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      CORE_BASE_URL: http://backend:8080
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      - backend
+      - kafka
+    networks:
+      - bizflow-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: bizflow-kafka-ui
+    restart: always
+    ports:
+      - "8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bizflow
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+    networks:
+      - bizflow-net
+
+  # =========================
   # 6. AI SERVICE (PYTHON FASTAPI)
   # =========================
   ai_service:
@@ -119,6 +186,7 @@ services:
       - "3000:80"
     depends_on:
       - gateway
+      - admin-service
     volumes:
       - ./FE/assets:/usr/share/nginx/html/assets
     networks:

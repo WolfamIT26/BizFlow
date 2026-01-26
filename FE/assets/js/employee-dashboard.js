@@ -724,7 +724,7 @@ async function createOrder(isPaid) {
             await openInvoiceModal(receiptData);
             applyLocalStockAfterSale();
         }
-        clearCart(true);
+        // Keep current cart and customer data after payment.
         if (exchangeDraft) {
             sessionStorage.removeItem('exchangeDraft');
             exchangeDraft = null;
@@ -881,7 +881,7 @@ async function payOrder(orderId) {
         }
         alert('Đã thanh toán chuyển khoản được xác nhận.');
         hideTransferQrModal();
-        clearCart(true);
+        // Keep current cart and customer data after payment confirmation.
         saveActiveInvoiceState();
     } catch (err) {
         alert('Lỗi kết nối khi xác nhận thanh toán.');

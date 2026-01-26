@@ -1,6 +1,7 @@
 // Login page JS (scoped)
 const API_BASE = '/api';
 const ALLOWED_ROLES = ['ADMIN','OWNER','EMPLOYEE', 'MANAGER'];
+const ROLE_PREFIX = 'ROLE_';
 
 function showLoginError(message){
   const el=document.getElementById('loginError');
@@ -9,7 +10,7 @@ function showLoginError(message){
 
 function redirectByRole(role){
   switch(role){
-    case 'ADMIN': window.location.href='/pages/admin-dashboard.html'; break;
+    case 'ADMIN': window.location.href='/admin/admin-dashboard.html'; break;
     case 'OWNER': window.location.href='/pages/owner-dashboard.html'; break;
     case 'MANAGER': window.location.href='/pages/dashboard.html'; break;
     case 'EMPLOYEE': window.location.href='/pages/employee-dashboard.html'; break;
@@ -18,11 +19,25 @@ function redirectByRole(role){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
-  const token=sessionStorage.getItem('accessToken');
-  const role=sessionStorage.getItem('role');
-  const username=sessionStorage.getItem('username');
-  if(token && role && ALLOWED_ROLES.includes(role)){
-    redirectByRole(role);
+  const storedToken = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+  const storedRole = sessionStorage.getItem('role') || localStorage.getItem('role');
+  const normalizedRole = normalizeRole(storedRole);
+  if(storedToken && normalizedRole && ALLOWED_ROLES.includes(normalizedRole)){
+    sessionStorage.setItem('accessToken', storedToken);
+    sessionStorage.setItem('role', normalizedRole);
+    if (localStorage.getItem('username')) {
+      sessionStorage.setItem('username', localStorage.getItem('username'));
+    }
+    if (localStorage.getItem('userId')) {
+      sessionStorage.setItem('userId', localStorage.getItem('userId'));
+    }
+    redirectByRole(normalizedRole);
+  } else if (storedToken && (!normalizedRole || !ALLOWED_ROLES.includes(normalizedRole))) {
+    sessionStorage.clear();
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('username');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userId');
   }
 
   // Toggle password visibility
@@ -75,3 +90,8 @@ window.addEventListener('DOMContentLoaded',()=>{
     });
   }
 });
+
+function normalizeRole(role){
+  if(!role){return ''; }
+  return role.startsWith(ROLE_PREFIX) ? role.slice(ROLE_PREFIX.length) : role;
+}

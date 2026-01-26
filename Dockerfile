@@ -10,6 +10,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY bizflow-app/pom.xml bizflow-app/pom.xml
 COPY promotion-service/pom.xml promotion-service/pom.xml
+COPY admin-service/pom.xml admin-service/pom.xml
 COPY bizflow-app/src bizflow-app/src
 COPY promotion-service/src promotion-service/src
 RUN mvn -pl bizflow-app -am -DskipTests package

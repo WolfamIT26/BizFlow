@@ -2,11 +2,13 @@ spring:
   application:
     name: bizflow-gateway
   cloud:
+    compatibility-verifier:
+      enabled: false
     gateway:
       default-filters: []
       routes:
         - id: backend
-          uri: "http://backend:8080/"
+          uri: "${BACKEND_URL:http://localhost:8080}/"
           predicates:
             - Path=/api/**
         - id: ai-service

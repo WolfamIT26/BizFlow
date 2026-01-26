@@ -6,7 +6,6 @@ import com.example.bizflow.service.OrderService;
 import com.example.bizflow.service.PointService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,7 +30,6 @@ public class CustomerController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> getAllCustomers() {
         try {
             List<Customer> customers = customerRepository.findAll();
@@ -42,7 +40,6 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> getCustomerById(@PathVariable @NonNull Long id) {
         try {
             return customerRepository.findById(id)
@@ -54,7 +51,6 @@ public class CustomerController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<?> createCustomer(@RequestBody @NonNull CustomerCreateRequest request) {
         try {
             String name = trimToNull(request.name);
@@ -84,13 +80,11 @@ public class CustomerController {
     }
 
     @GetMapping("/{id}/orders")
-    @PreAuthorize("hasAnyRole('EMPLOYEE', 'OWNER', 'ADMIN')")
     public ResponseEntity<Object> getCustomerOrderHistory(@PathVariable @NonNull Long id) {
         return ResponseEntity.ok(orderService.getCustomerOrderHistorySummary(id));
     }
 
     @PostMapping("/sync-tiers")
-    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
     public ResponseEntity<?> syncCustomerTiers() {
         int updated = pointService.syncCustomerTiers();
         return ResponseEntity.ok(Map.of("updated", updated));

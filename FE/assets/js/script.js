@@ -87,7 +87,7 @@ async function handleLogin(e) {
             setTimeout(() => {
                 const role = sessionStorage.getItem('role');
                 if (role === 'ADMIN') {
-                    window.location.href = '/pages/admin-dashboard.html';
+                    window.location.href = '/admin/admin-dashboard.html';
                 } else if (role === 'OWNER') {
                     window.location.href = '/pages/owner-dashboard.html';
                 } else {

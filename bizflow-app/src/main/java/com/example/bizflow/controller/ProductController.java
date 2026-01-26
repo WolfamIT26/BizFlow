@@ -35,7 +35,7 @@ public class ProductController {
                 products = productRepository.findByStatus("active");
             }
             applyInventoryStocks(products);
-            boolean showCostPrice = true; // <--- �p hi?n lu�n d? test cho su?ng;
+            boolean showCostPrice = true; // Force cost price display for testing.
             List<ProductDTO> dtos = products.stream()
                     .map(p -> ProductDTO.fromEntity(p, showCostPrice))
                     .collect(Collectors.toList());
@@ -50,7 +50,7 @@ public class ProductController {
                     products = productRepository.findAll();
                 }
                 applyInventoryStocks(products);
-                boolean showCostPrice = true; // <--- �p hi?n lu�n d? test cho su?ng;
+                boolean showCostPrice = true; // Force cost price display for testing.
                 List<ProductDTO> dtos = products.stream()
                         .map(p -> ProductDTO.fromEntity(p, showCostPrice))
                         .collect(Collectors.toList());
@@ -68,7 +68,7 @@ public class ProductController {
             return productRepository.findById(id)
                     .map(product -> {
                         applyInventoryStocks(List.of(product));
-                        boolean showCostPrice = true; // <--- Ép hiện luôn để test cho sướng;
+                        boolean showCostPrice = true; // Force cost price display for testing.
                         return ResponseEntity.ok(ProductDTO.fromEntity(product, showCostPrice));
                     })
                     .orElse(ResponseEntity.notFound().build());
@@ -130,7 +130,7 @@ public class ProductController {
         try {
             return productRepository.findById(id)
                     .map(product -> {
-                        // Soft delete - chuyển status thành inactive
+                        // Soft delete: mark product as inactive.
                         product.setStatus("inactive");
                         productRepository.save(product);
                         return ResponseEntity.ok("Product deactivated successfully");
@@ -148,7 +148,7 @@ public class ProductController {
             if (!productRepository.existsById(id)) {
                 return ResponseEntity.notFound().build();
             }
-            // Xóa inventory stock trước
+            // Delete inventory stock first.
             inventoryStockRepository.findByProductId(id).ifPresent(inventoryStockRepository::delete);
             productRepository.deleteById(id);
             return ResponseEntity.ok("Product permanently deleted");

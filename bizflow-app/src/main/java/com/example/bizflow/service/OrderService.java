@@ -5,9 +5,9 @@
 
 package com.example.bizflow.service;
 
+import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.entity.Order;
 import com.example.bizflow.entity.User;
-import com.example.bizflow.dto.OrderSummaryResponse;
 import com.example.bizflow.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -82,5 +82,46 @@ public class OrderService {
 
         List<Order> orders = orderRepository.findByCustomerIdOrderByCreatedAtDesc(id);
         return orders == null ? Collections.emptyList() : orders;
+    }
+
+    private OrderSummaryResponse toSummaryResponse(Order order) {
+        if (order == null) {
+            return null;
+        }
+        String userName = resolveUserName(order.getUser());
+        String customerName = order.getCustomer() == null ? null : order.getCustomer().getName();
+        String customerPhone = order.getCustomer() == null ? null : order.getCustomer().getPhone();
+        int itemCount = order.getItems() == null
+                ? 0
+                : order.getItems().stream()
+                    .mapToInt(item -> item.getQuantity() == null ? 0 : item.getQuantity())
+                    .sum();
+
+        return new OrderSummaryResponse(
+                order.getId(),
+                order.getUser() == null ? null : order.getUser().getId(),
+                userName,
+                order.getCustomer() == null ? null : order.getCustomer().getId(),
+                customerName,
+                customerPhone,
+                order.getTotalAmount(),
+                order.getCreatedAt(),
+                itemCount,
+                order.getInvoiceNumber(),
+                order.getStatus(),
+                userName,
+                userName,
+                order.getNote()
+        );
+    }
+
+    private String resolveUserName(User user) {
+        if (user == null) {
+            return null;
+        }
+        if (user.getFullName() != null && !user.getFullName().isBlank()) {
+            return user.getFullName();
+        }
+        return user.getUsername();
     }
 }
