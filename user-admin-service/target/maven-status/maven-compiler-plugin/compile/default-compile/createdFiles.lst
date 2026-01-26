@@ -1,0 +1,14 @@
+com\example\useradmin\controller\UserSearchController.class
+com\example\useradmin\dto\AdminUserStatsResponse.class
+com\example\useradmin\dto\AdminSearchResponse.class
+com\example\useradmin\repository\UserProfileRepository.class
+com\example\useradmin\service\UserStatsService.class
+com\example\useradmin\entity\UserProfile.class
+com\example\useradmin\entity\CustomerProfile.class
+com\example\useradmin\UserAdminServiceApplication.class
+com\example\useradmin\service\UserSearchService.class
+com\example\useradmin\controller\UserStatsController.class
+com\example\useradmin\dto\AdminUserSummary.class
+com\example\useradmin\repository\CustomerProfileRepository.class
+com\example\useradmin\config\SecurityConfig.class
+com\example\useradmin\dto\AdminCustomerSummary.class

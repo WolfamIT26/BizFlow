@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <title>Báo cáo Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/assets/css/admin-dashboard.css">
+</head>
+<body class="admin-page">
+<header class="page-header">
+    <div class="page-title">
+        <h1>Báo cáo Admin</h1>
+        <p>Tổng hợp thông tin từ các microservice admin.</p>
+    </div>
+</header>
+
+<main class="page-body">
+    <section class="report-panel">
+        <h2>Thống kê tổng</h2>
+        <div id="branch-summary-content" class="dashboard-grid"></div>
+    </section>
+
+    <section class="report-panel">
+        <h2>Đơn hàng mới nhất</h2>
+        <div id="order-history-content" class="order-table-wrapper"></div>
+    </section>
+
+    <section class="report-panel">
+        <h2>Hoạt động người dùng</h2>
+        <div id="user-summary-content" class="dashboard-grid"></div>
+    </section>
+
+    <p id="report-status" class="report-status"></p>
+</main>
+
+<script src="/assets/js/admin-reports.js"></script>
+</body>
+</html>

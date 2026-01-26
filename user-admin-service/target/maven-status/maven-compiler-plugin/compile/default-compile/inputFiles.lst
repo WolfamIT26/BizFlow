@@ -1,0 +1,14 @@
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\dto\AdminUserStatsResponse.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\controller\UserStatsController.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\UserAdminServiceApplication.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\dto\AdminCustomerSummary.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\dto\AdminSearchResponse.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\repository\UserProfileRepository.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\repository\CustomerProfileRepository.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\service\UserStatsService.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\dto\AdminUserSummary.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\service\UserSearchService.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\controller\UserSearchController.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\entity\CustomerProfile.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\config\SecurityConfig.java
+D:\CNTT\Nam 3\Baicuoiki\BizFlow\user-admin-service\src\main\java\com\example\useradmin\entity\UserProfile.java

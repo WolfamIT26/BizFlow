@@ -1,0 +1,22 @@
+﻿spring:
+  datasource:
+    url: ${BRANCH_ADMIN_DATASOURCE_URL:jdbc:postgresql://localhost:5432/branch_admin}
+    username: ${BRANCH_ADMIN_DATASOURCE_USERNAME:branch_admin}
+    password: ${BRANCH_ADMIN_DATASOURCE_PASSWORD:password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+server:
+  port: 8087
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
