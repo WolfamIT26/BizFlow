@@ -19,6 +19,7 @@ services:
       - ./db/init:/docker-entrypoint-initdb.d
     networks:
       - bizflow-net
+    mem_limit: 512m
 
   # =========================
   # 2. REDIS CACHE
@@ -31,6 +32,7 @@ services:
       - "6379:6379"
     networks:
       - bizflow-net
+    mem_limit: 256m
 
   # =========================
   # 3. RABBITMQ (Message Queue)
@@ -44,6 +46,7 @@ services:
       - "15672:15672" # dashboard
     networks:
       - bizflow-net
+    mem_limit: 128m
 
   # =========================
   # 4. API GATEWAY (SPRING CLOUD GATEWAY)
@@ -61,7 +64,8 @@ services:
       - ai_service
     networks:
       - bizflow-net
-
+    mem_limit: 1024m
+  
   # =========================
   # 5. BACKEND API (JAVA SPRING BOOT)
   # =========================
@@ -92,7 +96,7 @@ services:
       - ./FE/assets:/app/FE/assets
     networks:
       - bizflow-net
-
+    mem_limit: 1024m
   # =========================
   # 6. AI SERVICE (PYTHON FASTAPI)
   # =========================
@@ -106,7 +110,7 @@ services:
       - "5000:5000"
     networks:
       - bizflow-net
-
+    mem_limit: 512m
   # =========================
   # 7. FRONTEND WEB (NGINX)
   # =========================
@@ -123,7 +127,7 @@ services:
       - ./FE/assets:/usr/share/nginx/html/assets
     networks:
       - bizflow-net
-
+    mem_limit: 1024m
   # =========================
   # 8. PHPMYADMIN (DB WEB UI)
   # =========================
@@ -142,9 +146,33 @@ services:
       - mysql
     networks:
       - bizflow-net
-
+    mem_limit: 1024m
   # =========================
-  # 9. NIFI (DATA ORCHESTRATION)
+  # 9. PROMOTION SERVICE (SPRING BOOT MICROSERVICE)
+  # =========================
+  promotion-service:
+    build:
+      context: ./promotion-service
+      dockerfile: Dockerfile
+    container_name: bizflow-promotion-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-bizflow_db}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-bizflow}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-bizflow123}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - bizflow-net
+    mem_limit: 512m
+  # =========================
+  # 10. NIFI (DATA ORCHESTRATION)
   # =========================
   nifi:
     image: apache/nifi:1.23.2
@@ -158,9 +186,11 @@ services:
       NIFI_JVM_HEAP_MAX: 1g
     volumes:
       - nifi_state:/opt/nifi/nifi-current/state
+    depends_on:
+      - promotion-service
     networks:
       - bizflow-net
-
+    mem_limit: 512m
 
 # =========================
 # VOLUMES
