@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BizFlow - Báo cáo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin/assets/css/admin-dashboard.css">
+    <style>
+        :root {
+            --report-muted: #6b7280;
+            --report-success: #10b981;
+            --report-warning: #f59e0b;
+            --report-danger: #ef4444;
+            --report-primary: #3b82f6;
+        }
+        .report-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .report-card {
+            border-radius: 16px;
+            padding: 18px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
+        }
+        .report-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--report-muted);
+            margin-bottom: 10px;
+        }
+        .report-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+        }
+        .report-card-sub {
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--report-muted);
+        }
+        .report-trend {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .report-trend.positive {
+            color: var(--report-success);
+        }
+        .report-trend.negative {
+            color: var(--report-danger);
+        }
+        .report-section {
+            margin-bottom: 20px;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .report-table th,
+        .report-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: left;
+        }
+        .report-table th {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--report-muted);
+            letter-spacing: 0.02em;
+        }
+        .report-table td strong {
+            color: #111827;
+        }
+        .report-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .report-actions input {
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+        }
+        .report-actions button {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            background: #111827;
+            color: white;
+        }
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .empty-box {
+            text-align: center;
+            padding: 24px;
+            color: var(--report-muted);
+        }
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+        .alert-badge.critical {
+            background: #fee2e2;
+            color: var(--report-danger);
+        }
+        .alert-badge.warning {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        .alert-badge.normal {
+            background: #dcfce7;
+            color: var(--report-success);
+        }
+        @media (max-width: 900px) {
+            .report-actions {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">BF</div>
+                <div>
+                    <div class="brand-title">BizFlow</div>
+                    <div class="brand-subtitle">Admin Control</div>
+                </div>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-title">Tổng quan</div>
+                <a class="nav-item" href="/admin/admin-dashboard.html"><span class="icon">📊</span><span>Dashboard</span></a>
+                <a class="nav-item" href="/admin/admin-branches.html"><span class="icon">🏬</span><span>Chi nhánh</span></a>
+                <a class="nav-item" href="/admin/admin-users.html"><span class="icon">👥</span><span>Người dùng</span></a>
+                <a class="nav-item" href="#"><span class="icon">📦</span><span>Sản phẩm</span></a>
+                <a class="nav-item" href="/admin/admin-orders.html"><span class="icon">🧾</span><span>Đơn hàng</span></a>
+            </div>
+
+            <div class="nav-group">
+                <div class="nav-title">Hệ thống</div>
+                <a class="nav-item" href="#"><span class="icon">🧭</span><span>Phân quyền</span></a>
+                <a class="nav-item active" href="/admin/admin-reports.html"><span class="icon">📈</span><span>Báo cáo</span></a>
+                <a class="nav-item" href="#"><span class="icon">⚙️</span><span>Cấu hình</span></a>
+                <a class="nav-item" href="#"><span class="icon">🧩</span><span>Tích hợp</span></a>
+            </div>
+
+            <div class="sidebar-footer">
+                <div>Trạng thái hệ thống: Online</div>
+                <div>Cập nhật: <span id="sidebarTime">--:--</span></div>
+            </div>
+        </aside>
+
+        <div class="content">
+            <header class="topbar">
+                <div class="top-left">
+                    <div class="page-title">Báo cáo tổng quan</div>
+                    <div class="search-tools">
+                        <div class="report-actions">
+                            <label>
+                                Từ
+                                <input type="date" id="reportStartDate">
+                            </label>
+                            <label>
+                                Đến
+                                <input type="date" id="reportEndDate">
+                            </label>
+                            <button id="loadRangeBtn" type="button">Xem theo khoảng</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="top-right">
+                    <span class="pill">ADMIN</span>
+                    <div class="user-chip">
+                        <div class="avatar" id="userAvatar">AD</div>
+                        <div>
+                            <div id="userGreeting">Admin</div>
+                            <div style="font-size:12px;color:#6b7280;">Quản trị viên</div>
+                        </div>
+                        <button class="icon-btn" title="Đăng xuất" onclick="logout()">⏻</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main">
+                <section class="report-stats">
+                    <div class="report-card">
+                        <div class="report-card-title">Doanh thu hôm nay</div>
+                        <div class="report-card-value" id="todayRevenue">--</div>
+                        <div class="report-trend" id="todayChange">--</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-card-title">Doanh thu tuần này</div>
+                        <div class="report-card-value" id="weeklyRevenue">--</div>
+                        <div class="report-trend" id="weeklyChange">--</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-card-title">Doanh thu tháng này</div>
+                        <div class="report-card-value" id="monthlyRevenue">--</div>
+                        <div class="report-trend" id="monthlyChange">--</div>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-card-title">Biên lợi nhuận</div>
+                        <div class="report-card-value" id="profitMargin">-- %</div>
+                        <div class="report-trend" id="marginChange">--</div>
+                    </div>
+                </section>
+
+                <section class="card report-section">
+                    <div class="card-title">Doanh thu chi tiết theo ngày</div>
+                    <div class="report-card-sub">Dữ liệu được cập nhật tự động từ hệ thống báo cáo</div>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Ngày</th>
+                                <th>Doanh thu</th>
+                                <th>Chi phí</th>
+                                <th>Lợi nhuận</th>
+                                <th>Biên lợi nhuận</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyRevenueTableBody">
+                            <tr>
+                                <td colspan="5" class="empty-box">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <div class="report-grid">
+                    <section class="card report-section">
+                        <div class="card-title">Top sản phẩm bán chạy</div>
+                        <div class="report-card-sub">Theo tháng hiện tại</div>
+                        <table class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Sản phẩm</th>
+                                    <th>Số lượng</th>
+                                    <th>Doanh thu</th>
+                                    <th>Lợi nhuận</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topProductsTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-box">Không có dữ liệu</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+
+                    <section class="card report-section">
+                        <div class="card-title">Cảnh báo tồn kho</div>
+                        <div class="report-card-sub">Hệ thống cảnh báo theo ngưỡng cấu hình</div>
+                        <div id="lowStockSummary" style="margin-bottom: 12px;"></div>
+                        <table class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Mã</th>
+                                    <th>Tồn hiện tại</th>
+                                    <th>Ngưỡng</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lowStockTableBody">
+                                <tr>
+                                    <td colspan="5" class="empty-box">Đang tải dữ liệu...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="/admin/assets/js/admin-reports.js" defer></script>
+</body>
+</html>

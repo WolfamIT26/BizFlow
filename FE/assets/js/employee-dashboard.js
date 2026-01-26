@@ -386,7 +386,7 @@ async function loadProducts() {
         });
 
         if (!response.ok) {
-            if (response.status === 401) {
+            if (response.status === 401 || response.status === 403) {
                 sessionStorage.clear();
                 window.location.href = '/pages/login.html';
                 return;

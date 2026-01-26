@@ -4,14 +4,14 @@ const apiEndpoints = {
 };
 
 const ROLE_PREFIX = 'ROLE_';
-let allOwners = [];
-let filteredOwners = [];
+let allUsers = [];
+let filteredUsers = [];
 
 window.addEventListener('load', () => {
     enforceAuth();
     renderHeader();
-    wireOwnerSearch();
-    loadOwners();
+    wireUserSearch();
+    loadUsers();
 });
 
 function enforceAuth() {
@@ -42,8 +42,8 @@ function renderHeader() {
     document.getElementById('sidebarTime').textContent = new Date().toLocaleString('vi-VN', { hour12: false });
 }
 
-function renderOwnerRows(list) {
-    const tbody = document.getElementById('ownerUsersBody');
+function renderUserRows(list) {
+    const tbody = document.getElementById('userTableBody');
     if (!tbody) return;
     if (!list.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-box">Không tìm thấy chủ cửa hàng.</td></tr>';
@@ -74,8 +74,8 @@ function renderOwnerRows(list) {
     }).join('');
 }
 
-async function loadOwners() {
-    const meta = document.getElementById('ownerSearchMeta');
+async function loadUsers() {
+    const meta = document.getElementById('userSearchMeta');
     try {
         const response = await fetch(apiEndpoints.users, {
             headers: { 'Authorization': `Bearer ${getToken()}` }
@@ -85,31 +85,31 @@ async function loadOwners() {
         }
         const users = await response.json();
         const list = Array.isArray(users) ? users : [];
-        allOwners = list.filter(user => normalizeRole(extractRole(user.role)) === 'OWNER');
-        applyOwnerFilters();
+        allUsers = list;
+        applyUserFilters();
         if (meta) {
-            meta.textContent = `Tổng ${allOwners.length} chủ cửa hàng đã đăng ký.`;
+            meta.textContent = `Tổng ${allUsers.length} người dùng đã đăng ký.`;
         }
     } catch (error) {
         if (meta) {
-            meta.textContent = 'Không thể tải danh sách chủ cửa hàng.';
+            meta.textContent = 'Không thể tải danh sách người dùng.';
         }
-        renderOwnerRows([]);
+        renderUserRows([]);
     }
 }
 
-function wireOwnerSearch() {
-    const input = document.getElementById('ownerSearchInput');
-    const statusFilter = document.getElementById('ownerStatusFilter');
-    const clearBtn = document.getElementById('clearOwnerSearchBtn');
-    const tbody = document.getElementById('ownerUsersBody');
+function wireUserSearch() {
+    const input = document.getElementById('userSearchInput');
+    const statusFilter = document.getElementById('userStatusFilter');
+    const clearBtn = document.getElementById('clearUserSearchBtn');
+    const tbody = document.getElementById('userTableBody');
 
-    input?.addEventListener('input', applyOwnerFilters);
-    statusFilter?.addEventListener('change', applyOwnerFilters);
+    input?.addEventListener('input', applyUserFilters);
+    statusFilter?.addEventListener('change', applyUserFilters);
     clearBtn?.addEventListener('click', () => {
         if (input) input.value = '';
         if (statusFilter) statusFilter.value = 'all';
-        applyOwnerFilters();
+        applyUserFilters();
     });
 
     tbody?.addEventListener('click', async (event) => {
@@ -117,7 +117,7 @@ function wireOwnerSearch() {
         if (!button) return;
         const action = button.dataset.action;
         const id = button.dataset.id;
-        const user = allOwners.find(u => String(u.id) === String(id));
+        const user = allUsers.find(u => String(u.id) === String(id));
         if (!user) return;
 
         if (action === 'view') {
@@ -134,7 +134,7 @@ function wireOwnerSearch() {
                     method: 'PATCH',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                await loadOwners();
+                await loadUsers();
             } catch (error) {
                 alert('Không thể cập nhật trạng thái tài khoản.');
             }
@@ -147,7 +147,7 @@ function wireOwnerSearch() {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                await loadOwners();
+                await loadUsers();
             } catch (error) {
                 alert('Không thể xóa tài khoản.');
             }
@@ -155,14 +155,14 @@ function wireOwnerSearch() {
     });
 }
 
-function applyOwnerFilters() {
-    const input = document.getElementById('ownerSearchInput');
-    const statusFilter = document.getElementById('ownerStatusFilter');
-    const meta = document.getElementById('ownerSearchMeta');
+function applyUserFilters() {
+    const input = document.getElementById('userSearchInput');
+    const statusFilter = document.getElementById('userStatusFilter');
+    const meta = document.getElementById('userSearchMeta');
     const keyword = normalizeKeyword(input?.value || '');
     const statusValue = statusFilter?.value || 'all';
 
-    filteredOwners = allOwners.filter(user => {
+    filteredUsers = allUsers.filter(user => {
         if (statusValue === 'active' && user.enabled === false) return false;
         if (statusValue === 'inactive' && user.enabled !== false) return false;
         if (!keyword) return true;
@@ -178,12 +178,12 @@ function applyOwnerFilters() {
 
     if (meta) {
         if (!keyword && statusValue === 'all') {
-            meta.textContent = `Tổng ${allOwners.length} chủ cửa hàng đã đăng ký.`;
+            meta.textContent = `Tổng ${allUsers.length} người dùng đã đăng ký.`;
         } else {
-            meta.textContent = `Tìm thấy ${filteredOwners.length} chủ cửa hàng phù hợp.`;
+            meta.textContent = `Tìm thấy ${filteredUsers.length} người dùng phù hợp.`;
         }
     }
-    renderOwnerRows(filteredOwners);
+    renderUserRows(filteredUsers);
 }
 
 function openUserDetail(user) {
@@ -208,7 +208,7 @@ function openUserDetail(user) {
         </div>
         <div class="detail-item">
             <div class="detail-label">Vai trò</div>
-            <div class="detail-value">Chủ cửa hàng</div>
+            <div class="detail-value">${escapeHtml(extractRole(user.role) || '-')}</div>
         </div>
         <div class="detail-item">
             <div class="detail-label">Trạng thái</div>
@@ -274,7 +274,7 @@ document.getElementById('editUserForm')?.addEventListener('submit', async (event
         });
         status.textContent = 'Cập nhật thành công.';
         status.classList.add('status-success');
-        await loadOwners();
+        await loadUsers();
     } catch (error) {
         status.textContent = error.message || 'Có lỗi xảy ra.';
         status.classList.add('status-error');

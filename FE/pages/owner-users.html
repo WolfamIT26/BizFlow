@@ -108,7 +108,7 @@
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
@@ -430,22 +430,30 @@
 
             <!-- Stats Overview -->
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="totalUsers">--</div>
-                    <div class="stat-label">Tổng nhân viên</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value success" id="activeUsers">--</div>
-                    <div class="stat-label">Đang hoạt động</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value danger" id="inactiveUsers">--</div>
-                    <div class="stat-label">Đã vô hiệu</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="managerCount">--</div>
-                    <div class="stat-label">Quản lý</div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalUsers">--</div>
+                <div class="stat-label">Tổng tài khoản</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value success" id="activeUsers">--</div>
+                <div class="stat-label">Đang hoạt động</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value danger" id="inactiveUsers">--</div>
+                <div class="stat-label">Đã vô hiệu</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="managerCount">--</div>
+                <div class="stat-label">Quản lý</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="adminCount">--</div>
+                <div class="stat-label">Admin</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="ownerCount">--</div>
+                <div class="stat-label">Owner</div>
+            </div>
             </div>
 
             <div class="card">
@@ -457,6 +465,8 @@
                     </div>
                     <select id="roleFilter" onchange="filterUsers()">
                         <option value="">Tất cả vai trò</option>
+                        <option value="OWNER">Owner</option>
+                        <option value="ADMIN">Admin</option>
                         <option value="MANAGER">Quản lý</option>
                         <option value="EMPLOYEE">Nhân viên</option>
                     </select>
@@ -559,8 +569,8 @@
                 });
                 if (res.ok) {
                     const data = await res.json();
-                    // Lọc bỏ OWNER và ADMIN vì không do Owner quản lý
-                    allUsers = data.filter(u => u.role !== 'OWNER' && u.role !== 'ADMIN');
+                    // Hiển thị tất cả tài khoản (Owner/Admin/Manager/Nhân viên)
+                    allUsers = Array.isArray(data) ? data : [];
                     calculateStats();
                     renderUsers(allUsers);
                 }
@@ -574,6 +584,8 @@
             document.getElementById('activeUsers').textContent = allUsers.filter(u => u.enabled !== false).length;
             document.getElementById('inactiveUsers').textContent = allUsers.filter(u => u.enabled === false).length;
             document.getElementById('managerCount').textContent = allUsers.filter(u => u.role === 'MANAGER').length;
+            document.getElementById('adminCount').textContent = allUsers.filter(u => u.role === 'ADMIN').length;
+            document.getElementById('ownerCount').textContent = allUsers.filter(u => u.role === 'OWNER').length;
         }
 
         function getRoleBadge(role) {

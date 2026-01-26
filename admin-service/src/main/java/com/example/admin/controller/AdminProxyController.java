@@ -36,7 +36,8 @@ public class AdminProxyController {
     @RequestMapping({
             "/api/users/**",
             "/api/customers/**",
-            "/api/auth/**"
+            "/api/auth/**",
+            "/api/reports/**"
     })
     public ResponseEntity<byte[]> proxy(HttpServletRequest request,
                                         @RequestBody(required = false) byte[] body) throws IOException {

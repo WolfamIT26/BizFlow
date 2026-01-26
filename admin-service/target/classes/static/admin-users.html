@@ -32,7 +32,7 @@
             <div class="nav-group">
                 <div class="nav-title">Hệ thống</div>
                 <a class="nav-item" href="#"><span class="icon">🧰</span><span>Phân quyền</span></a>
-                <a class="nav-item" href="#"><span class="icon">📈</span><span>Báo cáo</span></a>
+                <a class="nav-item" href="/admin/admin-reports.html"><span class="icon">📈</span><span>Báo cáo</span></a>
                 <a class="nav-item" href="#"><span class="icon">⚙️</span><span>Cấu hình</span></a>
                 <a class="nav-item" href="#"><span class="icon">🧩</span><span>Tích hợp</span></a>
             </div>
@@ -46,18 +46,18 @@
         <div class="content">
             <header class="topbar">
                 <div class="top-left">
-                    <div class="page-title">Người dùng - Chủ cửa hàng</div>
+                    <div class="page-title">Người dùng</div>
                     <div class="search-tools">
                         <div class="search">
                             <span>🔍</span>
-                            <input id="ownerSearchInput" type="text" placeholder="Tìm nhanh chủ cửa hàng..." />
-                            <select id="ownerStatusFilter" aria-label="Lọc trạng thái">
+                            <input id="userSearchInput" type="text" placeholder="Tìm nhanh người dùng..." />
+                            <select id="userStatusFilter" aria-label="Lọc trạng thái">
                                 <option value="all">Tất cả</option>
                                 <option value="active">Đang hoạt động</option>
                                 <option value="inactive">Ngừng hoạt động</option>
                             </select>
                         </div>
-                        <button class="action-btn" type="button" id="clearOwnerSearchBtn">Xóa lọc</button>
+                        <button class="action-btn" type="button" id="clearUserSearchBtn">Xóa lọc</button>
                     </div>
                 </div>
                 <div class="top-right">
@@ -75,9 +75,9 @@
 
             <main class="main">
                 <section class="card search-card">
-                    <div class="card-title">Danh sách chủ cửa hàng</div>
-                    <div class="search-meta" id="ownerSearchMeta">Đang tải dữ liệu...</div>
-                    <div id="ownerTableWrap">
+                    <div class="card-title">Danh sách người dùng</div>
+                    <div class="search-meta" id="userSearchMeta">Đang tải dữ liệu...</div>
+                    <div id="userTableWrap">
                         <table class="table">
                             <thead>
                                 <tr>
@@ -87,7 +87,7 @@
                                     <th>Hành động</th>
                                 </tr>
                             </thead>
-                            <tbody id="ownerUsersBody">
+                            <tbody id="userTableBody">
                                 <tr>
                                     <td colspan="4" class="empty-box">Đang tải dữ liệu...</td>
                                 </tr>
