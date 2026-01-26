@@ -349,7 +349,7 @@ function formatDate(val) {
 }
 
 function isPromotionActive(p) {
-    if (!p || p.active === false) return false;
+    if (!p) return false;
     const now = new Date();
     const start = parsePromotionDate(p.startDate);
     const end = parsePromotionDate(p.endDate);
@@ -383,5 +383,4 @@ function updateSummary() {
     const el = document.getElementById('promoSummary');
     if (el) el.textContent = `${promotions.length} khuyến mãi áp dụng | ${promoProducts.length} sản phẩm giảm giá`;
 }
-
 

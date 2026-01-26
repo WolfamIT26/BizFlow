@@ -27,6 +27,8 @@ public interface PromotionService {
     void deletePromotion(Long id);
 
     void deactivatePromotion(Long id);
+
+    void activatePromotion(Long id);
     
     List<CartItemPriceResponse> calculateCartItemPrices(CartItemPriceRequest request);
 }
