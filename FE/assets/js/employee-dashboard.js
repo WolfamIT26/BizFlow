@@ -239,11 +239,7 @@ function resolveApiBase() {
         return 'http://localhost:8080/api';
     }
 
-    if (['localhost', '127.0.0.1'].includes(window.location.hostname) && window.location.port !== '8080') {
-        return 'http://localhost:8080/api';
-    }
-
-    return `${window.location.origin}/api`;
+    return '/api';
 }
 
 function setupAppMenuModal() {
@@ -3639,143 +3635,147 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
 
 // ==================== AI COMBO PROMOTION FUNCTIONS ====================
 
-// Inline ComboPromotionAI để đảm bảo luôn có sẵn
-const ComboPromotionAI = {
-    API_BASE_URL: 'http://localhost:5000',
-    
-    async analyzeCart(cartItems, promotions) {
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/api/analyze-cart-promotions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cart_items: cartItems, promotions: promotions })
-            });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
-        } catch (error) {
-            console.error('[ComboAI] Error:', error);
-            return { suggestions: [], auto_add_gifts: [] };
-        }
-    },
-    
-    formatPromotions(promotions) {
-        console.log('[formatPromotions] Products available:', products?.length || 0);
-        if (products?.length > 0) {
-            console.log('[formatPromotions] Sample product:', products[0]);
-        }
-        
-        return promotions.map(promo => ({
-            id: promo.id,
-            code: promo.code,
-            name: promo.name,
-            discount_type: promo.discountType,
-            discount_value: promo.discountValue,
-            active: promo.active,
-            bundle_items: (promo.bundleItems || []).map(bundle => {
-                // Lookup tên sản phẩm từ products array
-                const mainProduct = products.find(p => 
-                    p.productId === bundle.mainProductId || 
-                    p.id === bundle.mainProductId ||
-                    String(p.productId) === String(bundle.mainProductId) ||
-                    String(p.id) === String(bundle.mainProductId)
-                );
-                const giftProduct = products.find(p => 
-                    p.productId === bundle.giftProductId || 
-                    p.id === bundle.giftProductId ||
-                    String(p.productId) === String(bundle.giftProductId) ||
-                    String(p.id) === String(bundle.giftProductId)
-                );
-                
-                const mainProductName = mainProduct?.name || mainProduct?.productName || bundle.mainProductName || `Sản phẩm #${bundle.mainProductId}`;
-                const giftProductName = giftProduct?.name || giftProduct?.productName || bundle.giftProductName || `Sản phẩm #${bundle.giftProductId}`;
-                
-                console.log('[formatPromotions] Bundle:', {
-                    mainProductId: bundle.mainProductId,
-                    mainProductName: mainProductName,
-                    giftProductId: bundle.giftProductId,
-                    giftProductName: giftProductName,
-                    foundMain: !!mainProduct,
-                    foundGift: !!giftProduct
-                });
-                
-                return {
-                    bundle_id: bundle.id,
-                    main_product_id: bundle.mainProductId,
-                    main_product_name: mainProductName,
-                    gift_product_id: bundle.giftProductId,
-                    gift_product_name: giftProductName,
-                    main_quantity: bundle.mainQuantity,
-                    gift_quantity: bundle.giftQuantity
-                };
-            })
-        }));
-    }
-};
+// Inline ComboPromotionAI để đảm bảo luôn có sẵn nếu bundle bị lỗi
+if (!window.ComboPromotionAI) {
+    window.ComboPromotionAI = {
+        API_BASE_URL: 'http://localhost:5000',
 
-const ComboPromotionUI = {
-    showNotification(message, type = 'success') {
-        const oldNotif = document.querySelector('.combo-notification');
-        if (oldNotif) oldNotif.remove();
-        
-        const notification = document.createElement('div');
-        notification.className = `combo-notification ${type}`;
-        notification.innerHTML = `
-            <div class="combo-notification-content">
-                <i class="fas fa-gift"></i>
-                <span>${message}</span>
-            </div>
-        `;
-        notification.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.3);z-index:10000;animation:slideIn 0.3s';
-        
-        document.body.appendChild(notification);
-        setTimeout(() => notification.remove(), 3000);
-    },
-    
-    showUpsellModal(suggestion, onAddMore) {
-        const oldModal = document.querySelector('.upsell-modal');
-        if (oldModal) oldModal.remove();
-        
-        const modal = document.createElement('div');
-        modal.className = 'upsell-modal';
-        modal.innerHTML = `
-            <div class="upsell-content" style="background:white;padding:30px;border-radius:15px;max-width:450px;text-align:center;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
-                <button class="close-btn" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:28px;cursor:pointer;color:#999">×</button>
-                <div style="font-size:56px;margin-bottom:15px">💡</div>
-                <h3 style="color:#333;margin-bottom:10px">Cơ hội tiết kiệm!</h3>
-                <p style="color:#666;margin-bottom:20px">${suggestion.message}</p>
-                <div style="background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);padding:15px;border-radius:10px;margin-bottom:20px">
-                    <div style="display:flex;justify-content:space-between;padding:8px 0">
-                        <span style="color:#555">Đang có:</span>
-                        <span style="color:#333;font-weight:600">${suggestion.current_quantity} sản phẩm</span>
+        async analyzeCart(cartItems, promotions) {
+            try {
+                const response = await fetch(`${this.API_BASE_URL}/api/analyze-cart-promotions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cart_items: cartItems, promotions: promotions })
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error('[ComboAI] Error:', error);
+                return { suggestions: [], auto_add_gifts: [] };
+            }
+        },
+
+        formatPromotions(promotions) {
+            console.log('[formatPromotions] Products available:', products?.length || 0);
+            if (products?.length > 0) {
+                console.log('[formatPromotions] Sample product:', products[0]);
+            }
+
+            return promotions.map(promo => ({
+                id: promo.id,
+                code: promo.code,
+                name: promo.name,
+                discount_type: promo.discountType,
+                discount_value: promo.discountValue,
+                active: promo.active,
+                bundle_items: (promo.bundleItems || []).map(bundle => {
+                    // Lookup tên sản phẩm từ products array
+                    const mainProduct = products.find(p =>
+                        p.productId === bundle.mainProductId ||
+                        p.id === bundle.mainProductId ||
+                        String(p.productId) === String(bundle.mainProductId) ||
+                        String(p.id) === String(bundle.mainProductId)
+                    );
+                    const giftProduct = products.find(p =>
+                        p.productId === bundle.giftProductId ||
+                        p.id === bundle.giftProductId ||
+                        String(p.productId) === String(bundle.giftProductId) ||
+                        String(p.id) === String(bundle.giftProductId)
+                    );
+
+                    const mainProductName = mainProduct?.name || mainProduct?.productName || bundle.mainProductName || `Sản phẩm #${bundle.mainProductId}`;
+                    const giftProductName = giftProduct?.name || giftProduct?.productName || bundle.giftProductName || `Sản phẩm #${bundle.giftProductId}`;
+
+                    console.log('[formatPromotions] Bundle:', {
+                        mainProductId: bundle.mainProductId,
+                        mainProductName: mainProductName,
+                        giftProductId: bundle.giftProductId,
+                        giftProductName: giftProductName,
+                        foundMain: !!mainProduct,
+                        foundGift: !!giftProduct
+                    });
+
+                    return {
+                        bundle_id: bundle.id,
+                        main_product_id: bundle.mainProductId,
+                        main_product_name: mainProductName,
+                        gift_product_id: bundle.giftProductId,
+                        gift_product_name: giftProductName,
+                        main_quantity: bundle.mainQuantity,
+                        gift_quantity: bundle.giftQuantity
+                    };
+                })
+            }));
+        }
+    };
+}
+
+if (!window.ComboPromotionUI) {
+    window.ComboPromotionUI = {
+        showNotification(message, type = 'success') {
+            const oldNotif = document.querySelector('.combo-notification');
+            if (oldNotif) oldNotif.remove();
+
+            const notification = document.createElement('div');
+            notification.className = `combo-notification ${type}`;
+            notification.innerHTML = `
+                <div class="combo-notification-content">
+                    <i class="fas fa-gift"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            notification.style.cssText = 'position:fixed;top:20px;right:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.3);z-index:10000;animation:slideIn 0.3s';
+
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        },
+
+        showUpsellModal(suggestion, onAddMore) {
+            const oldModal = document.querySelector('.upsell-modal');
+            if (oldModal) oldModal.remove();
+
+            const modal = document.createElement('div');
+            modal.className = 'upsell-modal';
+            modal.innerHTML = `
+                <div class="upsell-content" style="background:white;padding:30px;border-radius:15px;max-width:450px;text-align:center;position:relative;box-shadow:0 10px 40px rgba(0,0,0,0.3)">
+                    <button class="close-btn" style="position:absolute;top:10px;right:15px;background:none;border:none;font-size:28px;cursor:pointer;color:#999">×</button>
+                    <div style="font-size:56px;margin-bottom:15px">💡</div>
+                    <h3 style="color:#333;margin-bottom:10px">Cơ hội tiết kiệm!</h3>
+                    <p style="color:#666;margin-bottom:20px">${suggestion.message}</p>
+                    <div style="background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);padding:15px;border-radius:10px;margin-bottom:20px">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0">
+                            <span style="color:#555">Đang có:</span>
+                            <span style="color:#333;font-weight:600">${suggestion.current_quantity} sản phẩm</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0">
+                            <span style="color:#555">Cần thêm:</span>
+                            <span style="color:#333;font-weight:600">${suggestion.required_quantity - suggestion.current_quantity} sản phẩm</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:8px 0">
+                            <span style="color:#555">Sẽ được tặng:</span>
+                            <span style="color:#333;font-weight:600">${suggestion.gift_quantity} ${suggestion.gift_product_name}</span>
+                        </div>
                     </div>
-                    <div style="display:flex;justify-content:space-between;padding:8px 0">
-                        <span style="color:#555">Cần thêm:</span>
-                        <span style="color:#333;font-weight:600">${suggestion.required_quantity - suggestion.current_quantity} sản phẩm</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;padding:8px 0">
-                        <span style="color:#555">Sẽ được tặng:</span>
-                        <span style="color:#333;font-weight:600">${suggestion.gift_quantity} ${suggestion.gift_product_name}</span>
+                    <div style="display:flex;gap:10px;justify-content:center">
+                        <button class="btn-secondary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:#e0e0e0;color:#666;font-weight:600">Để sau</button>
+                        <button class="btn-primary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-weight:600">Thêm ngay</button>
                     </div>
                 </div>
-                <div style="display:flex;gap:10px;justify-content:center">
-                    <button class="btn-secondary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:#e0e0e0;color:#666;font-weight:600">Để sau</button>
-                    <button class="btn-primary" style="padding:12px 24px;border:none;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;font-weight:600">Thêm ngay</button>
-                </div>
-            </div>
-        `;
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999';
-        
-        document.body.appendChild(modal);
-        
-        modal.querySelector('.close-btn').onclick = () => modal.remove();
-        modal.querySelector('.btn-secondary').onclick = () => modal.remove();
-        modal.querySelector('.btn-primary').onclick = () => {
-            onAddMore(suggestion);
-            modal.remove();
-        };
-        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            `;
+            modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999';
+
+            document.body.appendChild(modal);
+
+            modal.querySelector('.close-btn').onclick = () => modal.remove();
+            modal.querySelector('.btn-secondary').onclick = () => modal.remove();
+            modal.querySelector('.btn-primary').onclick = () => {
+                onAddMore(suggestion);
+                modal.remove();
+            };
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        }
     }
-};
+}
 
 /**
  * Phân tích giỏ hàng và tự động thêm quà tặng combo
@@ -3853,11 +3853,11 @@ function displayComboSuggestions(suggestions) {
     suggestions.forEach(suggestion => {
         if (suggestion.suggestion_type === 'ELIGIBLE') {
             // Đủ điều kiện - Hiển thị thông báo thành công
-            ComboPromotionUI.showNotification(suggestion.message, 'success');
+            window.ComboPromotionUI.showNotification(suggestion.message, 'success');
         } else if (suggestion.suggestion_type === 'UPSELL') {
             // Gần đủ - Hiển thị modal gợi ý (chỉ hiển thị 1 lần)
             if (!document.querySelector('.upsell-modal')) {
-                ComboPromotionUI.showUpsellModal(suggestion, handleUpsellAddMore);
+                window.ComboPromotionUI.showUpsellModal(suggestion, handleUpsellAddMore);
             }
         }
     });
@@ -3976,7 +3976,7 @@ async function autoAddGiftToCart(gift) {
         updateTotal();
         
         // Hiển thị thông báo
-        ComboPromotionUI.showNotification(
+        window.ComboPromotionUI.showNotification(
             `🎉 Đã thêm ${gift.quantity} ${productName} (Quà tặng)`,
             'success'
         );

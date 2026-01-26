@@ -76,14 +76,22 @@ window.addEventListener('DOMContentLoaded',()=>{
           }else{
             showLoginError('Bạn không có quyền truy cập ứng dụng này. Vui lòng kiểm tra lại.');
           }
+      }else{
+        if(res.status >= 500 || res.status === 0){
+          showLoginError('Lỗi kết nối máy chủ. Vui lòng thử lại sau.');
         }else{
-          // Phân biệt lỗi kết nối (gateway/backend) và lỗi sai thông tin
-          if(res.status >= 500 || res.status === 0){
-            showLoginError('Lỗi kết nối máy chủ .Vui lòng thử lại sau.');
-          }else{
-            showLoginError('Tên đăng nhập hoặc mật khẩu không đúng');
+          let message = 'Tên đăng nhập hoặc mật khẩu không đúng';
+          try {
+            const body = await res.json();
+            if (body && typeof body.error === 'string' && body.error.trim()) {
+              message = body.error.trim();
+            }
+          } catch (parseErr) {
+            console.warn('Unable to read login error payload', parseErr);
           }
+          showLoginError(message);
         }
+      }
       }catch(err){
         showLoginError('Lỗi kết nối: '+err.message);
       }
