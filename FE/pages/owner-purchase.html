@@ -62,6 +62,16 @@
         .form-group.inline { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
         .select-search { display: grid; gap: 6px; }
         .select-search .search-label { font-size: 12px; color: rgba(226, 232, 240, 0.7); }
+        .select-search.is-disabled {
+            opacity: 0.5;
+            filter: grayscale(0.25);
+        }
+        .select-search.is-disabled .combo-field {
+            pointer-events: none;
+        }
+        .select-search.is-disabled input {
+            cursor: not-allowed;
+        }
         .select-search input {
             width: 100%;
             padding: 10px 12px;
@@ -391,7 +401,7 @@
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Sản phẩm *</label>
-                            <div class="select-search">
+                            <div class="select-search" id="purchaseSearchWrapper">
                                 <div class="combo-field">
                                     <input type="text" id="purchaseProductSearch" placeholder="Gõ mã hoặc tên sản phẩm..." autocomplete="off" oninput="filterPurchaseOptions()" onfocus="openPurchaseSuggestions()" onkeydown="handlePurchaseKey(event)">
                                     <div id="purchaseSuggestions" class="combo-list" role="listbox" aria-label="Gợi ý sản phẩm"></div>
@@ -404,11 +414,7 @@
                         </div>
                         <div class="form-group" id="purchaseCostGroup">
                             <label>Giá vốn mới (VNĐ) *</label>
-                            <input type="number" id="purchaseCostPrice" required min="0" step="100" oninput="updateCostPreview()">
-                        </div>
-                        <div class="form-group">
-                            <label>Số lượng nhập *</label>
-                            <input type="number" id="purchaseQuantity" required min="1" value="1" oninput="updateCostPreview()">
+                            <input type="text" id="purchaseCostPrice" inputmode="numeric" required oninput="handleCurrencyInput('purchaseCostPrice')">
                         </div>
                     </div>
                     <div class="form-group inline checkbox-row">
@@ -418,43 +424,59 @@
                             <span class="checkbox-text">Sản phẩm mới (chưa có trong cửa hàng)</span>
                         </label>
                     </div>
+                    <div class="form-group">
+                        <label>Số lượng nhập *</label>
+                        <input type="number" id="purchaseQuantity" required min="1" value="1" oninput="updateCostPreview()">
+                    </div>
                     <div id="newProductFields" style="display:none;">
                         <div class="form-grid">
                             <div class="form-group">
-                                <label>Ten san pham *</label>
-                                <input type="text" id="newProductName" placeholder="VD: Sua tuoi Vinamilk 1L">
+                                <label>Tên sản phẩm *</label>
+                                <input type="text" id="newProductName" placeholder="VD: Sữa tươi Vinamilk 1L">
                             </div>
                             <div class="form-group">
-                                <label>Ma san pham (SKU) *</label>
+                                <label>Mã sản phẩm (SKU) *</label>
                                 <input type="text" id="newProductCode" placeholder="VD: VM-1L">
                             </div>
                             <div class="form-group">
-                                <label>Gia ban *</label>
-                                <input type="number" id="newProductPrice" min="0" step="100" placeholder="VD: 25000">
+                                <label>Giá bán *</label>
+                                <input type="text" id="newProductPrice" inputmode="numeric" placeholder="VD: 25000" oninput="handleCurrencyInput('newProductPrice')">
                             </div>
                             <div class="form-group">
-                                <label>Gia von nhap *</label>
-                                <input type="number" id="newProductCostPrice" min="0" step="100" placeholder="VD: 15000" oninput="syncCostPrice('newProductCostPrice','purchaseCostPrice'); updateCostPreview()">
+                                <label>Giá vốn nhập *</label>
+                                <input type="text" id="newProductCostPrice" inputmode="numeric" placeholder="VD: 15000" oninput="handleCurrencyInput('newProductCostPrice','purchaseCostPrice')">
                             </div>
                             <div class="form-group">
-                                <label>Don vi</label>
-                                <input type="text" id="newProductUnit" placeholder="VD: chai, hop, goi">
+                                <label>Đơn vị</label>
+                                <input type="text" id="newProductUnit" placeholder="VD: chai, hộp, gói">
                             </div>
                             <div class="form-group">
-                                <label>Barcode</label>
+                                <label>Mã vạch</label>
                                 <input type="text" id="newProductBarcode" placeholder="VD: 893...">
                             </div>
                             <div class="form-group">
-                                <label>Category ID</label>
-                                <input type="number" id="newProductCategory" min="1" step="1" placeholder="VD: 1">
+                                <label>Danh mục</label>
+                                <select id="newProductCategory">
+                                    <option value="">-- Chọn danh mục --</option>
+                                    <option value="1">1 - Nước Giải Khát</option>
+                                    <option value="2">2 - Đồ Ăn Vặt</option>
+                                    <option value="3">3 - Hóa Mỹ Phẩm</option>
+                                    <option value="4">4 - Gia Vị & Nước Chấm</option>
+                                    <option value="5">5 - Sản Phẩm Chăm Sóc Nhà Cửa</option>
+                                    <option value="6">6 - Bánh Kẹo</option>
+                                    <option value="7">7 - Bia & Rượu</option>
+                                    <option value="8">8 - Mì, Phở, Cháo Gói</option>
+                                    <option value="9">9 - Đồ Hộp & Thực Phẩm Đóng Hộp</option>
+                                    <option value="10">10 - Thuốc Lá & Diêm</option>
+                                </select>
                             </div>
                             <div class="form-group">
-                                <label>Anh san pham *</label>
+                                <label>Ảnh sản phẩm *</label>
                                 <input type="file" id="newProductImage" accept=".jpg,.jpeg,.png,.webp">
                             </div>
                             <div class="form-group" style="grid-column: 1 / -1;">
-                                <label>Mo ta</label>
-                                <textarea id="newProductDescription" rows="2" placeholder="Mo ta ngan ve san pham"></textarea>
+                                <label>Mô tả</label>
+                                <textarea id="newProductDescription" rows="2" placeholder="Mô tả ngắn về sản phẩm"></textarea>
                             </div>
                         </div>
                     </div>
@@ -581,6 +603,7 @@
         const API_BASE = resolveApiBase();
         let allProducts = [];
         let productCosts = {};
+        const DEFAULT_CATEGORY_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
         function resolveApiBase() {
             const configured = window.API_BASE_URL || window.API_BASE;
@@ -691,6 +714,10 @@
         }
 
         function pickRandomCategoryId() {
+            if (DEFAULT_CATEGORY_IDS.length > 0) {
+                const randomIndex = Math.floor(Math.random() * DEFAULT_CATEGORY_IDS.length);
+                return DEFAULT_CATEGORY_IDS[randomIndex].toString();
+            }
             const categoryIds = (allProducts || [])
                 .map(p => p.categoryId)
                 .filter(id => Number.isFinite(Number(id)))
@@ -706,18 +733,11 @@
         function applyAutoCodesIfEmpty() {
             const codeInput = document.getElementById('newProductCode');
             const barcodeInput = document.getElementById('newProductBarcode');
-            const categoryInput = document.getElementById('newProductCategory');
             if (codeInput && !codeInput.value.trim()) {
                 codeInput.value = generateUniqueSku();
             }
             if (barcodeInput && !barcodeInput.value.trim()) {
                 barcodeInput.value = generateUniqueBarcode();
-            }
-            if (categoryInput && !categoryInput.value.trim()) {
-                const picked = pickRandomCategoryId();
-                if (picked) {
-                    categoryInput.value = picked;
-                }
             }
         }
 
@@ -725,6 +745,7 @@
             const purchaseSelect = document.getElementById('purchaseProduct');
             const searchInput = document.getElementById('purchaseProductSearch');
             const suggestions = document.getElementById('purchaseSuggestions');
+            const searchWrapper = document.getElementById('purchaseSearchWrapper');
             const newFields = document.getElementById('newProductFields');
             const purchaseCostGroup = document.getElementById('purchaseCostGroup');
             const newCostField = document.getElementById('newProductCostPrice');
@@ -744,6 +765,9 @@
                     searchInput.value = '';
                     filterPurchaseOptions();
                 }
+            }
+            if (searchWrapper) {
+                searchWrapper.classList.toggle('is-disabled', isNew);
             }
             if (suggestions && isNew) {
                 suggestions.classList.remove('show');
@@ -805,12 +829,12 @@
             const list = document.getElementById('purchaseSuggestions');
             if (!list) return;
             if (!items.length) {
-                list.innerHTML = '<div class="combo-empty">Khong tim thay san pham</div>';
+                list.innerHTML = '<div class="combo-empty">Không tìm thấy sản phẩm</div>';
                 list.classList.add('show');
                 return;
             }
             list.innerHTML = items.map((p, index) => {
-                const label = `${p.code || p.id} - ${p.name || 'San pham'}`;
+                const label = `${p.code || p.id} - ${p.name || 'Sản phẩm'}`;
                 return `<button type="button" class="combo-item" data-id="${p.id}" data-index="${index}">${label}</button>`;
             }).join('');
             list.classList.add('show');
@@ -879,8 +903,41 @@
             if (costInput.value.trim()) return;
             const oldCost = Number(product.costPrice);
             if (Number.isFinite(oldCost)) {
-                costInput.value = oldCost;
+                costInput.value = formatCurrencyInputValue(oldCost);
             }
+        }
+
+        function parseCurrencyValue(rawValue) {
+            if (rawValue === null || rawValue === undefined) {
+                return NaN;
+            }
+            const digits = rawValue.toString().replace(/[^\d]/g, '');
+            if (!digits) {
+                return NaN;
+            }
+            return Number(digits);
+        }
+
+        function formatCurrencyInputValue(value) {
+            const numberValue = Number(value);
+            if (!Number.isFinite(numberValue)) {
+                return '';
+            }
+            return numberValue.toLocaleString('vi-VN');
+        }
+
+        function handleCurrencyInput(sourceId, mirrorId) {
+            const source = document.getElementById(sourceId);
+            if (!source) return;
+            const parsed = parseCurrencyValue(source.value);
+            source.value = Number.isFinite(parsed) ? formatCurrencyInputValue(parsed) : '';
+            if (mirrorId) {
+                const mirror = document.getElementById(mirrorId);
+                if (mirror) {
+                    mirror.value = source.value;
+                }
+            }
+            updateCostPreview();
         }
 
         async function uploadProductImage(productName, file) {
@@ -898,7 +955,7 @@
             });
 
             if (!res.ok) {
-                let message = 'Khong the tai anh san pham';
+                let message = 'Không thể tải ảnh sản phẩm';
                 try {
                     const data = await res.json();
                     if (data && data.error) message = data.error;
@@ -927,7 +984,7 @@
                 applyCostFallback(product);
             }
             const currentStock = product ? (product.stock || 0) : 0;
-            const costInputValue = parseFloat(document.getElementById('purchaseCostPrice').value);
+            const costInputValue = parseCurrencyValue(document.getElementById('purchaseCostPrice').value);
             const newCost = Number.isFinite(costInputValue) ? costInputValue : oldCost;
             const quantity = parseInt(document.getElementById('purchaseQuantity').value) || 1;
             const total = newCost * quantity;
@@ -946,7 +1003,7 @@
             event.preventDefault();
 
             const costInput = document.getElementById('purchaseCostPrice');
-            let costPrice = costInput ? parseFloat(costInput.value) : NaN;
+            let costPrice = costInput ? parseCurrencyValue(costInput.value) : NaN;
             const quantity = parseInt(document.getElementById('purchaseQuantity').value);
             const note = document.getElementById('purchaseNote').value;
             const isNew = isNewProductMode();
@@ -957,12 +1014,12 @@
                 const fallback = product ? Number(product.costPrice) : NaN;
                 if (Number.isFinite(fallback)) {
                     costPrice = fallback;
-                    if (costInput) costInput.value = fallback;
+                    if (costInput) costInput.value = formatCurrencyInputValue(fallback);
                 }
             }
 
             if (!costPrice || !quantity) {
-                alert('Vui long nhap day du thong tin');
+                alert('Vui lòng nhập đầy đủ thông tin');
                 return;
             }
 
@@ -974,18 +1031,18 @@
                     const barcode = (document.getElementById('newProductBarcode').value || '').trim();
                     const unit = (document.getElementById('newProductUnit').value || '').trim();
                     const description = (document.getElementById('newProductDescription').value || '').trim();
-                    const price = parseFloat(document.getElementById('newProductPrice').value);
+                    const price = parseCurrencyValue(document.getElementById('newProductPrice').value);
                     const categoryRaw = document.getElementById('newProductCategory').value;
                     const categoryId = categoryRaw ? parseInt(categoryRaw, 10) : null;
                     const imageInput = document.getElementById('newProductImage');
                     const imageFile = imageInput && imageInput.files ? imageInput.files[0] : null;
 
                     if (!name || !code || !Number.isFinite(price) || price <= 0) {
-                        alert('Vui long nhap day du thong tin san pham moi');
+                        alert('Vui lòng nhập đầy đủ thông tin sản phẩm mới');
                         return;
                     }
                     if (!imageFile) {
-                        alert('Vui long chon anh san pham');
+                        alert('Vui lòng chọn ảnh sản phẩm');
                         return;
                     }
 
@@ -1012,12 +1069,12 @@
 
                     if (!res.ok) {
                         const error = await res.json();
-                        throw new Error(error.error || 'Khong the nhap hang san pham moi');
+                        throw new Error(error.error || 'Không thể nhập hàng sản phẩm mới');
                     }
                 } else {
                     const productId = document.getElementById('purchaseProduct').value;
                     if (!productId) {
-                        alert('Vui long chon san pham');
+                        alert('Vui lòng chọn sản phẩm');
                         return;
                     }
                     const res = await fetch(`${API_BASE}/product-costs/purchase`, {
@@ -1028,11 +1085,11 @@
 
                     if (!res.ok) {
                         const error = await res.json();
-                        throw new Error(error.error || 'Khong the nhap hang');
+                        throw new Error(error.error || 'Không thể nhập hàng');
                     }
                 }
 
-                alert('Da nhap hang thanh cong! Gia von da duoc cap nhat.');
+                alert('Đã nhập hàng thành công! Giá vốn đã được cập nhật.');
                 document.getElementById('purchaseForm').reset();
                 const newToggle = document.getElementById('isNewProduct');
                 if (newToggle) {
@@ -1043,7 +1100,7 @@
                 loadProducts();
             } catch (e) {
                 console.error('Error submitting purchase:', e);
-                alert('Loi: ' + (e.message || 'Loi ket noi server'));
+                alert('Lỗi: ' + (e.message || 'Lỗi kết nối server'));
             }
         }
 
