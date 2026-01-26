@@ -1,5 +1,7 @@
 package com.example.promotion.controller;
 
+import com.example.promotion.dto.CartItemPriceRequest;
+import com.example.promotion.dto.CartItemPriceResponse;
 import com.example.promotion.dto.PromotionDTO;
 import com.example.promotion.service.PromotionService;
 import org.springframework.http.HttpStatus;
@@ -22,8 +24,24 @@ public class PromotionController {
 
     // GET /api/v1/promotions
     @GetMapping
-    public ResponseEntity<List<PromotionDTO>> getAllPromotions() {
+    public ResponseEntity<List<PromotionDTO>> getAllPromotions(
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "type", required = false) String type,
+            @RequestParam(value = "targetType", required = false) String targetType,
+            @RequestParam(value = "targetId", required = false) Long targetId,
+            @RequestParam(value = "active", required = false) Boolean active
+    ) {
         try {
+            boolean hasFilter = (search != null && !search.isBlank())
+                    || (type != null && !type.isBlank())
+                    || (targetType != null && !targetType.isBlank())
+                    || targetId != null
+                    || active != null;
+            if (hasFilter) {
+                return ResponseEntity.ok(
+                        promotionService.searchPromotions(search, type, targetType, targetId, active)
+                );
+            }
             return ResponseEntity.ok(promotionService.getAllPromotions());
         } catch (RuntimeException ex) {
             return ResponseEntity.ok(Collections.emptyList());
@@ -47,6 +65,12 @@ public class PromotionController {
         return dto != null
                 ? ResponseEntity.ok(dto)
                 : ResponseEntity.notFound().build();
+    }
+
+    // GET /api/v1/promotions/generate-code?name=...
+    @GetMapping("/generate-code")
+    public ResponseEntity<?> generateCode(@RequestParam(value = "name", required = false) String name) {
+        return ResponseEntity.ok(java.util.Map.of("code", promotionService.generatePromotionCode(name)));
     }
 
     // POST /api/v1/promotions
@@ -90,6 +114,19 @@ public class PromotionController {
     @PostMapping("/sync")
     public ResponseEntity<?> syncPromotion(@RequestBody PromotionDTO dto) {
         return ResponseEntity.ok(promotionService.createPromotion(dto));
+    }
+
+    // POST /api/v1/promotions/calculate-prices
+    @PostMapping("/calculate-prices")
+    public ResponseEntity<List<CartItemPriceResponse>> calculateCartPrices(
+            @RequestBody CartItemPriceRequest request
+    ) {
+        try {
+            List<CartItemPriceResponse> prices = promotionService.calculateCartItemPrices(request);
+            return ResponseEntity.ok(prices);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     // GET /api/v1/promotions/validate/{code}

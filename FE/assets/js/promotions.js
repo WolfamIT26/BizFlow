@@ -3,6 +3,7 @@ const API_BASE = resolveApiBase();
 let promotions = [];
 let products = [];
 let promoProducts = [];
+let productMap = new Map();
 let searchTerm = '';
 let filterType = 'ALL';
 const PRODUCT_IMAGE_LIST_URL = '/assets/data/product-image-files.json';
@@ -95,6 +96,7 @@ async function loadPromotions() {
         const allPromotions = await promoRes.json();
         promotions = (allPromotions || []).filter(isPromotionActive);
         products = await productRes.json();
+        productMap = new Map((Array.isArray(products) ? products : []).map(p => [p.id, p]));
         promoProducts = buildPromoProducts(promotions, products);
         
         updateSummary();
@@ -122,7 +124,12 @@ function buildPromoProducts(activePromos, productList) {
                 safeProducts.forEach(p => { if (p.categoryId === t.targetId) targetIds.add(p.id); });
             }
         });
-        (promo.bundleItems || []).forEach(bi => { if (bi.productId) targetIds.add(bi.productId); });
+        (promo.bundleItems || []).forEach(bi => {
+            const mainId = bi.mainProductId ?? bi.productId;
+            const giftId = bi.giftProductId ?? null;
+            if (mainId) targetIds.add(mainId);
+            if (giftId) targetIds.add(giftId);
+        });
 
         targetIds.forEach((id) => {
             const product = productMap.get(id);
@@ -176,6 +183,9 @@ function renderPromoGrid(list) {
         const imageMarkup = buildProductImageMarkup(product);
         const discountLabel = entry.promoLabel || '-';
         const promoDates = formatPromoDates(promo.startDate, promo.endDate);
+        const bundleInfo = promo.discountType === 'BUNDLE'
+            ? getBundleInfo(promo, product.id)
+            : null;
 
         return `
             <div class="promo-card">
@@ -198,6 +208,7 @@ function renderPromoGrid(list) {
                         <div>CT: <strong>${escapeHtml(promo.name || promo.code || 'Khuyến mãi')}</strong></div>
                         <div class="promo-discount">Ưu đãi: ${discountLabel}</div>
                         <div class="promo-expiry">Hạn: ${promoDates}</div>
+                        ${bundleInfo ? renderBundleInfo(bundleInfo) : ''}
                     </div>
                 </div>
             </div>
@@ -254,6 +265,54 @@ function getProductImageSrc(product) {
 function buildProductImageMarkup(product) {
     const src = getProductImageSrc(product);
     return src ? `<img src="${encodeURI(src)}" alt="product" loading="lazy" />` : PRODUCT_ICON;
+}
+
+function buildTinyProductImageMarkup(product) {
+    const src = getProductImageSrc(product);
+    return src ? `<img src="${encodeURI(src)}" alt="product" loading="lazy" />` : PRODUCT_ICON;
+}
+
+function getBundleInfo(promo, productId) {
+    const items = Array.isArray(promo?.bundleItems) ? promo.bundleItems : [];
+    if (!items.length) return null;
+    const match = items.find(b => {
+        const mainId = b.mainProductId ?? b.productId;
+        const giftId = b.giftProductId ?? null;
+        return Number(mainId) === Number(productId) || Number(giftId) === Number(productId);
+    }) || items[0];
+    if (!match) return null;
+    const mainId = match.mainProductId ?? match.productId;
+    const giftId = match.giftProductId ?? match.productId;
+    const mainQty = match.mainQuantity ?? match.quantity ?? 1;
+    const giftQty = match.giftQuantity ?? 1;
+    const mainProduct = productMap.get(Number(mainId));
+    const giftProduct = productMap.get(Number(giftId)) || mainProduct;
+    return { mainProduct, giftProduct, mainQty, giftQty };
+}
+
+function renderBundleInfo(bundle) {
+    const main = bundle.mainProduct || {};
+    const gift = bundle.giftProduct || {};
+    const mainName = main.name || main.code || 'Sáº£n pháº©m';
+    const giftName = gift.name || gift.code || 'Sáº£n pháº©m';
+    return `
+        <div class="promo-bundle">
+            <div class="bundle-row">
+                <span class="bundle-label">Mua</span>
+                <div class="bundle-item">
+                    <div class="bundle-thumb">${buildTinyProductImageMarkup(main)}</div>
+                    <div class="bundle-text">x${bundle.mainQty} ${escapeHtml(mainName)}</div>
+                </div>
+            </div>
+            <div class="bundle-row">
+                <span class="bundle-label">Tặng</span>
+                <div class="bundle-item">
+                    <div class="bundle-thumb">${buildTinyProductImageMarkup(gift)}</div>
+                    <div class="bundle-text">x${bundle.giftQty} ${escapeHtml(giftName)}</div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 function getPromoPrice(base, promo) {
@@ -324,4 +383,5 @@ function updateSummary() {
     const el = document.getElementById('promoSummary');
     if (el) el.textContent = `${promotions.length} khuyến mãi áp dụng | ${promoProducts.length} sản phẩm giảm giá`;
 }
+
 

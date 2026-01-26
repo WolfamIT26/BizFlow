@@ -18,7 +18,17 @@ SELECT
   ) AS targets,
   COALESCE(
     (
-      SELECT JSON_ARRAYAGG(JSON_OBJECT('productId', bi.product_id, 'quantity', bi.quantity))
+      SELECT JSON_ARRAYAGG(JSON_OBJECT(
+        'productId', bi.product_id,
+        'quantity', bi.quantity,
+        'mainProductId', bi.main_product_id,
+        'mainQuantity', bi.main_quantity,
+        'giftProductId', bi.gift_product_id,
+        'giftQuantity', bi.gift_quantity,
+        'giftDiscountType', bi.gift_discount_type,
+        'giftDiscountValue', bi.gift_discount_value,
+        'status', bi.status
+      ))
       FROM bundle_items bi
       WHERE bi.promotion_id = p.promotion_id
     ),

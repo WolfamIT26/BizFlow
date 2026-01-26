@@ -67,7 +67,13 @@ public class ProductCostService {
     @Transactional
     public ProductCost updateCostPrice(ProductCostUpdateRequest request, Long userId) {
         Long productId = request.getProductId();
-        BigDecimal newCostPrice = request.getCostPrice();
+        if (productId == null) {
+            throw new IllegalArgumentException("Product ID is required");
+        }
+        BigDecimal newCostPrice = resolveCostPrice(productId, request.getCostPrice());
+        if (newCostPrice == null) {
+            throw new IllegalArgumentException("Cost price is required");
+        }
         Integer quantity = request.getQuantity() != null ? request.getQuantity() : 0;
         String note = request.getNote();
 
@@ -206,6 +212,19 @@ public class ProductCostService {
         inventoryStockRepository.save(stock);
 
         return recordPurchase(saved.getId(), costPrice, quantity, request.getNote(), userId);
+    }
+
+    private BigDecimal resolveCostPrice(Long productId, BigDecimal inputCost) {
+        if (inputCost != null) {
+            return inputCost;
+        }
+        Optional<BigDecimal> currentCost = productCostRepository.findByProductId(productId)
+                .map(ProductCost::getCostPrice);
+        if (currentCost.isPresent()) {
+            return currentCost.get();
+        }
+        Optional<Product> product = productRepository.findById(productId);
+        return product.map(Product::getCostPrice).orElse(null);
     }
 
     private String normalizeOptional(String value) {
