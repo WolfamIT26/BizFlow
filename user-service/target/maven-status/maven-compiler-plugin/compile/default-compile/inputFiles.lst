@@ -1,0 +1,16 @@
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/dto/BranchSummary.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/util/PasswordEncoder.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/controller/UserController.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/user/HealthController.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/dto/CreateBranchRequest.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/controller/BranchController.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/repository/UserRepository.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/entity/User.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/entity/Branch.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/entity/Role.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/dto/RecentUserSummary.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/service/BranchService.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/repository/BranchRepository.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/dto/CreateUserRequest.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/bizflow/service/UserService.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/user-service/src/main/java/com/example/user/UserserviceApplication.java

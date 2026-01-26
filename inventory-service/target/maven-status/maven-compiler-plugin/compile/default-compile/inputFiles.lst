@@ -1,0 +1,15 @@
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/inventory/InventoryserviceApplication.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/LowStockAlertDTO.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/InventoryAdjustRequest.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/inventory/HealthController.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/service/InventoryService.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/entity/InventoryTransaction.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/InventoryStockOutRequest.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/entity/InventoryStock.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/InventoryReceiptResponse.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/repository/InventoryTransactionRepository.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/repository/InventoryStockRepository.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/entity/InventoryTransactionType.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/InventoryReceiptRequest.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/dto/InventoryHistoryItem.java
+/Users/melaniepham/Documents/Viet/HK1 Năm 3/XDHTHDT/26-01-2026/BizFlow/inventory-service/src/main/java/com/example/bizflow/controller/InventoryController.java

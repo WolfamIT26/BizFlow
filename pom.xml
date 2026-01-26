@@ -12,7 +12,16 @@
     <name>BizFlow Parent</name>
 
     <modules>
-        <module>bizflow-app</module>
+        <module>auth-service</module>
+        <module>user-service</module>
+        <module>product-service</module>
+        <module>inventory-service</module>
+        <module>order-service</module>
+        <module>customer-service</module>
         <module>promotion-service</module>
+        <module>payment-service</module>
+        <module>report-service</module>
+        <module>worker-service</module>
+        <module>fcm-service</module>
     </modules>
 </project>

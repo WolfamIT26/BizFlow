@@ -1,0 +1,15 @@
+com/example/inventory/InventoryserviceApplication.class
+com/example/bizflow/entity/InventoryTransactionType.class
+com/example/bizflow/repository/InventoryStockRepository.class
+com/example/bizflow/dto/InventoryHistoryItem.class
+com/example/bizflow/controller/InventoryController.class
+com/example/bizflow/dto/InventoryStockOutRequest.class
+com/example/bizflow/entity/InventoryStock.class
+com/example/bizflow/dto/InventoryAdjustRequest.class
+com/example/bizflow/dto/LowStockAlertDTO.class
+com/example/bizflow/dto/InventoryReceiptRequest.class
+com/example/inventory/HealthController.class
+com/example/bizflow/dto/InventoryReceiptResponse.class
+com/example/bizflow/service/InventoryService.class
+com/example/bizflow/entity/InventoryTransaction.class
+com/example/bizflow/repository/InventoryTransactionRepository.class
