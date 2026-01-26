@@ -84,6 +84,22 @@
             border-left-color: var(--highlight);
             color: #fff;
         }
+        .nav-item.drawer-active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
+        body.purchase-open .nav-item.active {
+            background: transparent;
+            border-left-color: transparent;
+            color: #e5e7eb;
+        }
+        body.purchase-open .nav-item[data-purchase-link="true"],
+        body.purchase-open .nav-item.drawer-active {
+            background: rgba(255,255,255,0.1);
+            border-left-color: var(--highlight);
+            color: #fff;
+        }
         .nav-item .icon { width: 18px; text-align: center; }
         .content { padding: 24px; }
         .page-header {
@@ -804,6 +820,8 @@
 
             if (!links.length || !drawer || !frame) return;
 
+            let previousActiveLink = null;
+
             const openDrawer = (target) => {
                 const link = target?.currentTarget || target;
                 if (target && target.preventDefault) {
@@ -813,11 +831,28 @@
                 }
                 const url = (link && link.dataset && link.dataset.purchaseHref) || 'owner-purchase.html';
                 frame.src = url;
+                const allNavItems = document.querySelectorAll('.nav-item');
+                allNavItems.forEach((item) => {
+                    if (item.classList.contains('active')) {
+                        previousActiveLink = item;
+                    }
+                    item.classList.remove('active');
+                });
+                if (link && link.classList) {
+                    link.classList.add('drawer-active');
+                }
                 document.body.classList.add('purchase-open');
                 drawer.setAttribute('aria-hidden', 'false');
             };
 
             const closeDrawer = () => {
+                const activeDrawerLink = document.querySelector('.nav-item.drawer-active');
+                if (activeDrawerLink) {
+                    activeDrawerLink.classList.remove('drawer-active');
+                }
+                if (previousActiveLink) {
+                    previousActiveLink.classList.add('active');
+                }
                 document.body.classList.remove('purchase-open');
                 drawer.setAttribute('aria-hidden', 'true');
             };

@@ -1237,7 +1237,9 @@
                         eventOrLink.preventDefault();
                     }
 
-                    const url = (link && link.dataset && link.dataset.purchaseHref) ? link.dataset.purchaseHref : 'owner-purchase.html';
+                    const rawUrl = (link && link.dataset && link.dataset.purchaseHref) ? link.dataset.purchaseHref : 'owner-purchase.html';
+                    const cacheBuster = `v=${Date.now()}`;
+                    const url = rawUrl.includes('?') ? `${rawUrl}&${cacheBuster}` : `${rawUrl}?${cacheBuster}`;
                     frame.src = url;
 
                     const allNavItems = document.querySelectorAll('.nav-item');

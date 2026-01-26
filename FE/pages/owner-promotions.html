@@ -653,9 +653,9 @@
                                 <option value="100">100%</option>
                             </select>
                             <select id="promoValueBundle" style="display:none;">
-                                <option value="1">Mua 1 tặng 1</option>
-                                <option value="2">Mua 2 tặng 1</option>
-                                <option value="3">Mua 3 tặng 1</option>
+                                <option value="1:1">Mua 1 tặng 1</option>
+                                <option value="2:1">Mua 2 tặng 1</option>
+                                <option value="3:1">Mua 3 tặng 1</option>
                             </select>
                             <span id="promoValueSuffix" class="value-suffix"></span>
                         </div>
@@ -685,10 +685,6 @@
                     <div class="section-note">Chọn sản phẩm mua và sản phẩm tặng, kèm mẫu combo.</div>
                     <div id="bundleList" class="stack"></div>
                     <button type="button" class="btn btn-warning btn-sm" onclick="addBundleRow()">+ Thêm combo</button>
-                </div>
-
-                <div class="form-group" style="margin-top: 12px;">
-                    <label><input type="checkbox" id="promoActive" checked> Đang hoạt động</label>
                 </div>
 
                 <div class="form-actions">
@@ -819,9 +815,12 @@
                 const typeLabel = getTypeLabel(p.discountType);
                 const targets = formatTargets(p.targets);
                 const bundles = formatBundles(p.bundleItems);
-                const statusBadge = p.active ? 'badge-active' : 'badge-inactive';
-                const statusText = p.active ? 'Đang chạy' : 'Tạm dừng';
-                const activeBtn = p.active ? `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>` : '';
+                const status = getPromotionStatus(p);
+                const statusBadge = status.badgeClass;
+                const statusText = status.text;
+                const activeBtn = p.active === false
+                    ? `<button class="btn btn-sm btn-success" onclick="activatePromotion(${p.id})">▶️</button>`
+                    : `<button class="btn btn-sm btn-warning" onclick="deactivatePromotion(${p.id})">⏸️</button>`;
                 
                 rows.push(`<tr>
                     <td><strong>${escapeHtml(p.code || '-')}</strong></td>
@@ -847,13 +846,14 @@
             tbody.innerHTML = rows.join('');
         }
 
-        function openCreateModal() {
+        async function openCreateModal() {
             document.getElementById('modalTitle').textContent = 'Thêm khuyến mãi';
             document.getElementById('promotionForm').reset();
             document.getElementById('promotionId').value = '';
             promoCodeAuto = true;
             document.getElementById('targetList').innerHTML = '';
             document.getElementById('bundleList').innerHTML = '';
+            await Promise.all([loadProductsForTargets(), loadCategoriesForTargets()]);
             addTargetRow();
             addBundleRow();
             setFormStatus('');
@@ -871,9 +871,10 @@
             document.getElementById('promotionModal').classList.add('active');
         }
 
-        function openEditModal(id) {
+        async function openEditModal(id) {
             const promo = promotions.find(p => p.id === id);
             if (!promo) return;
+            await Promise.all([loadProductsForTargets(), loadCategoriesForTargets()]);
 
             document.getElementById('modalTitle').textContent = 'Cập nhật khuyến mãi';
             document.getElementById('promotionId').value = promo.id || '';
@@ -887,8 +888,6 @@
             document.getElementById('promoDescription').value = promo.description || '';
             document.getElementById('promoStart').value = toInputDateTime(promo.startDate);
             document.getElementById('promoEnd').value = toInputDateTime(promo.endDate);
-            document.getElementById('promoActive').checked = promo.active !== false;
-
             document.getElementById('targetList').innerHTML = '';
             const targets = Array.isArray(promo.targets) && promo.targets.length ? promo.targets : [null];
             targets.forEach(t => addTargetRow(t));
@@ -906,6 +905,11 @@
                 const bundleSelect = document.getElementById('promoValueBundle');
                 if (bundleSelect && ['1:1', '2:1', '3:1'].includes(patternValue)) {
                     bundleSelect.value = patternValue;
+                }
+            } else {
+                const bundleSelect = document.getElementById('promoValueBundle');
+                if (bundleSelect && !bundleSelect.value) {
+                    bundleSelect.value = '1:1';
                 }
             }
 
@@ -935,8 +939,33 @@
             return cachedProducts;
         }
 
+        function normalizeSearchText(value) {
+            return (value || '')
+                .toString()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .trim();
+        }
+
+        function filterProductsByQuery(list, query) {
+            const q = normalizeSearchText(query);
+            if (!q) return Array.isArray(list) ? list : [];
+            const source = Array.isArray(list) ? list : [];
+            return source.filter(p => {
+                const text = `${p.name || ''} ${p.code || ''} ${p.legacyName || ''} ${p.legacyCode || ''} ${p.sku || ''} ${p.barcode || ''}`;
+                return normalizeSearchText(text).includes(q);
+            });
+        }
+
         async function fetchProducts(query) {
             const q = (query || '').trim();
+            if (!productsLoaded) {
+                await loadProductsForTargets();
+            }
+            if (productsLoaded && cachedProducts.length) {
+                return filterProductsByQuery(cachedProducts, q);
+            }
             const url = q ? `${API_BASE}/products?search=${encodeURIComponent(q)}` : `${API_BASE}/products`;
             try {
                 const res = await fetch(url, { headers: getAuthHeaders() });
@@ -946,13 +975,15 @@
                         cachedProducts = list;
                         productsLoaded = true;
                     }
-                    return Array.isArray(list) ? list : [];
+                    if (Array.isArray(list) && list.length) {
+                        return list;
+                    }
                 }
                 console.warn('Không thể tìm sản phẩm:', res.status);
             } catch (err) {
                 console.warn('Không thể tìm sản phẩm.');
             }
-            return [];
+            return filterProductsByQuery(cachedProducts, q);
         }
 
         async function loadCategoriesForTargets() {
@@ -1263,12 +1294,19 @@
             search.addEventListener('focus', () => {
                 if (search.value.trim()) {
                     runSearch();
-                } else if (!productsLoaded) {
-                    loadProductsForTargets().then(() => {
-                        setProductOptions(select, select.value, cachedProducts);
-                        wrapper._products = cachedProducts;
-                    });
+                    return;
                 }
+                if (productsLoaded && cachedProducts.length) {
+                    showDropdown(dropdown, cachedProducts, search, select);
+                    return;
+                }
+                loadProductsForTargets().then(() => {
+                    setProductOptions(select, select.value, cachedProducts);
+                    wrapper._products = cachedProducts;
+                    if (cachedProducts.length) {
+                        showDropdown(dropdown, cachedProducts, search, select);
+                    }
+                });
             });
             search.addEventListener('blur', (e) => {
                 setTimeout(() => {
@@ -1473,7 +1511,7 @@
                         : Number(document.getElementById('promoValue').value),
                 startDate: formatDateValue(document.getElementById('promoStart').value),
                 endDate: formatDateValue(document.getElementById('promoEnd').value),
-                active: document.getElementById('promoActive').checked
+                active: true
             };
 
             payload.targets = Array.from(document.querySelectorAll('#targetList .inline-row')).map(row => {
@@ -1738,7 +1776,6 @@
         }
 
         async function deactivatePromotion(id) {
-            if (!confirm('Tạm dừng khuyến mãi này?')) return;
             try {
                 const res = await fetch(`${PROMOTION_API}/${id}/deactivate`, {
                     method: 'PATCH',
@@ -1751,6 +1788,22 @@
                 await loadPromotions();
             } catch (err) {
                 alert(err.message || 'Lỗi khi tạm dừng.');
+            }
+        }
+
+        async function activatePromotion(id) {
+            try {
+                const res = await fetch(`${PROMOTION_API}/${id}/activate`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Không thể tiếp tục');
+                }
+                await loadPromotions();
+            } catch (err) {
+                alert(err.message || 'Lỗi khi tiếp tục.');
             }
         }
 
@@ -1846,6 +1899,25 @@
             const endText = formatDate(end);
             if (startText === '-' && endText === '-') return 'Không giới hạn';
             return `${startText} → ${endText}`;
+        }
+
+        function getPromotionStatus(promo) {
+            if (!promo) {
+                return { badgeClass: 'badge-inactive', text: 'Không xác định', isRunning: false };
+            }
+            if (promo.active === false) {
+                return { badgeClass: 'badge-inactive', text: 'Tạm dừng', isRunning: false };
+            }
+            const now = new Date();
+            const start = parseDate(promo.startDate);
+            const end = parseDate(promo.endDate);
+            if (start && now < start) {
+                return { badgeClass: 'badge-inactive', text: 'Chờ chạy', isRunning: false };
+            }
+            if (end && now > end) {
+                return { badgeClass: 'badge-inactive', text: 'Hết hạn', isRunning: false };
+            }
+            return { badgeClass: 'badge-active', text: 'Đang chạy', isRunning: true };
         }
 
         function formatDate(value) {

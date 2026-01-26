@@ -209,6 +209,22 @@ public class PromotionServiceImpl implements PromotionService {
         evictActivePromotionByCode(promotion.getCode());
     }
 
+    @Override
+    @CacheEvict(cacheNames = "activePromotions", allEntries = true)
+    public void activatePromotion(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Promotion id must not be null");
+        }
+
+        Promotion promotion = promotionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Promotion not found"));
+
+        promotion.setActive(true);
+        promotionRepository.save(promotion);
+        evictPromotionByCode(promotion.getCode());
+        evictActivePromotionByCode(promotion.getCode());
+    }
+
     /* ================== MAPPING ================== */
 
     private PromotionDTO toDTO(Promotion promotion) {

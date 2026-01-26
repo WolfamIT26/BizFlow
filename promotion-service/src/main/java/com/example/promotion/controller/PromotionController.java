@@ -110,6 +110,14 @@ public class PromotionController {
         return ResponseEntity.noContent().build();
     }
 
+    // PATCH /api/v1/promotions/{id}/activate
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAnyRole('OWNER', 'ADMIN')")
+    public ResponseEntity<Void> activatePromotion(@PathVariable Long id) {
+        promotionService.activatePromotion(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // POST /api/v1/promotions/sync
     @PostMapping("/sync")
     public ResponseEntity<?> syncPromotion(@RequestBody PromotionDTO dto) {

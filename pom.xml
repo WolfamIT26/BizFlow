@@ -12,9 +12,17 @@
     <name>BizFlow Parent</name>
 
     <modules>
-        <module>bizflow-app</module>
+        <module>auth-service</module>
+        <module>user-service</module>
+        <module>product-service</module>
+        <module>inventory-service</module>
+        <module>order-service</module>
+        <module>customer-service</module>
         <module>promotion-service</module>
-        <module>admin-service</module>
+        <module>payment-service</module>
+        <module>report-service</module>
+        <module>worker-service</module>
+        <module>fcm-service</module>
     </modules>
     <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
