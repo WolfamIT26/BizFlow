@@ -9,6 +9,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ${MYSQL_DATABASE:-bizflow_db}
       MYSQL_USER: ${MYSQL_USER:-bizflow}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-bizflow123}
@@ -53,56 +54,186 @@ services:
   # =========================
   gateway:
     build:
-      context: ./gateway
+      context: ./BizFlow.Gateway
       dockerfile: Dockerfile
     container_name: bizflow-gateway
     restart: always
     ports:
       - "8000:8000"
     depends_on:
-      - backend
+      - sales-service
+      - catalog-service
+      - inventory-service
+      - customer-service
+      - authentication-service
+      - report-service
+      - promotion-service
       - ai_service
     networks:
       - bizflow-net
     mem_limit: 1024m
 
   # =========================
-  # 5. BACKEND API (JAVA SPRING BOOT)
+  # 5. SALES SERVICE (SPRING BOOT)
   # =========================
-  backend:
+  sales-service:
     build:
-      context: .
+      context: ./BizFlow.SalesService
       dockerfile: Dockerfile
-    container_name: bizflow-backend
+    container_name: bizflow-sales-service
     restart: always
     ports:
-      - "8080:8080"
+      - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-bizflow_db}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-bizflow}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-bizflow123}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      AI_SERVICE_URL: http://ai_service:5000
+      CATALOG_SERVICE_URL: http://catalog-service:8083
+      INVENTORY_SERVICE_URL: http://inventory-service:8084
+      CUSTOMER_SERVICE_URL: http://customer-service:8085
+      AUTH_SERVICE_URL: http://authentication-service:8086
+      PROMOTION_SERVICE_URL: http://promotion-service:8082
     depends_on:
       - mysql
       - redis
       - rabbitmq
-      - ai_service
-    volumes:
-      - ./FE/assets:/app/FE/assets
     networks:
       - bizflow-net
     mem_limit: 1024m
+
   # =========================
-  # 6. AI SERVICE (PYTHON FASTAPI)
+  # 6. CATALOG SERVICE (SPRING BOOT)
+  # =========================
+  catalog-service:
+    build:
+      context: ./BizFlow.CatalogService
+      dockerfile: Dockerfile
+    container_name: bizflow-catalog-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      INVENTORY_SERVICE_URL: http://inventory-service:8084
+    depends_on:
+      - mysql
+      - inventory-service
+    networks:
+      - bizflow-net
+    mem_limit: 1024m
+
+  # =========================
+  # 7. INVENTORY SERVICE (SPRING BOOT)
+  # =========================
+  inventory-service:
+    build:
+      context: ./BizFlow.InventoryService
+      dockerfile: Dockerfile
+    container_name: bizflow-inventory-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      CATALOG_SERVICE_URL: http://catalog-service:8083
+    depends_on:
+      - mysql
+    networks:
+      - bizflow-net
+    mem_limit: 1024m
+
+  # =========================
+  # 8. CUSTOMER SERVICE (SPRING BOOT)
+  # =========================
+  customer-service:
+    build:
+      context: ./BizFlow.CustomerService
+      dockerfile: Dockerfile
+    container_name: bizflow-customer-service
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      SALES_SERVICE_URL: http://sales-service:8081
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+      - sales-service
+    networks:
+      - bizflow-net
+    mem_limit: 1024m
+
+  # =========================
+  # 9. AUTHENTICATION SERVICE (SPRING BOOT)
+  # =========================
+  authentication-service:
+    build:
+      context: ./BizFlow.AuthenticationService
+      dockerfile: Dockerfile
+    container_name: bizflow-authentication-service
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      REDIS_HOST: redis
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+    networks:
+      - bizflow-net
+    mem_limit: 1024m
+
+  # =========================
+  # 10. REPORT SERVICE (SPRING BOOT)
+  # =========================
+  report-service:
+    build:
+      context: ./BizFlow.ReportService
+      dockerfile: Dockerfile
+    container_name: bizflow-report-service
+    restart: always
+    ports:
+      - "8087:8087"
+    environment:
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SALES_SERVICE_URL: http://sales-service:8081
+      CATALOG_SERVICE_URL: http://catalog-service:8083
+      INVENTORY_SERVICE_URL: http://inventory-service:8084
+      CUSTOMER_SERVICE_URL: http://customer-service:8085
+      AUTH_SERVICE_URL: http://authentication-service:8086
+    depends_on:
+      - mysql
+      - sales-service
+      - catalog-service
+      - inventory-service
+      - customer-service
+      - authentication-service
+    networks:
+      - bizflow-net
+    mem_limit: 1024m
+
+  # =========================
+  # 11. AI SERVICE (PYTHON FASTAPI)
   # =========================
   ai_service:
     build:
-      context: ./ai_service
+      context: ./BizFlow.AIService
       dockerfile: Dockerfile
     container_name: bizflow-ai
     restart: always
@@ -112,11 +243,11 @@ services:
       - bizflow-net
     mem_limit: 1024m
   # =========================
-  # 7. FRONTEND WEB (NGINX)
+  # 12. FRONTEND WEB (NGINX)
   # =========================
   frontend:
     build:
-      context: ./FE
+      context: ./BizFlow.Frontend
       dockerfile: Dockerfile
     container_name: bizflow-frontend
     ports:
@@ -124,47 +255,45 @@ services:
     depends_on:
       - gateway
     volumes:
-      - ./FE/assets:/usr/share/nginx/html/assets
+      - ./BizFlow.Frontend/assets:/usr/share/nginx/html/assets
+      - ./BizFlow.Frontend/pages:/usr/share/nginx/html/pages
     networks:
       - bizflow-net
     mem_limit: 1024m
   # =========================
-  # 8. PHPMYADMIN (DB WEB UI)
+  # 13. PHPMYADMIN (DB WEB UI)
   # =========================
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: bizflow-phpmyadmin
     restart: always
     ports:
-      - "8081:80"
+      - "8088:80"
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      PMA_USER: ${MYSQL_USER:-bizflow}
-      PMA_PASSWORD: ${MYSQL_PASSWORD:-bizflow123}
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
     depends_on:
       - mysql
     networks:
       - bizflow-net
     mem_limit: 1024m
   # =========================
-  # 9. PROMOTION SERVICE (SPRING BOOT MICROSERVICE)
+  # 14. PROMOTION SERVICE (SPRING BOOT MICROSERVICE)
   # =========================
   promotion-service:
     build:
-      context: ./promotion-service
+      context: ./BizFlow.PromotionService
       dockerfile: Dockerfile
     container_name: bizflow-promotion-service
     restart: always
     ports:
       - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-bizflow_db}?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-bizflow}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-bizflow123}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      DB_HOST: mysql
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
       REDIS_HOST: redis
-      REDIS_PORT: 6379
     depends_on:
       - mysql
       - redis
@@ -172,7 +301,7 @@ services:
       - bizflow-net
     mem_limit: 512m
   # =========================
-  # 10. NIFI (DATA ORCHESTRATION)
+  # 15. NIFI (DATA ORCHESTRATION)
   # =========================
   nifi:
     image: apache/nifi:1.23.2
@@ -198,10 +327,10 @@ services:
 volumes:
   mysql_data:
   nifi_state:
-  mem_limit: 256m
 # =========================
 # NETWORK
 # =========================
 networks:
   bizflow-net:
     driver: bridge
+

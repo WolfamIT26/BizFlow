@@ -8,16 +8,16 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .
-COPY bizflow-app/pom.xml bizflow-app/pom.xml
-COPY promotion-service/pom.xml promotion-service/pom.xml
-COPY bizflow-app/src bizflow-app/src
-COPY promotion-service/src promotion-service/src
-RUN mvn -pl bizflow-app -am -DskipTests package
+COPY BizFlow.AppService/pom.xml BizFlow.AppService/pom.xml
+COPY BizFlow.PromotionService/pom.xml BizFlow.PromotionService/pom.xml
+COPY BizFlow.AppService/src BizFlow.AppService/src
+COPY BizFlow.PromotionService/src BizFlow.PromotionService/src
+RUN mvn -pl BizFlow.AppService -am -DskipTests package
 
 # Stage 2: Create the final, lightweight image with the application JAR
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/bizflow-app/target/*.jar /app/
+COPY --from=build /app/BizFlow.AppService/target/*.jar /app/
 RUN set -eux; \
     for f in /app/*.jar; do \
       case "$f" in *.original) ;; *) mv "$f" /app/app.jar ;; esac; \
@@ -25,3 +25,4 @@ RUN set -eux; \
     rm -f /app/*.jar.original
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
