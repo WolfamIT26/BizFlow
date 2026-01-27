@@ -71,7 +71,7 @@ services:
       - ai_service
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 512m
 
   # =========================
   # 5. SALES SERVICE (SPRING BOOT)
@@ -101,7 +101,7 @@ services:
       - rabbitmq
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 512m
 
   # =========================
   # 6. CATALOG SERVICE (SPRING BOOT)
@@ -123,7 +123,7 @@ services:
       - inventory-service
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 512m
 
   # =========================
   # 7. INVENTORY SERVICE (SPRING BOOT)
@@ -144,7 +144,7 @@ services:
       - mysql
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 256m
 
   # =========================
   # 8. CUSTOMER SERVICE (SPRING BOOT)
@@ -171,7 +171,7 @@ services:
       - sales-service
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 256m
 
   # =========================
   # 9. AUTHENTICATION SERVICE (SPRING BOOT)
@@ -196,7 +196,7 @@ services:
       - rabbitmq
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 256m
 
   # =========================
   # 10. REPORT SERVICE (SPRING BOOT)
@@ -226,7 +226,7 @@ services:
       - authentication-service
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 512m
 
   # =========================
   # 11. AI SERVICE (PYTHON FASTAPI)
@@ -241,7 +241,7 @@ services:
       - "5000:5000"
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 256m
   # =========================
   # 12. FRONTEND WEB (NGINX)
   # =========================
@@ -259,10 +259,11 @@ services:
       - ./BizFlow.Frontend/pages:/usr/share/nginx/html/pages
     networks:
       - bizflow-net
-    mem_limit: 1024m
-  # =========================
+    mem_limit: 512m
+  # ========================
   # 13. PHPMYADMIN (DB WEB UI)
   # =========================
+
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: bizflow-phpmyadmin
@@ -278,7 +279,7 @@ services:
       - mysql
     networks:
       - bizflow-net
-    mem_limit: 1024m
+    mem_limit: 512m
   # =========================
   # 14. PROMOTION SERVICE (SPRING BOOT MICROSERVICE)
   # =========================
