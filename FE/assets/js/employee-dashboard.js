@@ -1567,7 +1567,22 @@ function formatCompactNumber(value) {
 }
 
 function normalizeTier(value) {
-    return (value || '').toString().trim().toUpperCase();
+    const raw = (value || '').toString().trim().toUpperCase();
+    switch (raw) {
+        case 'MEMBER':
+        case 'BRONZE':
+            return 'DONG';
+        case 'SILVER':
+            return 'BAC';
+        case 'GOLD':
+            return 'VANG';
+        case 'PLATINUM':
+            return 'BACH_KIM';
+        case 'DIAMOND':
+            return 'KIM_CUONG';
+        default:
+            return raw;
+    }
 }
 
 function getTierByPoints(points) {
