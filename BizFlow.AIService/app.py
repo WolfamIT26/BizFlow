@@ -381,6 +381,8 @@ def _generate_promotion_code(
     year: int
 ) -> str:
     """Generate promotion code (uppercase, no spaces, dashes)"""
+    import random
+    import string
     
     code_parts = []
     
@@ -416,6 +418,10 @@ def _generate_promotion_code(
     year_code = str(year)[-2:]
     
     code_parts.append(f"{month_code}{year_code}")
+    
+    # Add random suffix for uniqueness (4 characters: letters + numbers)
+    random_suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+    code_parts.append(random_suffix)
     
     # Join with dash
     final_code = "-".join(code_parts)

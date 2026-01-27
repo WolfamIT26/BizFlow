@@ -910,6 +910,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (cancelBtn) cancelBtn.addEventListener('click', hideTransferQrModal);
 });
 
+// Reload promotions khi quay lại trang để cập nhật trạng thái active/inactive
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        console.log('[visibilitychange] Page visible, reloading promotions...');
+        loadPromotionIndex(true); // forceRefresh = true
+    }
+});
+
+// Auto-refresh promotions mỗi 30 giây để sync với owner changes
+setInterval(() => {
+    console.log('[auto-refresh] Reloading promotions...');
+    loadPromotionIndex(true);
+}, 30000); // 30 seconds
+
 function setupInvoiceModal() {
     const modal = document.getElementById('invoiceModal');
     const closeBtn = document.getElementById('closeInvoiceModal');
@@ -1345,8 +1359,8 @@ function renderCart() {
                 <span>${formatPrice(item.productPrice)}</span>
                 <span>${formatPrice(item.productPrice * item.quantity)}</span>
                 <div class="cart-item-actions">
-                    <span class="cart-item-locked">�?i</span>
-                    <button class="cart-item-remove" onclick="removeReturnItem(${idx})">�</button>
+                    <span class="cart-item-locked">Đổi</span>
+                    <button class="cart-item-remove" onclick="removeReturnItem(${idx})">×</button>
                 </div>
             </div>
         `;
@@ -1394,7 +1408,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            <button class="cart-item-remove" onclick="removeFromCart(${idx})">�</button>
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})">×</button>
         </div>
     `;
     }).join('');
@@ -1426,6 +1440,7 @@ function updateQty(idx, change) {
 function setQty(idx, value) {
     const qty = parseInt(value, 10) || 1;
     if (cart[idx] && !cart[idx].isReturnItem) {
+        const oldQty = cart[idx].quantity;
         cart[idx].quantity = Math.max(1, qty);
         
         // Recalculate bundle price if this item has a bundle promotion
@@ -1442,21 +1457,69 @@ function setQty(idx, value) {
             }
         }
         
+        // Nếu giảm số lượng, kiểm tra và xóa quà tặng không hợp lệ ngay
+        if (qty < oldQty) {
+            console.log('[setQty] Quantity decreased, checking gifts...');
+            // Tạm thời đánh dấu cần kiểm tra lại
+            setTimeout(() => {
+                // Phân tích lại và AI sẽ tự động xóa quà không hợp lệ
+                analyzeCartForCombo();
+            }, 50);
+        }
+        
         renderCart();
         updateTotal();
         
-        // Ph�n t�ch l?i combo sau khi thay d?i s? lu?ng
+        // Phân tích lại combo sau khi thay đổi số lượng
         setTimeout(() => analyzeCartForCombo(), 100);
     }
 }
 
 function removeFromCart(idx) {
     if (cart[idx]?.isReturnItem) return;
+    
+    const removedItem = cart[idx];
+    const removedProductId = removedItem.productId;
+    
+    // Xóa sản phẩm
     cart.splice(idx, 1);
+    
+    // Kiểm tra xem còn sản phẩm này trong giỏ không
+    const hasRemainingProduct = cart.some(item => 
+        item.productId === removedProductId && !item.isFreeGift
+    );
+    
+    // Nếu không còn sản phẩm này, xóa luôn quà tặng liên quan
+    if (!hasRemainingProduct) {
+        // Tìm và xóa các quà tặng có thể liên quan đến sản phẩm này
+        const giftsToRemove = [];
+        cart.forEach((item, i) => {
+            if (item.isFreeGift) {
+                // Kiểm tra xem quà này có liên quan đến sản phẩm bị xóa không
+                // Bằng cách kiểm tra xem còn đủ điều kiện không
+                giftsToRemove.push(i);
+            }
+        });
+        
+        // Xóa các quà từ cuối lên để không bị lỗi index
+        giftsToRemove.sort((a, b) => b - a).forEach(i => {
+            const giftName = cart[i].productName;
+            cart.splice(i, 1);
+            console.log('[removeFromCart] ❌ Removed gift:', giftName);
+        });
+        
+        if (giftsToRemove.length > 0) {
+            ComboPromotionUI.showNotification(
+                `⚠️ Đã xóa ${giftsToRemove.length} quà tặng (không đủ điều kiện)`,
+                'warning'
+            );
+        }
+    }
+    
     renderCart();
     updateTotal();
     
-    // Ph�n t�ch l?i combo sau khi x�a s?n ph?m
+    // Phân tích lại combo sau khi xóa sản phẩm
     setTimeout(() => analyzeCartForCombo(), 100);
 }
 

@@ -24,6 +24,14 @@ window.addEventListener('DOMContentLoaded', () => {
     loadPromotions();
 });
 
+// Reload promotions khi quay lại trang để cập nhật trạng thái active/inactive
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        console.log('[promotions] Page visible, reloading promotions...');
+        loadPromotions();
+    }
+});
+
 // --- Khởi tạo & Auth ---
 function resolveApiBase() {
     const configured = window.API_BASE_URL || window.API_BASE;
@@ -353,6 +361,7 @@ function formatDate(val) {
 
 function isPromotionActive(p) {
     if (!p) return false;
+    if (p.active === false) return false; // Check active status
     const now = new Date();
     const start = parsePromotionDate(p.startDate);
     const end = parsePromotionDate(p.endDate);

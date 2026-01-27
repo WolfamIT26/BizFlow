@@ -1769,12 +1769,32 @@
             const id = document.getElementById('promotionId').value;
             const url = id ? `${PROMOTION_API}/${id}` : PROMOTION_API;
             const method = id ? 'PUT' : 'POST';
+            
+            // Debug: Check token
+            const token = sessionStorage.getItem('accessToken') || localStorage.getItem('token');
+            console.log('[savePromotion] Token exists:', !!token);
+            console.log('[savePromotion] Method:', method);
+            console.log('[savePromotion] URL:', url);
+            console.log('[savePromotion] Payload:', payload);
+            
             try {
                 const res = await fetch(url, {
                     method,
                     headers: getAuthHeaders(),
                     body: JSON.stringify(payload)
                 });
+                
+                console.log('[savePromotion] Response status:', res.status);
+                
+                if (res.status === 401 || res.status === 403) {
+                    console.error('[savePromotion] Authentication error - redirecting to login');
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+                    window.location.href = '/pages/login.html';
+                    return;
+                }
+                
                 if (!res.ok) {
                     let errorMsg = 'Không thể lưu khuyến mãi';
                     try {
