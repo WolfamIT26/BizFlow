@@ -3859,27 +3859,60 @@ async function autoAddGiftToCart(gift) {
 }
 
 /**
- * X�a qu� t?ng kh�ng h?p l?
+ * Xóa quà tặng không hợp lệ và cập nhật số lượng
  */
 async function removeIneligibleGifts(validGifts) {
-    // T?o Set c�c gift ID h?p l?
-    const validGiftKeys = new Set(
-        validGifts.map(g => `${g.product_id}-${g.promo_id}`)
-    );
-    
-    // L?c v� x�a qu� kh�ng h?p l?
-    const initialLength = cart.length;
-    cart = cart.filter(item => {
-        if (item.isFreeGift) {
-            const key = `${item.productId}-${item.promoId}`;
-            return validGiftKeys.has(key);
-        }
-        return true; // Gi? l?i s?n ph?m th?t
+    // Tạo Map các gift hợp lệ với số lượng
+    const validGiftMap = new Map();
+    (validGifts || []).forEach(g => {
+        const key = `${g.product_id}-${g.promo_id}`;
+        validGiftMap.set(key, {
+            quantity: g.quantity,
+            productName: g.product_name
+        });
     });
     
-    // N?u c� thay d?i, render l?i
-    if (cart.length < initialLength) {
-        console.log('[removeIneligibleGifts] Removed ineligible gifts');
+    let hasChanges = false;
+    const itemsToRemove = [];
+    
+    // Kiểm tra từng quà tặng trong giỏ
+    cart.forEach((item, idx) => {
+        if (item.isFreeGift) {
+            const key = `${item.productId}-${item.promoId}`;
+            const validGift = validGiftMap.get(key);
+            
+            if (!validGift) {
+                // Quà không hợp lệ nữa - đánh dấu xóa
+                console.log('[removeIneligibleGifts] ❌ Removing ineligible gift:', item.productName);
+                itemsToRemove.push(idx);
+                hasChanges = true;
+                
+                // Hiển thị thông báo
+                ComboPromotionUI.showNotification(
+                    `⚠️ Đã xóa quà tặng: ${item.productName} (không đủ điều kiện)`,
+                    'warning'
+                );
+            } else if (item.quantity !== validGift.quantity) {
+                // Cập nhật số lượng nếu thay đổi
+                console.log('[removeIneligibleGifts] 🔄 Updating gift quantity:', {
+                    product: item.productName,
+                    old: item.quantity,
+                    new: validGift.quantity
+                });
+                item.quantity = validGift.quantity;
+                hasChanges = true;
+            }
+        }
+    });
+    
+    // Xóa các item từ cuối lên đầu để không bị lỗi index
+    itemsToRemove.sort((a, b) => b - a).forEach(idx => {
+        cart.splice(idx, 1);
+    });
+    
+    // Nếu có thay đổi, render lại
+    if (hasChanges) {
+        console.log('[removeIneligibleGifts] ✅ Cart updated, rendering...');
         renderCart();
         updateTotal();
     }
