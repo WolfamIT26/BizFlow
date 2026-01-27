@@ -353,39 +353,39 @@ public class PromotionServiceImpl implements PromotionService {
 
         String code = dto.getCode() != null ? dto.getCode().trim() : "";
         if (code.isEmpty()) {
-            throw new IllegalArgumentException("Promotion code must not be blank");
+            throw new IllegalArgumentException("Mã khuyến mãi không được để trống");
         }
 
         String name = dto.getName() != null ? dto.getName().trim() : "";
         if (name.isEmpty()) {
-            throw new IllegalArgumentException("Promotion name must not be blank");
+            throw new IllegalArgumentException("Tên khuyến mãi không được để trống");
         }
 
         if (dto.getDiscountType() == null) {
-            throw new IllegalArgumentException("Discount type must be provided");
+            throw new IllegalArgumentException("Loại giảm giá phải được chọn");
         }
 
         if (dto.getDiscountValue() == null) {
-            throw new IllegalArgumentException("Discount value must be provided");
+            throw new IllegalArgumentException("Giá trị giảm phải được nhập");
         }
 
         double value = dto.getDiscountValue();
         if (value < 0) {
-            throw new IllegalArgumentException("Discount value must be non-negative");
+            throw new IllegalArgumentException("Giá trị giảm không được âm");
         }
         if (dto.getDiscountType() == Promotion.DiscountType.PERCENT && (value <= 0 || value > 100)) {
-            throw new IllegalArgumentException("Percent discount must be between 1 and 100");
+            throw new IllegalArgumentException("Phần trăm giảm phải từ 1 đến 100");
         }
 
         if (dto.getStartDate() != null && dto.getEndDate() != null
                 && dto.getEndDate().isBefore(dto.getStartDate())) {
-            throw new IllegalArgumentException("End date must be after start date");
+            throw new IllegalArgumentException("Ngày kết thúc phải sau ngày bắt đầu");
         }
         if (dto.getStartDate() == null) {
-            throw new IllegalArgumentException("Start date must be provided");
+            throw new IllegalArgumentException("Ngày bắt đầu không được để trống");
         }
         if (dto.getEndDate() == null) {
-            throw new IllegalArgumentException("End date must be provided");
+            throw new IllegalArgumentException("Ngày kết thúc không được để trống");
         }
 
         validateTargets(dto);
@@ -394,7 +394,7 @@ public class PromotionServiceImpl implements PromotionService {
         promotionRepository.findByCode(code)
                 .filter(existing -> currentId == null || !existing.getId().equals(currentId))
                 .ifPresent(existing -> {
-                    throw new IllegalArgumentException("Promotion code already exists");
+                    throw new IllegalArgumentException("Mã khuyến mãi đã tồn tại. Vui lòng chọn mã khác.");
                 });
     }
 

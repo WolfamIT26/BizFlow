@@ -68,7 +68,7 @@ services:
       - authentication-service
       - report-service
       - promotion-service
-      - ai_service
+      - ai-service
     networks:
       - bizflow-net
     mem_limit: 512m
@@ -231,7 +231,7 @@ services:
   # =========================
   # 11. AI SERVICE (PYTHON FASTAPI)
   # =========================
-  ai_service:
+  ai-service:
     build:
       context: ./BizFlow.AIService
       dockerfile: Dockerfile

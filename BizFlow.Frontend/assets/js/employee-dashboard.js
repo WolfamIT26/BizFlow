@@ -24,8 +24,8 @@ let employees = [];
 let exchangeDraft = null;
 let promotionIndex = null;
 let activeInventoryProductId = null;
-let allPromotions = []; // Luu t?t c? khuy?n m„i cho AI combo
-let isAnalyzingCombo = false; // Flag d? tr·nh vÚng l?p vÙ h?n
+let allPromotions = []; // Luu t?t c? khuy?n mÔøΩi cho AI combo
+let isAnalyzingCombo = false; // Flag d? trÔøΩnh vÔøΩng l?p vÔøΩ h?n
 const TIER_DISCOUNT_BY_100 = {
     DONG: 10000,
     BAC: 12000,
@@ -48,37 +48,37 @@ const POINTS_EARN_RATE_VND = 1000;
 const FALLBACK_PRODUCTS = [
     {
         id: 1,
-        name: 'S?a tuoi nguyÍn kem',
+        name: 'S?a tuoi nguyÔøΩn kem',
         code: 'SGL330',
         barcode: '8931234567012',
         price: 15000,
         unit: 'lon',
         stock: 120,
-        description: 'S?a tuoi ti?t tr˘ng 330ml'
+        description: 'S?a tuoi ti?t trÔøΩng 330ml'
     },
     {
         id: 2,
-        name: 'G?o thom dÛng gÛi',
+        name: 'G?o thom dÔøΩng gÔøΩi',
         code: 'CQ-DY160',
         barcode: '8931234567029',
         price: 18000,
-        unit: 'gÛi',
+        unit: 'gÔøΩi',
         stock: 60,
         description: 'G?o thom 1kg'
     },
     {
         id: 3,
-        name: 'C‡ phÍ hÚa tan',
+        name: 'CÔøΩ phÔøΩ hÔøΩa tan',
         code: 'CC330',
         barcode: '8931234567036',
         price: 10000,
         unit: 'lon',
         stock: 200,
-        description: 'C‡ phÍ s?a 330ml'
+        description: 'CÔøΩ phÔøΩ s?a 330ml'
     },
     {
         id: 4,
-        name: 'Nu?c ng?t cÛ ga',
+        name: 'Nu?c ng?t cÔøΩ ga',
         code: 'NGC240',
         barcode: '8931234567043',
         price: 12000,
@@ -88,23 +88,23 @@ const FALLBACK_PRODUCTS = [
     },
     {
         id: 5,
-        name: 'B·nh quy bo',
+        name: 'BÔøΩnh quy bo',
         code: 'BQB120',
         barcode: '8931234567050',
         price: 22000,
         unit: 'h?p',
         stock: 45,
-        description: 'B·nh quy bo 120g'
+        description: 'BÔøΩnh quy bo 120g'
     },
     {
         id: 6,
-        name: 'MÏ ly an li?n',
+        name: 'MÔøΩ ly an li?n',
         code: 'MLY105',
         barcode: '8931234567067',
         price: 14000,
         unit: 'ly',
         stock: 90,
-        description: 'MÏ ly 105g'
+        description: 'MÔøΩ ly 105g'
     }
 ];
 
@@ -113,10 +113,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadUserInfo();
     await loadCurrentEmployee();
     fixPaymentPanelText();
-    selectedCustomer = { id: 0, name: 'Kh·ch l?', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
+    selectedCustomer = { id: 0, name: 'KhÔøΩch l?', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedCustomerLabel = document.getElementById('selectedCustomer');
     if (selectedCustomerLabel) {
-        selectedCustomerLabel.textContent = 'Kh·ch l?';
+        selectedCustomerLabel.textContent = 'KhÔøΩch l?';
     }
     setupEventListeners();
     setupCustomerModal();
@@ -130,7 +130,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     initInvoices();
 
     document.getElementById('productsGrid').innerHTML =
-        '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">–ang t?i...</div>';
+        '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">ÔøΩang t?i...</div>';
 
     await Promise.all([loadProductImageMap(), loadProducts()]);
     applyExchangeDraft();
@@ -202,7 +202,7 @@ function applyExchangeDraft() {
     if (exchangeDraft.customerId) {
         selectedCustomer = {
             id: exchangeDraft.customerId,
-            name: exchangeDraft.customerName || 'Kh·ch h‡ng',
+            name: exchangeDraft.customerName || 'KhÔøΩch hÔøΩng',
             phone: exchangeDraft.customerPhone || '-',
             totalPoints: 0,
             monthlyPoints: 0,
@@ -334,7 +334,7 @@ function loadUserInfo() {
     const userInitial = (username ? username[0] : 'E').toUpperCase();
 
     document.getElementById('userInitial').textContent = userInitial;
-    document.getElementById('userNameDropdown').textContent = username || 'Nh‚n viÍn';
+    document.getElementById('userNameDropdown').textContent = username || 'NhÔøΩn viÔøΩn';
 }
 
 async function loadCurrentEmployee() {
@@ -354,7 +354,7 @@ async function loadCurrentEmployee() {
                 window.location.href = '/pages/login.html';
                 return;
             }
-            throw new Error('KhÙng t?i du?c thÙng tin nh‚n viÍn');
+            throw new Error('KhÔøΩng t?i du?c thÔøΩng tin nhÔøΩn viÔøΩn');
         }
 
         const data = await res.json();
@@ -371,7 +371,7 @@ async function loadCurrentEmployee() {
 
         const userNameDropdown = document.getElementById('userNameDropdown');
         if (userNameDropdown) {
-            userNameDropdown.textContent = data.username || data.fullName || 'Nh‚n viÍn';
+            userNameDropdown.textContent = data.username || data.fullName || 'NhÔøΩn viÔøΩn';
         }
 
         const userInitialEl = document.getElementById('userInitial');
@@ -485,7 +485,7 @@ function renderCustomers(customers) {
     if (!list) return;
 
     if (!customers || customers.length === 0) {
-        const emptyMessage = customerSearchTerm ? 'KhÙng tÏm th?y kh·ch h‡ng' : 'Chua cÛ kh·ch h‡ng';
+        const emptyMessage = customerSearchTerm ? 'Kh√¥ng t√¨m th·∫•y kh√°ch h√†ng' : 'Ch∆∞a c√≥ kh√°ch h√†ng';
         list.innerHTML = `<div class="customer-empty">${emptyMessage}</div>`;
         return;
     }
@@ -502,7 +502,7 @@ function renderCustomers(customers) {
             <div class="customer-info">
                 <p class="customer-name">
                     <button type="button" class="customer-name-btn" data-customer-id="${customerId}" onclick="openCustomerDetailFromButton(event)">
-                        ${escapeHtml(c.name || 'Kh·ch h‡ng')}
+                        ${escapeHtml(c.name || 'KhÔøΩch hÔøΩng')}
                     </button>
                 </p>
                 <p class="customer-phone">${escapeHtml(phone)}</p>
@@ -515,7 +515,7 @@ function renderCustomers(customers) {
         `;
     }).join('');
 
-    list.innerHTML = customersHtml || '<div class="customer-empty">Chua cÛ kh·ch h‡ng</div>';
+    list.innerHTML = customersHtml || '<div class="customer-empty">Chua cÔøΩ khÔøΩch hÔøΩng</div>';
 }
 
 function applyCustomerFilter() {
@@ -651,7 +651,7 @@ async function addToCart(productId, productName, productPrice) {
     renderCart();
     updateTotal();
     
-    // Ph‚n tÌch combo sau khi thÍm s?n ph?m
+    // PhÔøΩn tÔøΩch combo sau khi thÔøΩm s?n ph?m
     await analyzeCartForCombo();
 
     const qtyInput = document.getElementById('qtyInput');
@@ -674,13 +674,13 @@ function clearCart(resetCustomer = true) {
 
 async function createOrder(isPaid) {
     if (cart.length === 0) {
-        showPopup('Gi? h‡ng tr?ng!', { type: 'error' });
+        showPopup('Gi·ªè h√†ng tr·ªëng!', { type: 'error' });
         return;
     }
-    // B? qua gift items khi check t?n kho (vÏ gift items cÛ stock = 0)
+    // B·ªè qua gift items khi check t·ªìn kho (v√¨ gift items c√≥ stock = 0)
     const outOfStock = cart.find(item => !item.isReturnItem && !item.isFreeGift && (!Number.isFinite(Number(item.stock)) || Number(item.stock) < Number(item.quantity)));
     if (outOfStock) {
-        showPopup('CÛ s?n ph?m h?t h‡ng. Vui lÚng ki?m tra s? lu?ng t?n.', { type: 'error' });
+        showPopup('C√≥ s·∫£n ph·∫©m h·∫øt h√†ng. Vui l√≤ng ki·ªÉm tra s·ªë l∆∞·ª£ng t·ªìn.', { type: 'error' });
         return;
     }
 
@@ -713,7 +713,7 @@ async function createOrder(isPaid) {
 
         if (!res.ok) {
             const message = await res.text();
-            showPopup(message || 'KhÙng th? t?o don h‡ng.', { type: 'error' });
+            showPopup(message || 'Kh√¥ng th·ªÉ t·∫°o ƒë∆°n h√†ng.', { type: 'error' });
             return;
         }
 
@@ -732,7 +732,7 @@ async function createOrder(isPaid) {
         saveActiveInvoiceState();
         return data;
     } catch (err) {
-        showPopup('L?i k?t n?i khi t?o don h‡ng.', { type: 'error' });
+        showPopup('L·ªói k·∫øt n·ªëi khi t·∫°o ƒë∆°n h√†ng.', { type: 'error' });
     }
 }
 
@@ -753,7 +753,7 @@ function showTransferQrModal(orderId, amount, token) {
     } else {
         displayToken = 'SAMPLE-' + Math.random().toString(36).slice(2, 10).toUpperCase();
         const tokenEl = document.getElementById('transferPaymentToken');
-        if (tokenEl) tokenEl.textContent = displayToken + ' (m„ tu?ng trung)';
+        if (tokenEl) tokenEl.textContent = displayToken + ' (m√£ t∆∞·ª£ng tr∆∞ng)';
     }
 
     const bankCode = 'VCB';
@@ -784,7 +784,7 @@ function showTransferQrModal(orderId, amount, token) {
     const bankQuickId = 'VCB';
     const template = 'compact';
     const amountParam = Number.isFinite(Number(amount)) && amount > 0 ? `amount=${Math.round(amount)}` : '';
-    const addInfoParam = `addInfo=${encodeURIComponent('Thanh to·n don #' + orderId)}`;
+    const addInfoParam = `addInfo=${encodeURIComponent('Thanh toÔøΩn don #' + orderId)}`;
     const accountNameParam = `accountName=${encodeURIComponent(accountName)}`;
     const qrQuicklinkBase = `https://img.vietqr.io/image/${bankQuickId}-${account}-${template}.png`;
     const qrImgUrl = qrQuicklinkBase + (amountParam || addInfoParam || accountNameParam ? `?${[amountParam, addInfoParam, accountNameParam].filter(Boolean).join('&')}` : '');
@@ -839,7 +839,7 @@ function showTransferQrModal(orderId, amount, token) {
                 a.remove();
                 URL.revokeObjectURL(url);
             } catch (e) {
-                alert('KhÙng th? t?i m„ QR.');
+                alert('Kh√¥ng th·ªÉ t·∫£i m√£ QR.');
             }
         };
     }
@@ -850,9 +850,9 @@ function showTransferQrModal(orderId, amount, token) {
         copyBtn.onclick = async () => {
             try {
                 await navigator.clipboard.writeText(displayToken);
-                alert('–„ sao chÈp m„ thanh to·n');
+                alert('ƒê√£ sao ch√©p m√£ thanh to√°n');
             } catch (e) {
-                alert('KhÙng th? sao chÈp m„.');
+                alert('Kh√¥ng th·ªÉ sao ch√©p m√£.');
             }
         };
     }
@@ -876,15 +876,15 @@ async function payOrder(orderId) {
         });
         if (!res.ok) {
             const text = await res.text();
-            alert(text || 'KhÙng th? x·c nh?n thanh to·n.');
+            alert(text || 'Kh√¥ng th·ªÉ x√°c nh·∫≠n thanh to√°n.');
             return;
         }
-        alert('–„ thanh to·n chuy?n kho?n du?c x·c nh?n.');
+        alert('ƒê√£ thanh to√°n chuy·ªÉn kho·∫£n ƒë∆∞·ª£c x√°c nh·∫≠n.');
         hideTransferQrModal();
         clearCart(true);
         saveActiveInvoiceState();
     } catch (err) {
-        alert('L?i k?t n?i khi x·c nh?n thanh to·n.');
+        alert('L·ªói k·∫øt n·ªëi khi x√°c nh·∫≠n thanh to√°n.');
     }
 }
 
@@ -951,7 +951,7 @@ async function updateInvoiceReceipt(receiptData) {
     setText('invoiceCode', receiptData.invoiceNumber || '-');
     setText('invoiceDate', formatDateTime(receiptData.createdAt));
     setText('invoiceCashier', receiptData.cashier || '-');
-    setText('invoiceCustomer', receiptData.customerName || 'Kh·ch l?');
+    setText('invoiceCustomer', receiptData.customerName || 'KhÔøΩch l?');
     setText('invoicePhone', receiptData.customerPhone || '-');
     setText('invoiceMethod', mapPaymentMethod(receiptData.paymentMethod));
     setText('invoiceSubtotal', formatPrice(receiptData.subtotal || 0));
@@ -1019,9 +1019,9 @@ function buildReceiptData(orderResponse, options = {}) {
     return {
         invoiceNumber,
         createdAt: new Date(),
-        customerName: selectedCustomer?.name || 'Kh·ch l?',
+        customerName: selectedCustomer?.name || 'KhÔøΩch l?',
         customerPhone: selectedCustomer?.phone || '-',
-        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'Nh‚n viÍn',
+        cashier: selectedEmployee?.name || sessionStorage.getItem('username') || 'NhÔøΩn viÔøΩn',
         paymentMethod: currentPaymentMethod,
         note: document.getElementById('paymentNote')?.value?.trim() || '',
         subtotal,
@@ -1256,7 +1256,7 @@ function normalizeDiscountType(value) {
 }
 
 function formatPromotionLabel(promo) {
-    if (!promo) return 'Khuy?n m„i';
+    if (!promo) return 'Khuy?n mÔøΩi';
     const value = Number(promo.discountValue);
     const type = normalizeDiscountType(promo.discountType);
     if (type === 'PERCENT' && Number.isFinite(value)) {
@@ -1271,7 +1271,7 @@ function formatPromotionLabel(promo) {
     if (type === 'FREE_GIFT') {
         return 'Tang kem';
     }
-    return promo.discountType || 'Khuy?n m„i';
+    return promo.discountType || 'Khuy?n mÔøΩi';
 }
 
 function isPromotionActive(promo) {
@@ -1345,14 +1345,14 @@ function renderCart() {
                 <span>${formatPrice(item.productPrice)}</span>
                 <span>${formatPrice(item.productPrice * item.quantity)}</span>
                 <div class="cart-item-actions">
-                    <span class="cart-item-locked">–?i</span>
-                    <button class="cart-item-remove" onclick="removeReturnItem(${idx})">◊</button>
+                    <span class="cart-item-locked">ÔøΩ?i</span>
+                    <button class="cart-item-remove" onclick="removeReturnItem(${idx})">ÔøΩ</button>
                 </div>
             </div>
         `;
         }
         
-        // Ki?m tra n?u l‡ qu‡ t?ng
+        // Ki?m tra n?u lÔøΩ quÔøΩ t?ng
         if (item.isFreeGift) {
             return `
             <div class="cart-row gift-item">
@@ -1365,7 +1365,7 @@ function renderCart() {
                 <span>${item.unit || '-'}</span>
                 <span style="text-decoration: line-through; color: #999;">${formatPrice(item.productPrice)}</span>
                 <span style="color: #ff6b9d; font-weight: 600;">0d</span>
-                <span class="gift-label" style="grid-column: span 2; text-align: right; color: #ff6b9d; font-size: 12px; font-style: italic;">${item.promoLabel || 'Qu‡ t?ng'}</span>
+                <span class="gift-label" style="grid-column: span 2; text-align: right; color: #ff6b9d; font-size: 12px; font-style: italic;">${item.promoLabel || 'QuÔøΩ t?ng'}</span>
             </div>
         `;
         }
@@ -1381,7 +1381,7 @@ function renderCart() {
             <span>${item.unit || '-'}</span>
             <span>${formatPrice(item.productPrice)}</span>
             <span>${formatPrice(item.productPrice * item.quantity)}</span>
-            <button class="cart-item-remove" onclick="removeFromCart(${idx})">◊</button>
+            <button class="cart-item-remove" onclick="removeFromCart(${idx})">ÔøΩ</button>
         </div>
     `;
     }).join('');
@@ -1432,7 +1432,7 @@ function setQty(idx, value) {
         renderCart();
         updateTotal();
         
-        // Ph‚n tÌch l?i combo sau khi thay d?i s? lu?ng
+        // PhÔøΩn tÔøΩch l?i combo sau khi thay d?i s? lu?ng
         setTimeout(() => analyzeCartForCombo(), 100);
     }
 }
@@ -1443,7 +1443,7 @@ function removeFromCart(idx) {
     renderCart();
     updateTotal();
     
-    // Ph‚n tÌch l?i combo sau khi xÛa s?n ph?m
+    // PhÔøΩn tÔøΩch l?i combo sau khi xÔøΩa s?n ph?m
     setTimeout(() => analyzeCartForCombo(), 100);
 }
 
@@ -1468,7 +1468,7 @@ function openCustomerDetailFromButton(evt) {
     const target = evt?.currentTarget;
     const customerId = Number(target?.dataset?.customerId);
     if (!Number.isFinite(customerId) || customerId <= 0) {
-        showPopup('KhÙng tÏm th?y kh·ch h‡ng.', { type: 'error' });
+        showPopup('Kh√¥ng t√¨m th·∫•y kh√°ch h√†ng.', { type: 'error' });
         return;
     }
     openCustomerDetail(customerId);
@@ -1476,10 +1476,10 @@ function openCustomerDetailFromButton(evt) {
 
 function clearSelectedCustomer(options = {}) {
     const { showList = true } = options;
-    selectedCustomer = { id: 0, name: 'Kh·ch l?', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
+    selectedCustomer = { id: 0, name: 'Kh√°ch l·∫ª', phone: '-', totalPoints: 0, monthlyPoints: 0, tier: '' };
     const selectedView = document.getElementById('selectedCustomer');
     if (selectedView) {
-        selectedView.textContent = 'Kh·ch l?';
+        selectedView.textContent = 'Kh√°ch l·∫ª';
     }
 
     const searchInput = document.getElementById('customerSearch');
@@ -1641,7 +1641,7 @@ function shouldUseMemberPoints() {
 }
 
 function showPopup(message, options = {}) {
-    const { title = 'ThÙng b·o', type = 'info' } = options;
+    const { title = 'Th√¥ng b√°o', type = 'info' } = options;
     let modal = document.getElementById('appPopup');
     if (!modal) {
         modal = document.createElement('div');
@@ -1652,11 +1652,11 @@ function showPopup(message, options = {}) {
             <div class="app-popup-card" role="dialog" aria-modal="true">
                 <div class="app-popup-header">
                     <h3 id="appPopupTitle"></h3>
-                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="–Ûng">◊</button>
+                    <button type="button" class="icon-btn small" id="appPopupClose" aria-label="ƒê√≥ng">‚úï</button>
                 </div>
                 <div id="appPopupMessage" class="app-popup-message"></div>
                 <div class="app-popup-actions">
-                    <button type="button" class="primary-btn" id="appPopupOk">–Ûng</button>
+                    <button type="button" class="primary-btn" id="appPopupOk">ƒê√≥ng</button>
                 </div>
             </div>
         `;
@@ -1882,7 +1882,7 @@ function setupEventListeners() {
         if (!row) return;
         const customerId = Number(row.dataset.customerId);
         if (!Number.isFinite(customerId)) {
-            showPopup('KhÙng tÏm th?y kh·ch h‡ng.', { type: 'error' });
+            showPopup('Kh√¥ng t√¨m th·∫•y kh√°ch h√†ng.', { type: 'error' });
             return;
         }
         const customerName = row.dataset.customerName || '';
@@ -2036,7 +2036,7 @@ function createInvoiceState(name) {
         id,
         name: name || `H\u00f3a \u0111\u01a1n ${nextNumber}`,
         cart: [],
-        selectedCustomer: { id: 0, name: 'Kh·ch l?', phone: '-' },
+        selectedCustomer: { id: 0, name: 'KhÔøΩch l?', phone: '-' },
         paymentMethod: 'CASH',
         cashReceived: '',
         paymentNote: '',
@@ -2061,7 +2061,7 @@ function saveActiveInvoiceState() {
     invoice.cart = cloneCart(cart);
     invoice.selectedCustomer = selectedCustomer
         ? { ...selectedCustomer }
-        : { id: 0, name: 'Kh·ch l?', phone: '-' };
+        : { id: 0, name: 'KhÔøΩch l?', phone: '-' };
     invoice.paymentMethod = currentPaymentMethod;
     invoice.cashReceived = document.getElementById('cashReceivedInput')?.value || '';
     invoice.paymentNote = document.getElementById('paymentNote')?.value || '';
@@ -2245,7 +2245,7 @@ function removeInvoice(invoiceId, options = {}) {
 
 function saveDraftInvoice() {
     if (cart.length === 0) {
-        showPopup('Gi? h‡ng tr?ng, khÙng th? luu t?m.', { type: 'error' });
+        showPopup('Gi·ªè h√†ng tr·ªëng, kh√¥ng th·ªÉ l∆∞u t·∫°m.', { type: 'error' });
         return;
     }
     saveActiveInvoiceState();
@@ -2275,7 +2275,7 @@ function renderSavedBills() {
     empty.style.display = 'none';
     list.innerHTML = savedInvoices.map(draft => {
         const total = draft.cart.reduce((sum, item) => sum + (item.productPrice * item.quantity), 0);
-        const customerName = draft.selectedCustomer?.name || 'Kh·ch l?';
+        const customerName = draft.selectedCustomer?.name || 'KhÔøΩch l?';
         return `
             <div class="saved-bill-item">
                 <button class="saved-bill-open" data-open-draft="${draft.id}">
@@ -2283,7 +2283,7 @@ function renderSavedBills() {
                     <span>${customerName}</span>
                     <span>${formatPrice(total)}</span>
                 </button>
-                <button class="saved-bill-remove" data-remove-draft="${draft.id}">◊</button>
+                <button class="saved-bill-remove" data-remove-draft="${draft.id}">ÔøΩ</button>
             </div>
         `;
     }).join('');
@@ -2315,7 +2315,7 @@ function openSavedInvoice(draftId) {
     const emptyTarget = invoices.find(inv => isInvoiceEmpty(inv));
     if (emptyTarget) {
         emptyTarget.cart = cloneCart(draft.cart);
-        emptyTarget.selectedCustomer = draft.selectedCustomer ? { ...draft.selectedCustomer } : { id: 0, name: 'Kh·ch l?', phone: '-' };
+        emptyTarget.selectedCustomer = draft.selectedCustomer ? { ...draft.selectedCustomer } : { id: 0, name: 'KhÔøΩch l?', phone: '-' };
         emptyTarget.paymentMethod = draft.paymentMethod || 'CASH';
         emptyTarget.cashReceived = draft.cashReceived || '';
         emptyTarget.paymentNote = draft.paymentNote || '';
@@ -2613,7 +2613,7 @@ async function createCustomerFromForm() {
     const confirmed = document.getElementById('customerConfirmInput')?.checked;
 
     if (!name) {
-        showPopup('Vui lÚng nh?p tÍn kh·ch h‡ng.', { type: 'error' });
+        showPopup('Vui l√≤ng nh·∫≠p t√™n kh√°ch h√†ng.', { type: 'error' });
         return;
     }
 
@@ -2628,11 +2628,11 @@ async function createCustomerFromForm() {
     }
 
     if (!phone) {
-        showPopup('Vui lÚng nh?p s? di?n tho?i.', { type: 'error' });
+        showPopup('Vui l√≤ng nh·∫≠p s·ªë ƒëi·ªán tho·∫°i.', { type: 'error' });
         return;
     }
     if (!/^\d{9,11}$/.test(phone)) {
-        showPopup('S? di?n tho?i ph?i l‡ 9-11 ch? s?.', { type: 'error' });
+        showPopup('S·ªë ƒëi·ªán tho·∫°i ph·∫£i l√† 9-11 ch·ªØ s·ªë.', { type: 'error' });
         return;
     }
 
@@ -2640,12 +2640,12 @@ async function createCustomerFromForm() {
     const districtCode = districtInput?.dataset.code || '';
     const wardCode = wardInput?.dataset.code || '';
     if (!cityInput?.value || !districtInput?.value || !wardInput?.value || !address || !cityCode || !districtCode || !wardCode) {
-        showPopup('Vui lÚng nh?p d?y d? d?a ch?.', { type: 'error' });
+        showPopup('Vui l√≤ng nh·∫≠p ƒë·∫ßy ƒë·ªß ƒë·ªãa ch·ªâ.', { type: 'error' });
         return;
     }
 
     if (!confirmed) {
-        showPopup('Vui lÚng x·c nh?n thÙng tin kh·ch h‡ng.', { type: 'error' });
+        showPopup('Vui l√≤ng x√°c nh·∫≠n th√¥ng tin kh√°ch h√†ng.', { type: 'error' });
         return;
     }
 
@@ -2664,27 +2664,27 @@ async function createCustomerFromForm() {
             })
         });
 
-    if (!res.ok) {
-        const message = await res.text();
-        showPopup(message || 'KhÙng th? t?o kh·ch h‡ng.', { type: 'error' });
-        return;
-    }
+        if (!res.ok) {
+            const message = await res.text();
+            showPopup(message || 'Kh√¥ng th·ªÉ t·∫°o kh√°ch h√†ng.', { type: 'error' });
+            return;
+        }
 
-    const created = await res.json();
+        const created = await res.json();
         customers.unshift(created);
         customersLoaded = true;
         customerSearchTerm = '';
         const searchInput = document.getElementById('customerSearch');
-    if (searchInput) searchInput.value = '';
-    applyCustomerFilter();
-    closeCustomerModal();
-    selectCustomer(null, created.id, created.name, created.phone || '-');
-    if (searchInput) {
-        searchInput.value = created.name || created.phone || '';
-        searchInput.classList.add('has-selection');
-    }
+        if (searchInput) searchInput.value = '';
+        applyCustomerFilter();
+        closeCustomerModal();
+        selectCustomer(null, created.id, created.name, created.phone || '-');
+        if (searchInput) {
+            searchInput.value = created.name || created.phone || '';
+            searchInput.classList.add('has-selection');
+        }
     } catch (err) {
-        showPopup('L?i k?t n?i khi t?o kh·ch h‡ng.', { type: 'error' });
+        showPopup('L·ªói k·∫øt n·ªëi khi t·∫°o kh√°ch h√†ng.', { type: 'error' });
     }
 }
 
@@ -2743,7 +2743,7 @@ function resetAddressInput(input) {
 
 function getAddressDisplayName(item) {
     const rawName = item?.name || '';
-    const cleaned = rawName.replace(/^(T?nh|Th‡nh ph?)\s+/i, '').trim();
+    const cleaned = rawName.replace(/^(T?nh|ThÔøΩnh ph?)\s+/i, '').trim();
     return cleaned || rawName;
 }
 
@@ -3116,18 +3116,18 @@ function setSuggestionMode(mode) {
 
     if (mode === 'bottom') {
         controls.style.display = 'flex';
-        title.textContent = 'TU V?N B¡N H¿NG';
+        title.textContent = 'TU V?N BÔøΩN HÔøΩNG';
         return;
     }
 
     if (mode === 'top') {
         controls.style.display = 'none';
-        title.textContent = 'K?T QU? TÃM KI?M';
+        title.textContent = 'K?T QU? TÔøΩM KI?M';
         return;
     }
 
     controls.style.display = 'flex';
-    title.textContent = 'S?N PH?M B¡N CH?Y';
+    title.textContent = 'S?N PH?M BÔøΩN CH?Y';
 }
 
 function openProductDetail(productId) {
@@ -3150,7 +3150,7 @@ function openProductDetail(productId) {
         : formatPrice(basePrice);
     document.getElementById('detailProductPrice').textContent = detailPrice;
     document.getElementById('detailProductStock').textContent = getStockValue(product);
-    document.getElementById('detailProductDescription').textContent = product.description || 'Chua cÛ mÙ t?';
+    document.getElementById('detailProductDescription').textContent = product.description || 'Chua cÔøΩ mÔøΩ t?';
 
     const detailImage = modal.querySelector('.detail-image');
     if (detailImage) {
@@ -3493,7 +3493,7 @@ function openCustomerDetail(customerId) {
 
     const customer = customers.find(c => c.id === customerId);
     if (!customer) {
-        showPopup('KhÙng tÏm th?y kh·ch h‡ng.', { type: 'error' });
+        showPopup('Kh√¥ng t√¨m th·∫•y kh√°ch h√†ng.', { type: 'error' });
         return;
     }
 
@@ -3561,7 +3561,7 @@ async function loadEmployees() {
     const dropdown = document.getElementById('employeeList');
     if (!dropdown) return;
 
-    dropdown.innerHTML = '<div class="employee-empty">–ang t?i...</div>';
+    dropdown.innerHTML = '<div class="employee-empty">ÔøΩang t?i...</div>';
 
     try {
         const response = await fetch(`${API_BASE}/users`, {
@@ -3586,7 +3586,7 @@ async function loadEmployees() {
         employeesLoaded = true;
         renderEmployees();
     } catch (err) {
-        dropdown.innerHTML = '<div class="employee-empty">L?i t?i danh s·ch nh‚n viÍn</div>';
+        dropdown.innerHTML = '<div class="employee-empty">L?i t?i danh sÔøΩch nhÔøΩn viÔøΩn</div>';
     }
 }
 
@@ -3595,12 +3595,12 @@ function renderEmployees() {
     if (!dropdown) return;
 
     if (!employees || employees.length === 0) {
-        dropdown.innerHTML = '<div class="employee-empty">Chua cÛ nh‚n viÍn</div>';
+        dropdown.innerHTML = '<div class="employee-empty">Chua cÔøΩ nhÔøΩn viÔøΩn</div>';
         return;
     }
 
     const employeesHtml = employees.map(emp => {
-        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'Nh‚n viÍn') : 'Nh‚n viÍn';
+        const roleDisplay = emp.role ? (typeof emp.role === 'object' && emp.role.displayName ? emp.role.displayName : 'NhÔøΩn viÔøΩn') : 'NhÔøΩn viÔøΩn';
         return `
         <div class="employee-item" data-employee-id="${emp.id}" onclick="selectEmployee(event, ${emp.id}, '${emp.username.replace(/'/g, "\\'")}', '${(emp.fullName || emp.username).replace(/'/g, "\\'")}')">
             <div class="employee-info">
@@ -3611,7 +3611,7 @@ function renderEmployees() {
         `;
     }).join('');
 
-    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chua cÛ nh‚n viÍn</div>';
+    dropdown.innerHTML = employeesHtml || '<div class="employee-empty">Chua cÔøΩ nhÔøΩn viÔøΩn</div>';
 }
 
 function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
@@ -3639,18 +3639,18 @@ function selectEmployee(evt, employeeId, employeeUsername, employeeName) {
 
 // ==================== AI COMBO PROMOTION FUNCTIONS ====================
 
-// ComboPromotionAI v‡ ComboPromotionUI du?c load t? file combo-promotion-ai.js
+// ComboPromotionAI vÔøΩ ComboPromotionUI du?c load t? file combo-promotion-ai.js
 
 /**
- * Ph‚n tÌch gi? h‡ng v‡ t? d?ng thÍm qu‡ t?ng combo
+ * PhÔøΩn tÔøΩch gi? hÔøΩng vÔøΩ t? d?ng thÔøΩm quÔøΩ t?ng combo
  */
 async function analyzeCartForCombo() {
-    // Tr·nh vÚng l?p vÙ h?n
+    // TrÔøΩnh vÔøΩng l?p vÔøΩ h?n
     if (isAnalyzingCombo) {
         return;
     }
     
-    // Ki?m tra cÛ promotions khÙng
+    // Ki?m tra cÔøΩ promotions khÔøΩng
     if (!allPromotions || allPromotions.length === 0) {
         return;
     }
@@ -3658,7 +3658,7 @@ async function analyzeCartForCombo() {
     isAnalyzingCombo = true;
     
     try {
-        // Chuy?n d?i gi? h‡ng sang format cho AI (ch? s?n ph?m th?t)
+        // Chuy?n d?i gi? hÔøΩng sang format cho AI (ch? s?n ph?m th?t)
         const cartItems = cart
             .filter(item => !item.isFreeGift)
             .map(item => ({
@@ -3683,7 +3683,7 @@ async function analyzeCartForCombo() {
             cart: cartItems
         });
         
-        // G?i AI ph‚n tÌch
+        // G?i AI phÔøΩn tÔøΩch
         const result = await ComboPromotionAI.analyzeCart(cartItems, formattedPromotions);
         
         console.log('[analyzeCartForCombo] ?? AI result:', result);
@@ -3693,14 +3693,14 @@ async function analyzeCartForCombo() {
             displayComboSuggestions(result.suggestions);
         }
         
-        // T? d?ng thÍm/c?p nh?t qu‡ t?ng
+        // T? d?ng thÔøΩm/c?p nh?t quÔøΩ t?ng
         if (result.auto_add_gifts && result.auto_add_gifts.length > 0) {
             result.auto_add_gifts.forEach(gift => {
                 autoAddGiftToCart(gift);
             });
         }
         
-        // XÛa qu‡ t?ng khÙng h?p l?
+        // XÔøΩa quÔøΩ t?ng khÔøΩng h?p l?
         await removeIneligibleGifts(result.auto_add_gifts || []);
         
     } catch (error) {
@@ -3711,15 +3711,15 @@ async function analyzeCartForCombo() {
 }
 
 /**
- * Hi?n th? g?i ˝ combo
+ * Hi?n th? g?i ÔøΩ combo
  */
 function displayComboSuggestions(suggestions) {
     suggestions.forEach(suggestion => {
         if (suggestion.suggestion_type === 'ELIGIBLE') {
-            // –? di?u ki?n - Hi?n th? thÙng b·o th‡nh cÙng
+            // ÔøΩ? di?u ki?n - Hi?n th? thÔøΩng bÔøΩo thÔøΩnh cÔøΩng
             ComboPromotionUI.showNotification(suggestion.message, 'success');
         } else if (suggestion.suggestion_type === 'UPSELL') {
-            // G?n d? - Hi?n th? modal g?i ˝ (ch? hi?n th? 1 l?n)
+            // G?n d? - Hi?n th? modal g?i ÔøΩ (ch? hi?n th? 1 l?n)
             if (!document.querySelector('.upsell-modal')) {
                 ComboPromotionUI.showUpsellModal(suggestion, handleUpsellAddMore);
             }
@@ -3728,41 +3728,41 @@ function displayComboSuggestions(suggestions) {
 }
 
 /**
- * X? l˝ khi ngu?i d˘ng nh?n "ThÍm ngay" trong modal upsell
+ * X? lÔøΩ khi ngu?i dÔøΩng nh?n "ThÔøΩm ngay" trong modal upsell
  */
 function handleUpsellAddMore(suggestion) {
     console.log('[handleUpsellAddMore] Adding more:', suggestion);
     
-    // TÏm s?n ph?m trong gi?
+    // TÔøΩm s?n ph?m trong gi?
     const cartItem = cart.find(item => 
         item.productId === suggestion.main_product_id && !item.isFreeGift
     );
     
     if (cartItem) {
-        // Tang s? lu?ng lÍn d? d? nh?n qu‡
+        // Tang s? lu?ng lÔøΩn d? d? nh?n quÔøΩ
         const needed = suggestion.required_quantity - suggestion.current_quantity;
         cartItem.quantity += needed;
         
         renderCart();
         updateTotal();
         
-        // Ph‚n tÌch l?i d? t? d?ng thÍm qu‡
+        // PhÔøΩn tÔøΩch l?i d? t? d?ng thÔøΩm quÔøΩ
         setTimeout(() => analyzeCartForCombo(), 300);
     }
 }
 
 /**
- * T? d?ng thÍm qu‡ t?ng v‡o gi?
+ * T? d?ng thÔøΩm quÔøΩ t?ng vÔøΩo gi?
  */
 async function autoAddGiftToCart(gift) {
     console.log('[autoAddGiftToCart] Adding gift:', gift);
     console.log('[autoAddGiftToCart] Products cache:', products?.length || 0, 'items');
     
-    // Lookup tÍn s?n ph?m t? cache ho?c API
+    // Lookup tÔøΩn s?n ph?m t? cache ho?c API
     let productName = gift.product_name || null;
     
     if (!productName && gift.product_id) {
-        // Th? tÏm trong cache products tru?c
+        // Th? tÔøΩm trong cache products tru?c
         const cachedProduct = products.find(p => 
             p.productId === gift.product_id || 
             p.id === gift.product_id || 
@@ -3775,7 +3775,7 @@ async function autoAddGiftToCart(gift) {
             console.log('[autoAddGiftToCart] ? Found in cache:', productName);
         } else {
             console.log('[autoAddGiftToCart] ?? Not found in cache, trying API...');
-            // KhÙng cÛ trong cache, g?i API
+            // KhÔøΩng cÔøΩ trong cache, g?i API
             try {
                 const res = await fetch(`${API_BASE}/products/${gift.product_id}`, {
                     headers: {
@@ -3795,13 +3795,13 @@ async function autoAddGiftToCart(gift) {
         }
     }
     
-    // Fallback cu?i c˘ng
+    // Fallback cu?i cÔøΩng
     if (!productName) {
         productName = `S?n ph?m #${gift.product_id}`;
         console.warn('[autoAddGiftToCart] ?? Using fallback name:', productName);
     }
     
-    // Ki?m tra xem qu‡ d„ cÛ trong gi? chua
+    // Ki?m tra xem quÔøΩ dÔøΩ cÔøΩ trong gi? chua
     const existingGift = cart.find(item => 
         item.productId === gift.product_id && 
         item.isFreeGift === true &&
@@ -3809,7 +3809,7 @@ async function autoAddGiftToCart(gift) {
     );
     
     if (existingGift) {
-        // C?p nh?t s? lu?ng v‡ tÍn n?u kh·c
+        // C?p nh?t s? lu?ng vÔøΩ tÔøΩn n?u khÔøΩc
         if (existingGift.quantity !== gift.quantity) {
             console.log('[autoAddGiftToCart] Updating gift quantity:', gift.quantity);
             existingGift.quantity = gift.quantity;
@@ -3820,16 +3820,16 @@ async function autoAddGiftToCart(gift) {
         renderCart();
         updateTotal();
     } else {
-        // ThÍm qu‡ m?i
+        // ThÔøΩm quÔøΩ m?i
         console.log('[autoAddGiftToCart] Adding new gift');
         cart.push({
             productId: gift.product_id,
             productName: productName,
-            productPrice: 0, // Mi?n phÌ
+            productPrice: 0, // Mi?n phÔøΩ
             quantity: gift.quantity,
             productCode: '',
             unit: '',
-            stock: 999, // Set stock cao d? khÙng b? check "out of stock"
+            stock: 999, // Set stock cao d? khÔøΩng b? check "out of stock"
             isFreeGift: true,
             promoId: gift.promo_id,
             promoCode: gift.promo_code,
@@ -3839,24 +3839,24 @@ async function autoAddGiftToCart(gift) {
         renderCart();
         updateTotal();
         
-        // Hi?n th? thÙng b·o
+        // Hi?n th? thÔøΩng bÔøΩo
         ComboPromotionUI.showNotification(
-            `?? –„ thÍm ${gift.quantity} ${productName} (Qu‡ t?ng)`,
+            `?? ÔøΩÔøΩ thÔøΩm ${gift.quantity} ${productName} (QuÔøΩ t?ng)`,
             'success'
         );
     }
 }
 
 /**
- * XÛa qu‡ t?ng khÙng h?p l?
+ * XÔøΩa quÔøΩ t?ng khÔøΩng h?p l?
  */
 async function removeIneligibleGifts(validGifts) {
-    // T?o Set c·c gift ID h?p l?
+    // T?o Set cÔøΩc gift ID h?p l?
     const validGiftKeys = new Set(
         validGifts.map(g => `${g.product_id}-${g.promo_id}`)
     );
     
-    // L?c v‡ xÛa qu‡ khÙng h?p l?
+    // L?c vÔøΩ xÔøΩa quÔøΩ khÔøΩng h?p l?
     const initialLength = cart.length;
     cart = cart.filter(item => {
         if (item.isFreeGift) {
@@ -3866,7 +3866,7 @@ async function removeIneligibleGifts(validGifts) {
         return true; // Gi? l?i s?n ph?m th?t
     });
     
-    // N?u cÛ thay d?i, render l?i
+    // N?u cÔøΩ thay d?i, render l?i
     if (cart.length < initialLength) {
         console.log('[removeIneligibleGifts] Removed ineligible gifts');
         renderCart();
@@ -3875,10 +3875,10 @@ async function removeIneligibleGifts(validGifts) {
 }
 
 /**
- * X? l˝ khi thay d?i s? lu?ng trong gi?
+ * X? lÔøΩ khi thay d?i s? lu?ng trong gi?
  */
 async function onCartItemQuantityChange() {
-    // Ph‚n tÌch l?i gi? h‡ng
+    // PhÔøΩn tÔøΩch l?i gi? hÔøΩng
     await analyzeCartForCombo();
 }
 
