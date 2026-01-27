@@ -1352,20 +1352,33 @@ function renderCart() {
         `;
         }
         
-        // Ki?m tra n?u l� qu� t?ng
+        // Kiểm tra nếu là quà tặng
         if (item.isFreeGift) {
+            // Tự động lookup tên nếu là Unknown
+            let displayName = item.productName;
+            if (!displayName || displayName === 'Unknown') {
+                const product = products.find(p => Number(p.id) === Number(item.productId) || Number(p.productId) === Number(item.productId));
+                if (product) {
+                    displayName = product.name || product.productName || product.product_name || displayName;
+                    // Cập nhật lại tên trong cart
+                    item.productName = displayName;
+                } else {
+                    displayName = `Sản phẩm #${item.productId}`;
+                }
+            }
+            
             return `
             <div class="cart-row gift-item">
                 <span>${idx + 1}</span>
-                <span class="gift-badge">?? T?NG</span>
-                <span class="cart-name">${item.productName}</span>
+                <span class="gift-badge">🎁 TẶNG</span>
+                <span class="cart-name">${displayName}</span>
                 <span class="cart-qty">
                     <input type="number" class="qty-input" value="${item.quantity}" disabled>
                 </span>
                 <span>${item.unit || '-'}</span>
                 <span style="text-decoration: line-through; color: #999;">${formatPrice(item.productPrice)}</span>
                 <span style="color: #ff6b9d; font-weight: 600;">0d</span>
-                <span class="gift-label" style="grid-column: span 2; text-align: right; color: #ff6b9d; font-size: 12px; font-style: italic;">${item.promoLabel || 'Qu� t?ng'}</span>
+                <span class="gift-label" style="grid-column: span 2; text-align: right; color: #ff6b9d; font-size: 12px; font-style: italic;">${item.promoLabel || 'Quà tặng'}</span>
             </div>
         `;
         }
@@ -3752,30 +3765,28 @@ function handleUpsellAddMore(suggestion) {
 }
 
 /**
- * T? d?ng th�m qu� t?ng v�o gi?
+ * Tự động thêm quà tặng vào giỏ
  */
 async function autoAddGiftToCart(gift) {
     console.log('[autoAddGiftToCart] Adding gift:', gift);
     console.log('[autoAddGiftToCart] Products cache:', products?.length || 0, 'items');
     
-    // Lookup t�n s?n ph?m t? cache ho?c API
+    // Lookup tên sản phẩm từ cache hoặc API
     let productName = gift.product_name || null;
     
     if (!productName && gift.product_id) {
-        // Th? t�m trong cache products tru?c
+        // Thử tìm trong cache products trước
         const cachedProduct = products.find(p => 
-            p.productId === gift.product_id || 
-            p.id === gift.product_id || 
-            String(p.productId) === String(gift.product_id) ||
-            String(p.id) === String(gift.product_id)
+            Number(p.productId) === Number(gift.product_id) || 
+            Number(p.id) === Number(gift.product_id)
         );
         
         if (cachedProduct) {
-            productName = cachedProduct.name || cachedProduct.productName;
-            console.log('[autoAddGiftToCart] ? Found in cache:', productName);
+            productName = cachedProduct.name || cachedProduct.productName || cachedProduct.product_name;
+            console.log('[autoAddGiftToCart] ✓ Found in cache:', productName);
         } else {
-            console.log('[autoAddGiftToCart] ?? Not found in cache, trying API...');
-            // Kh�ng c� trong cache, g?i API
+            console.log('[autoAddGiftToCart] ⚠️ Not found in cache, trying API...');
+            // Không có trong cache, gọi API
             try {
                 const res = await fetch(`${API_BASE}/products/${gift.product_id}`, {
                     headers: {
@@ -3784,24 +3795,24 @@ async function autoAddGiftToCart(gift) {
                 });
                 if (res.ok) {
                     const product = await res.json();
-                    productName = product.name || product.productName;
-                    console.log('[autoAddGiftToCart] ? Fetched from API:', productName);
+                    productName = product.name || product.productName || product.product_name;
+                    console.log('[autoAddGiftToCart] ✓ Fetched from API:', productName);
                 } else {
-                    console.error('[autoAddGiftToCart] ? API returned:', res.status);
+                    console.error('[autoAddGiftToCart] ❌ API returned:', res.status);
                 }
             } catch (err) {
-                console.error('[autoAddGiftToCart] ? Failed to fetch:', err);
+                console.error('[autoAddGiftToCart] ❌ Failed to fetch:', err);
             }
         }
     }
     
-    // Fallback cu?i c�ng
+    // Fallback cuối cùng
     if (!productName) {
-        productName = `S?n ph?m #${gift.product_id}`;
-        console.warn('[autoAddGiftToCart] ?? Using fallback name:', productName);
+        productName = `Sản phẩm #${gift.product_id}`;
+        console.warn('[autoAddGiftToCart] ⚠️ Using fallback name:', productName);
     }
     
-    // Ki?m tra xem qu� d� c� trong gi? chua
+    // Kiểm tra xem quà đã có trong giỏ chưa
     const existingGift = cart.find(item => 
         item.productId === gift.product_id && 
         item.isFreeGift === true &&
@@ -3809,7 +3820,7 @@ async function autoAddGiftToCart(gift) {
     );
     
     if (existingGift) {
-        // C?p nh?t s? lu?ng v� t�n n?u kh�c
+        // Cập nhật số lượng và tên nếu khác
         if (existingGift.quantity !== gift.quantity) {
             console.log('[autoAddGiftToCart] Updating gift quantity:', gift.quantity);
             existingGift.quantity = gift.quantity;
@@ -3820,28 +3831,28 @@ async function autoAddGiftToCart(gift) {
         renderCart();
         updateTotal();
     } else {
-        // Th�m qu� m?i
+        // Thêm quà mới
         console.log('[autoAddGiftToCart] Adding new gift');
         cart.push({
             productId: gift.product_id,
             productName: productName,
-            productPrice: 0, // Mi?n ph�
+            productPrice: 0, // Miễn phí
             quantity: gift.quantity,
             productCode: '',
             unit: '',
-            stock: 999, // Set stock cao d? kh�ng b? check "out of stock"
+            stock: 999, // Set stock cao để không bị check "out of stock"
             isFreeGift: true,
             promoId: gift.promo_id,
             promoCode: gift.promo_code,
-            promoLabel: `?? ${gift.promo_name}`
+            promoLabel: `🎁 ${gift.promo_name}`
         });
         
         renderCart();
         updateTotal();
         
-        // Hi?n th? th�ng b�o
+        // Hiển thị thông báo
         ComboPromotionUI.showNotification(
-            `?? �� th�m ${gift.quantity} ${productName} (Qu� t?ng)`,
+            `✨ Đã thêm ${gift.quantity} ${productName} (Quà tặng)`,
             'success'
         );
     }

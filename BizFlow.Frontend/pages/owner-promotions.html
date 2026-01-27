@@ -1046,7 +1046,7 @@
         }
 
         function resolveProductIdFromInput(value, list) {
-            const products = Array.isArray(list) ? list : cachedProducts;
+            const products = Array.isArray(list) ? list : (Array.isArray(cachedProducts) ? cachedProducts : []);
             const text = (value || '').toString().trim();
             if (!text) return '';
             const match = text.match(/^(\d+)/);
@@ -1065,7 +1065,7 @@
         }
 
         function resolveExactMatch(value, list) {
-            const products = Array.isArray(list) ? list : cachedProducts;
+            const products = Array.isArray(list) ? list : (Array.isArray(cachedProducts) ? cachedProducts : []);
             const text = (value || '').toString().trim().toLowerCase();
             if (!text) return null;
             return products.find(p => {
@@ -1077,7 +1077,7 @@
         }
 
         function resolveSingleMatch(value, list) {
-            const products = Array.isArray(list) ? list : cachedProducts;
+            const products = Array.isArray(list) ? list : (Array.isArray(cachedProducts) ? cachedProducts : []);
             const text = (value || '').toString().trim().toLowerCase();
             if (!text) return null;
             const matches = products.filter(p =>
@@ -1087,7 +1087,7 @@
         }
 
         function setProductOptions(select, selectedId, list) {
-            const products = Array.isArray(list) ? list : cachedProducts;
+            const products = Array.isArray(list) ? list : (Array.isArray(cachedProducts) ? cachedProducts : []);
             const chosen = selectedId ?? select.value;
             select.innerHTML = `<option value="">-- Chọn sản phẩm --</option>${buildProductOptions(products, chosen)}`;
             const wrapper = select.closest('.product-picker');
@@ -1876,10 +1876,13 @@
         function formatTargets(targets) {
             if (!targets?.length) return 'Không có';
             const results = [];
+            const products = Array.isArray(cachedProducts) ? cachedProducts : [];
+            const categories = Array.isArray(cachedCategories) ? cachedCategories : [];
+            
             for (const t of targets) {
                 if (t.targetType === 'PRODUCT') {
                     let name = null;
-                    for (const p of cachedProducts) {
+                    for (const p of products) {
                         if (Number(p.id) === Number(t.targetId)) {
                             name = p.name || p.code;
                             break;
@@ -1889,7 +1892,7 @@
                     results.push(`<span class="badge badge-target">${escapeHtml(name)}</span>`);
                 } else if (t.targetType === 'CATEGORY') {
                     let name = null;
-                    for (const c of cachedCategories) {
+                    for (const c of categories) {
                         if (Number(c.id) === Number(t.targetId) || Number(c.category_id) === Number(t.targetId)) {
                             name = c.name;
                             break;
@@ -1911,13 +1914,15 @@
         function formatBundles(bundleItems) {
             if (!bundleItems?.length) return '-';
             const results = [];
+            const products = Array.isArray(cachedProducts) ? cachedProducts : [];
+            
             for (const b of bundleItems) {
                 const mainId = Number(b.mainProductId || b.productId || 0);
                 const giftId = Number(b.giftProductId || 0);
                 let mainName = '#' + mainId;
                 let giftName = '#' + giftId;
                 
-                for (const p of cachedProducts) {
+                for (const p of products) {
                     if (Number(p.id) === mainId) mainName = p.name || p.code || mainName;
                     if (Number(p.id) === giftId) giftName = p.name || p.code || giftName;
                 }
